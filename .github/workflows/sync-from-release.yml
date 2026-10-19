@@ -1,4 +1,5 @@
 name: Sync web sources from latest release asset
+# Keep editable source files in the repo so product changes can be reviewed and deployed.
 on:
   workflow_dispatch:
   push:
