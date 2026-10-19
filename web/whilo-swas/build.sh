@@ -16,17 +16,20 @@ mkdir -p "$ROOT/public"
 tar --extract --gzip --file "$TMP" --directory "$ROOT/public"
 rm -f "$ROOT/public/vercel.json"
 cp "$ROOT/whilo-enterprise.js" "$ROOT/public/whilo-enterprise.js"
+cp "$ROOT/../../shared/whilo-agent-core/index.js" "$ROOT/public/whilo-agent-core.js"
 
 node <<'NODE'
 const fs = require("node:fs");
 const path = require("node:path");
 const htmlPath = path.join(process.cwd(), "public", "index.html");
 let html = fs.readFileSync(htmlPath, "utf8");
-const script = '<script src="/whilo-enterprise.js" defer></script>';
-if (!html.includes("/whilo-enterprise.js")) {
+const coreScript = '<script src="/whilo-agent-core.js" defer></script>';
+const enterpriseScript = '<script src="/whilo-enterprise.js" defer></script>';
+if (!html.includes("/whilo-agent-core.js") || !html.includes("/whilo-enterprise.js")) {
   const pos = html.toLowerCase().lastIndexOf("</body>");
   if (pos < 0) throw new Error("Whilo index.html has no closing body tag");
-  html = html.slice(0, pos) + script + html.slice(pos);
+  const tags = (html.includes("/whilo-agent-core.js") ? "" : coreScript) + (html.includes("/whilo-enterprise.js") ? "" : enterpriseScript);
+  html = html.slice(0, pos) + tags + html.slice(pos);
 }
 fs.writeFileSync(htmlPath, html);
 NODE
@@ -35,4 +38,5 @@ test -s "$ROOT/public/index.html"
 test -s "$ROOT/public/whilo-auth.js"
 test -s "$ROOT/public/whilo-runtime.js"
 test -s "$ROOT/public/whilo-enterprise.js"
+test -s "$ROOT/public/whilo-agent-core.js"
 echo "Whilo web bundle ready: $ROOT/public"
