@@ -1,0 +1,38 @@
+name: Whilo CI
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'shared/**'
+      - 'web/whilo-swas/**'
+      - 'desktop/whilo-swas-desktop/**'
+      - 'package.json'
+      - '.github/workflows/whilo-ci.yml'
+  pull_request:
+    paths:
+      - 'shared/**'
+      - 'web/whilo-swas/**'
+      - 'desktop/whilo-swas-desktop/**'
+      - 'package.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check syntax and shell scripts
+        run: |
+          node --check shared/whilo-agent-core/index.cjs
+          node --check shared/whilo-agent-core/index.js
+          node --check shared/whilo-agent-core/index.test.cjs
+          node --check web/whilo-swas/whilo-enterprise.js
+          node --check desktop/whilo-swas-desktop/src/main.cjs
+          node --check desktop/whilo-swas-desktop/src/preload.cjs
+          bash -n web/whilo-swas/build.sh
+      - name: Test mission approval and evidence gates
+        run: npm --prefix shared/whilo-agent-core test
