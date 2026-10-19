@@ -1,0 +1,29 @@
+name: Sync web sources from latest release asset
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sync-from-release.yml']
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download latest site asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ASSET=$(gh release view v1.0.0 --json assets -q '.assets[].name' | grep '^whilo-site' | sort -V | tail -1)
+          echo "Using $ASSET"
+          gh release download v1.0.0 -p "$ASSET" -O site.tgz
+          mkdir -p web && tar xzf site.tgz -C web ./index.html ./whilo-auth.js ./whilo-runtime.js
+          rm site.tgz
+      - name: Commit
+        run: |
+          git config user.name 'whilo-bot'
+          git config user.email 'whilo-bot@users.noreply.github.com'
+          git add web
+          git diff --cached --quiet || git commit -m 'chore: sync web sources from release'
+          git push
