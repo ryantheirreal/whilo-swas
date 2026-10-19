@@ -20,7 +20,8 @@ jobs:
           echo "Using $ASSET"
           gh release download v1.0.0 -p "$ASSET" -O site.tgz
           mkdir -p web
-          tar -tzf site.tgz | head -25
+          tar -tzf site.tgz > tar-contents.txt
+          sed -n '1,25p' tar-contents.txt
           tar -xzf site.tgz -C web
           rm site.tgz
           test -s web/index.html
