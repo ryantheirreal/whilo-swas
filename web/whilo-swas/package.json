@@ -1,0 +1,11 @@
+{
+  "name": "whilo-swas",
+  "version": "1.0.3",
+  "private": true,
+  "description": "Whilo browser application",
+  "scripts": {
+    "build": "bash build.sh",
+    "check": "bash -n build.sh && node --check whilo-enterprise.js",
+    "build:clean": "rm -rf public"
+  }
+}
