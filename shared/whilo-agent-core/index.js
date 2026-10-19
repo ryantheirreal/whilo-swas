@@ -34,7 +34,7 @@
   const ACTION_POLICY = Object.freeze({
     read: { risk: "low", approval: "never", defaultScopes: ["read"] },
     internal_draft: { risk: "low", approval: "never", defaultScopes: ["draft"] },
-    external_draft: { risk: "medium", approval: "before_send", defaultScopes: ["draft", "external_send"] },
+    external_draft: { risk: "medium", approval: "never", defaultScopes: ["draft"] },
     external_send: { risk: "high", approval: "always", defaultScopes: ["external_send"] },
     purchase: { risk: "critical", approval: "always", defaultScopes: ["purchase"] },
     financial_commitment: { risk: "critical", approval: "always", defaultScopes: ["finance_commit"] },
@@ -122,6 +122,12 @@
     if (!mission || !MISSION_STATES.includes(mission.state)) throw new TypeError("Invalid mission");
     if (!MISSION_STATES.includes(nextState)) throw new TypeError("Invalid target state");
     if (TERMINAL.has(mission.state)) throw new Error("Terminal missions cannot transition");
+    if (nextState === "queued" && mission.approvalRequired && !(Array.isArray(mission.approvals) && mission.approvals.some(a => a && a.scope === "execute_mission" && a.approved === true))) {
+      throw new Error("Mission approval is required before queueing execution.");
+    }
+    if (nextState === "delivered" && !(mission.verification && mission.verification.passed === true)) {
+      throw new Error("A mission cannot be delivered until outcome verification passes with evidence.");
+    }
     if (!TRANSITIONS[mission.state].includes(nextState)) {
       throw new Error("Invalid mission transition: " + mission.state + " -> " + nextState);
     }
@@ -138,6 +144,24 @@
       }])
     });
     return next;
+  }
+
+
+  function approveMission(mission, decision) {
+    if (!mission || mission.state !== "awaiting_approval") throw new Error("Mission is not awaiting approval.");
+    const input = decision && typeof decision === "object" ? decision : {};
+    const approval = {
+      scope: "execute_mission",
+      approved: input.approved === true,
+      approver: typeof input.approver === "string" ? input.approver.slice(0, 160) : "user",
+      reason: typeof input.reason === "string" ? input.reason.slice(0, 1000) : "",
+      at: new Date().toISOString()
+    };
+    const next = Object.assign({}, mission, { approvals: (Array.isArray(mission.approvals) ? mission.approvals : []).concat([approval]) });
+    if (approval.approved !== true) {
+      return transitionMission(next, "blocked", approval.approver, approval.reason || "Mission was not approved.");
+    }
+    return transitionMission(next, "queued", approval.approver, approval.reason || "Mission execution approved.");
   }
 
   function evaluateAction(input) {
@@ -213,6 +237,6 @@
 
   return Object.freeze({
     MISSION_STATES, TERMINAL, TRANSITIONS, PETS, SPECIALIST_ROLES,
-    createMission, transitionMission, evaluateAction, verifyOutcome, createReceipt
+    createMission, transitionMission, approveMission, evaluateAction, verifyOutcome, createReceipt
   });
 });
