@@ -209,9 +209,24 @@
 
   function boot() {
     injectTopbar();
-    const observer = new MutationObserver(function () { injectTopbar(); });
+    // The existing React shell may replace the navigation after a route change.
+    // Keep the observer, but only rescan when a top-level navigation label is likely affected.
+    let scheduled = false;
+    const observer = new MutationObserver(function (records) {
+      const relevant = records.some(function (record) {
+        const nodes = Array.from(record.addedNodes || []).concat(Array.from(record.removedNodes || []));
+        return nodes.some(function (node) {
+          if (!node || node.nodeType !== 1) return false;
+          const element = node;
+          if (element.matches && element.matches('button,a,[role="tab"],[role="button"]') && visible(element)) return true;
+          return !!(element.querySelector && element.querySelector('button,a,[role="tab"],[role="button"]'));
+        });
+      });
+      if (!relevant || scheduled) return;
+      scheduled = true;
+      queueMicrotask(function () { scheduled = false; injectTopbar(); });
+    });
     observer.observe(document.body, { childList: true, subtree: true });
-    setTimeout(function () { observer.disconnect(); injectTopbar(); }, 10000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
 })();
