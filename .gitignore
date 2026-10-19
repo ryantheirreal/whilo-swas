@@ -1,0 +1,24 @@
+# Node package files
+**/node_modules/
+**/.npm/
+**/.cache/
+
+# Generated static-site build
+web/whilo-swas/public/
+web/whilo-swas/*.tgz
+deploy/site.tgz
+
+# Desktop output
+desktop/whilo-swas-desktop/release/
+desktop/whilo-swas-desktop/dist/
+
+# Environment/secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# OS/logs
+.DS_Store
+Thumbs.db
+*.log
