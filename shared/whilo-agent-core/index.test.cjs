@@ -22,49 +22,47 @@ test("creates a Pet-led mission with specialist Bots as bounded tasks", () => {
 });
 
 test("rejects missing dependencies and duplicate IDs", () => {
-  assert.throws(() => core.createMission({
-    goal: "Test",
-    steps: [{ id: "a", dependsOn: ["missing"] }]
-  }), /Unknown dependency/);
-  assert.throws(() => core.createMission({
-    goal: "Test",
-    steps: [{ id: "same" }, { id: "same" }]
-  }), /unique/);
+  assert.throws(() => core.createMission({goal:"Test",steps:[{id:"a",dependsOn:["missing"]}]}), /Unknown dependency/);
+  assert.throws(() => core.createMission({goal:"Test",steps:[{id:"same"},{id:"same"}]}), /unique/);
 });
 
-test("mission state machine rejects skipped execution stages", () => {
-  const mission = core.createMission({ goal: "Test" });
-  assert.throws(() => core.transitionMission(mission, "delivered", "user", "skip"), /Invalid mission transition/);
+test("a mission cannot skip approval before it enters the execution queue", () => {
+  const mission = core.createMission({ goal:"Test" });
   const planned = core.transitionMission(mission, "planned", "pet", "Plan ready");
-  const queued = core.transitionMission(planned, "queued", "user", "Approved plan");
+  assert.throws(() => core.transitionMission(planned, "queued", "runtime", "skip approval"), /approval is required/);
+  const waiting = core.transitionMission(planned, "awaiting_approval", "governor", "Awaiting owner");
+  const queued = core.approveMission(waiting, {approved:true, approver:"owner", reason:"Approved scope and spend"});
+  assert.equal(queued.state, "queued");
+  assert.equal(queued.approvals[0].scope, "execute_mission");
   const running = core.transitionMission(queued, "running", "runtime", "Worker claimed mission");
   assert.equal(running.state, "running");
 });
 
 test("high-impact actions fail closed without scoped capability and explicit approval", () => {
-  const missing = core.evaluateAction({ action: "external_send", scopes: ["read"], budgetRemaining: 10, estimatedCost: 1 });
-  assert.equal(missing.allowed, false);
-  assert.match(missing.reason, /Missing required capability/);
-  const noApproval = core.evaluateAction({ action: "external_send", scopes: ["external_send"], budgetRemaining: 10, estimatedCost: 1 });
-  assert.equal(noApproval.allowed, false);
-  const approved = core.evaluateAction({ action: "external_send", scopes: ["external_send"], approved: true, budgetRemaining: 10, estimatedCost: 1 });
-  assert.equal(approved.allowed, true);
+  const missing = core.evaluateAction({action:"external_send",scopes:["read"],budgetRemaining:10,estimatedCost:1});
+  assert.equal(missing.allowed,false);
+  assert.match(missing.reason,/Missing required capability/);
+  const noApproval = core.evaluateAction({action:"external_send",scopes:["external_send"],budgetRemaining:10,estimatedCost:1});
+  assert.equal(noApproval.allowed,false);
+  const approved = core.evaluateAction({action:"external_send",scopes:["external_send"],approved:true,budgetRemaining:10,estimatedCost:1});
+  assert.equal(approved.allowed,true);
 });
 
-test("verification requires every named criterion and evidence", () => {
-  const acceptanceCriteria = ["Data is correct", "Sources are attached"];
-  const partial = core.verifyOutcome({
-    acceptanceCriteria,
-    checks: [{ name: "Data is correct", passed: true, evidence: "Report hash 123" }]
-  });
-  assert.equal(partial.passed, false);
-  assert.equal(partial.passedCount, 1);
-  const complete = core.verifyOutcome({
-    acceptanceCriteria,
-    checks: [
-      { name: "Data is correct", passed: true, evidence: "Report hash 123" },
-      { name: "Sources are attached", passed: true, evidence: "Source manifest" }
-    ]
-  });
-  assert.equal(complete.passed, true);
+test("internal draft creation is allowed only with draft capability and not mistaken for send", () => {
+  assert.equal(core.evaluateAction({action:"external_draft",scopes:["draft"],budgetRemaining:2,estimatedCost:1}).allowed,true);
+  assert.equal(core.evaluateAction({action:"external_draft",scopes:[],budgetRemaining:2,estimatedCost:1}).allowed,false);
+});
+
+test("delivery requires every named acceptance criterion and evidence", () => {
+  const criteria = ["Data is correct","Sources are attached"];
+  const mission = core.createMission({goal:"Verify report",acceptanceCriteria:criteria});
+  const partial = core.verifyOutcome({acceptanceCriteria:criteria,checks:[{name:criteria[0],passed:true,evidence:"Report hash 123"}]});
+  assert.equal(partial.passed,false);
+  assert.equal(partial.passedCount,1);
+  assert.throws(() => core.transitionMission(Object.assign({},mission,{state:"awaiting_review"}),"delivered","user","unchecked"),/verification passes/);
+  const complete = core.verifyOutcome({acceptanceCriteria:criteria,checks:[
+    {name:criteria[0],passed:true,evidence:"Report hash 123"},
+    {name:criteria[1],passed:true,evidence:"Source manifest"}
+  ]});
+  assert.equal(complete.passed,true);
 });
