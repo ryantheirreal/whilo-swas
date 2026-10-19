@@ -37,5 +37,7 @@
       "source": "/((?!assets/|pets/|.*\\.[a-z0-9]+$).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "public"
 }
