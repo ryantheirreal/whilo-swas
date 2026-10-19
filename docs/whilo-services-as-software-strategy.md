@@ -16,6 +16,36 @@ The thesis is that the next category-defining company may look like a services f
 
 **Whilo implication:** do not pitch “an AI team that can do anything.” Pitch a clearly scoped outcome with an existing budget, evidence of quality and a defined review path.
 
+## Complete opportunity map in the Sequoia article
+
+Sequoia's list is illustrative, not a validated ranking for Whilo. The market sizes below are the article's estimates, not independently verified figures. It separates industries by how much work is rule-based intelligence versus experience-heavy judgement, and by how much delivery is already outsourced.
+
+| Vertical in the article | Estimate quoted by Sequoia | Key mechanism described | Whilo fit / caution |
+|---|---:|---|---|
+| Insurance brokerage | $140–200B | Standard commercial coverage often involves comparing options and filling standardized forms; distribution is fragmented. | Potential later vertical; licensing, carrier access and regulated advice are major gates. |
+| Accounting and audit | $50–80B outsourced in the US | Bookkeeping and close work face labor shortages and has rules/evidence that can be checked. | Plausible future service, but only with accounting expertise, audit trails and professional review. |
+| Healthcare revenue cycle | $50–80B outsourced in the US | Billing/coding translates records into standardized reimbursement codes. | High apparent automation fit, but protected health information, payer rules and compliance make it a poor first vertical without domain capacity. |
+| Claims adjusting | $50–80B including third-party administrators | Standard claims combine policy interpretation, schedules and repeatable reserve calculations. | Potential later vertical; decisions affect people financially and require strong escalation and audit controls. |
+| Tax advisory | $30–35B | Much underlying work is rules-based across jurisdictions, while credentials and local rules create a moat. | Expansion candidate only with jurisdiction-specific competence and qualified human oversight. |
+| Transactional legal work | $20–25B | NDAs, contract drafts and filings are often outsourced and use verifiable formats. | A tempting wedge, but legal advice and filing authority require boundaries, reliable sourcing and review. |
+| IT managed services | $100B+ | Patching, account provisioning and alert triage recur across SMB systems and are already frequently outsourced. | Strong adjacent candidate; require least-privilege access, change approvals, rollback and incident response. |
+| Supply chain and procurement | $200B+ | The neglected long tail of suppliers and contract leakage leaves recoverable work that is not always explicitly budgeted. | Strong second/third-stage candidate once supplier data, approvals, purchasing limits and evidence capture exist. |
+| Recruitment and staffing | $200B+ | Screening, matching and outreach are more standardized than final hiring judgement. | Candidate for later expansion; human decisions remain in hiring and fairness controls must be tested. |
+| Management consulting | $300–400B | Data gathering and benchmarking can be separated from judgement-heavy strategy. | Decompose into narrow evidence-based components rather than attempting to automate executive judgement wholesale. |
+
+### What the article says about market entry
+
+1. **Copilot versus autopilot:** a copilot sells a productivity tool to a professional; an autopilot sells a result to the business that needs the work done. This changes the buyer, success metric and budget being captured.
+2. **Intelligence versus judgement:** rule-heavy tasks become autonomously executable sooner. Experience, taste, context and responsibility still need oversight where the error cost is high.
+3. **Outsourcing as the wedge:** replace an existing service vendor before asking a company to reorganize internal headcount. An accepted outsourced budget, established buyer and purchased outcome reduce adoption friction.
+4. **Convergence through data:** start narrow, measure what good output looks like, collect permitted domain-specific feedback and use that evidence to automate progressively harder judgement.
+5. **Distribution matters:** model quality alone is not a moat. Reach buyers, own the workflow, prove accepted outcomes and earn the right to expand.
+6. **Incumbent dilemma:** existing copilots may know the customer and product well, but selling finished work can conflict with their tool-vendor business model. A purpose-built service operator can be positioned around the outcome from day one.
+
+### Why Whilo should not pursue all ten at once
+
+Whilo does not yet have a validated, secure, multi-tenant server runtime or proven computer execution in its current web deployment. The rational application of Sequoia's thesis is to select one repeated, outsourced, measurable workflow; sell it as a managed service; instrument quality, corrections, time and margin; then expand when renewals prove that the unit economics and operational controls work. The trillion-dollar thesis is a model for where value could accrue, not a prediction that Whilo will reach a particular valuation.
+
 ## Initial wedge: Whilo Revenue Operator
 
 Target a narrow segment of B2B service businesses with recurring outbound, CRM and campaign work. Prefer businesses already paying an agency, SDR provider or operations contractor for those activities.
