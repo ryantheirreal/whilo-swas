@@ -198,7 +198,20 @@
     save();
   }
   function ensureMission(task) {
-    if (!task.mission) task.mission = newMissionForTask(task);
+    const core = window.WhiloAgentCore;
+    if (!task.mission) {
+      task.mission = newMissionForTask(task);
+      if (!task.mission || !core) return task.mission;
+      // Migrate older browser-local tasks into the new lifecycle without claiming a worker ran.
+      if (task.status === 'In progress' || task.status === 'Review required') {
+        task.mission = core.approveMission(task.mission, { approved: true, approver: 'user', reason: 'Legacy local task migrated for tracking only.' });
+        task.mission = core.transitionMission(task.mission, 'running', 'migration', 'Legacy local task is marked in progress; no agent was invoked.');
+        if (task.status === 'Review required') {
+          task.mission = core.transitionMission(task.mission, 'verifying', 'migration', 'Restored local review state.');
+          task.mission = core.transitionMission(task.mission, 'awaiting_review', 'governor', 'Awaiting manual evidence.');
+        }
+      }
+    }
     return task.mission;
   }
   function advanceTask(task) {
