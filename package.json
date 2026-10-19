@@ -1,0 +1,15 @@
+{
+  "name": "whilo-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Whilo web, desktop and shared agent runtime",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "check:core": "npm --prefix shared/whilo-agent-core run check && npm --prefix shared/whilo-agent-core test",
+    "check:web": "npm --prefix web/whilo-swas run check",
+    "check:desktop": "npm --prefix desktop/whilo-swas-desktop run check",
+    "check": "npm run check:core && npm run check:web && npm run check:desktop"
+  }
+}
