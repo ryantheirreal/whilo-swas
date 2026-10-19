@@ -15,22 +15,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euxo pipefail
-          gh release view v1.0.0 --json assets
-          ASSET=$(gh release view v1.0.0 --json assets -q '.assets[].name' | grep '^whilo-site-v' | sort -V | tail -1)
-          test -n "$ASSET"
+          set -euo pipefail
+          ASSET=$(gh release view v1.0.0 --json assets -q '.assets[].name' | grep '^whilo-site' | sort -V | tail -1)
           echo "Using $ASSET"
           gh release download v1.0.0 -p "$ASSET" -O site.tgz
-          tar -tzf site.tgz | head -40
           mkdir -p web
-          tar xzf site.tgz -C web
+          tar -tzf site.tgz | head -25
+          tar -xzf site.tgz -C web
+          rm site.tgz
           test -s web/index.html
           test -s web/whilo-auth.js
           test -s web/whilo-runtime.js
-          rm site.tgz
-      - name: Commit editable source
+      - name: Commit synced source
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           git config user.name 'whilo-bot'
           git config user.email 'whilo-bot@users.noreply.github.com'
           git add web
