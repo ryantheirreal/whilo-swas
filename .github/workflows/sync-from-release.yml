@@ -1,5 +1,4 @@
 name: Sync web sources from latest release asset
-# Keep editable source files in the repo so product changes can be reviewed and deployed.
 on:
   workflow_dispatch:
   push:
@@ -16,13 +15,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ASSET=$(gh release view v1.0.0 --json assets -q '.assets[].name' | grep '^whilo-site' | sort -V | tail -1)
+          set -euxo pipefail
+          gh release view v1.0.0 --json assets
+          ASSET=$(gh release view v1.0.0 --json assets -q '.assets[].name' | grep '^whilo-site-v' | sort -V | tail -1)
+          test -n "$ASSET"
           echo "Using $ASSET"
           gh release download v1.0.0 -p "$ASSET" -O site.tgz
-          mkdir -p web && tar xzf site.tgz -C web ./index.html ./whilo-auth.js ./whilo-runtime.js
+          tar -tzf site.tgz | head -40
+          mkdir -p web
+          tar xzf site.tgz -C web
+          test -s web/index.html
+          test -s web/whilo-auth.js
+          test -s web/whilo-runtime.js
           rm site.tgz
-      - name: Commit
+      - name: Commit editable source
         run: |
+          set -euxo pipefail
           git config user.name 'whilo-bot'
           git config user.email 'whilo-bot@users.noreply.github.com'
           git add web
