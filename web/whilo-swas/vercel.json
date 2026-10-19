@@ -10,7 +10,7 @@
       ]
     },
     {
-      "source": "/(index.html|whilo-auth.js|whilo-runtime.js|whilo-enterprise.js)",
+      "source": "/(index.html|whilo-auth.js|whilo-runtime.js|whilo-enterprise.js|whilo-agent-core.js)",
       "headers": [
         {
           "key": "Cache-Control",
