@@ -1,0 +1,45 @@
+name: Whilo desktop build
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'whilo-desktop-v*'
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: mac
+            command: dist:mac
+          - os: windows-latest
+            target: windows
+            command: dist:win
+          - os: ubuntu-24.04
+            target: linux
+            command: dist:linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install desktop packaging dependencies
+        working-directory: desktop/whilo-swas-desktop
+        run: npm install --no-audit --no-fund
+      - name: Validate desktop shell
+        working-directory: desktop/whilo-swas-desktop
+        run: npm run check
+      - name: Package for ${{ matrix.target }}
+        working-directory: desktop/whilo-swas-desktop
+        run: npm run ${{ matrix.command }}
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: whilo-swas-desktop-${{ matrix.target }}
+          path: desktop/whilo-swas-desktop/release/*
+          if-no-files-found: error
+          retention-days: 14
