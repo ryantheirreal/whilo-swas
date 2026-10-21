@@ -20,6 +20,18 @@ The hierarchy is:
 
 A multi-agent task is not more intelligent merely because it has more workers. Spawn a Bot only when parallelism or specialization improves expected quality enough to justify coordination cost. Use one Pet and one verifier for simple work; scale the graph for genuinely separable tasks.
 
+## Implemented in the shared core
+
+The shared `@whilo/agent-core` package now includes:
+- mission state transitions and explicit approval gates;
+- task dependency validation, including cycle rejection;
+- ready-task selection that respects dependencies and a concurrency cap;
+- executor-driven parallel waves through an injected provider callback;
+- task attempt tracking, explicit failures and a bounded retry policy;
+- evidence-required task completion and outcome verification helpers.
+
+This is a reusable orchestration core, not a hosted agent by itself. The browser UI currently uses it to create and display plans, and to collect manual review notes. No production LLM adapter, browser/computer tool adapter, durable job worker or tenant-scoped database is wired to the UI yet. The next integration step is to run this core from an authenticated server-side job worker and inject adapters for one model provider and one real tool provider; the browser must never hold provider secrets.
+
 ## The runtime state machine
 
 Every mission should have durable states:
