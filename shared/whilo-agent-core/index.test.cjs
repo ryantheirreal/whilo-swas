@@ -66,3 +66,52 @@ test("delivery requires every named acceptance criterion and evidence", () => {
   ]});
   assert.equal(complete.passed,true);
 });
+
+test("rejects dependency cycles before a mission can be scheduled", () => {
+  assert.throws(() => core.createMission({
+    goal: "Cyclic plan",
+    steps: [
+      { id: "a", title: "A", dependsOn: ["b"] },
+      { id: "b", title: "B", dependsOn: ["a"] }
+    ]
+  }), /contain a cycle/);
+});
+
+test("scheduler only releases dependency-ready tasks within the parallelism limit", () => {
+  let mission = core.createMission({
+    id: "scheduler",
+    goal: "Run a bounded workflow",
+    steps: [
+      { id: "research", role: "Browser Researcher", title: "Research" },
+      { id: "analysis", role: "Data Analyst", title: "Analyze", dependsOn: ["research"] },
+      { id: "verify", role: "QA Verifier", title: "Verify", dependsOn: ["analysis"] }
+    ]
+  });
+  mission = core.transitionMission(mission, "planned", "pet", "Plan created");
+  mission = core.transitionMission(mission, "awaiting_approval", "governor", "Approval needed");
+  mission = core.approveMission(mission, { approved: true, approver: "owner" });
+  mission = core.transitionMission(mission, "running", "runtime", "Runtime started");
+  assert.deepEqual(core.getReadyTasks(mission, 2).map(t => t.id), ["research"]);
+  mission = core.startTask(mission, "research", "runtime", 2);
+  assert.deepEqual(core.getReadyTasks(mission, 2).map(t => t.id), []);
+  assert.throws(() => core.startTask(mission, "analysis", "runtime", 2), /dependencies are not complete/);
+  mission = core.completeTask(mission, "research", { output: "Two accounts match the ICP", evidence: ["https://example.com/accounts"] }, "browser-bot");
+  assert.deepEqual(core.getReadyTasks(mission, 2).map(t => t.id), ["analysis"]);
+  assert.equal(mission.tasks[0].status, "completed");
+  assert.equal(mission.evidence[0], "https://example.com/accounts");
+});
+
+test("task completion requires inspectable evidence and retry limits stop loops", () => {
+  let mission = core.createMission({ goal: "Recover a failed task", steps: [{ id: "work", title: "Work" }] });
+  mission = core.transitionMission(mission, "planned", "pet", "Plan created");
+  mission = core.transitionMission(mission, "awaiting_approval", "governor", "Approval needed");
+  mission = core.approveMission(mission, { approved: true });
+  mission = core.transitionMission(mission, "running", "runtime", "Started");
+  mission = core.startTask(mission, "work", "bot");
+  assert.throws(() => core.completeTask(mission, "work", { output: "Finished", evidence: [] }, "bot"), /at least one evidence/);
+  mission = core.failTask(mission, "work", "Provider timeout", "bot");
+  mission = core.retryTask(mission, "work", 2);
+  mission = core.startTask(mission, "work", "bot");
+  mission = core.failTask(mission, "work", "Provider timeout again", "bot");
+  assert.throws(() => core.retryTask(mission, "work", 2), /retry limit/);
+});
