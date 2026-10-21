@@ -115,3 +115,46 @@ test("task completion requires inspectable evidence and retry limits stop loops"
   mission = core.failTask(mission, "work", "Provider timeout again", "bot");
   assert.throws(() => core.retryTask(mission, "work", 2), /retry limit/);
 });
+
+test("mission runner executes ready Bot tasks in parallel waves and verifies evidence contracts", async () => {
+  let mission = core.createMission({
+    id: "wave",
+    goal: "Research and verify",
+    steps: [
+      { id: "research", role: "Browser Researcher", title: "Research accounts" },
+      { id: "analysis", role: "Data Analyst", title: "Analyze accounts" },
+      { id: "verify", role: "QA Verifier", title: "Verify final output", dependsOn: ["research", "analysis"] }
+    ]
+  });
+  mission = core.transitionMission(mission, "planned", "pet", "Plan ready");
+  mission = core.transitionMission(mission, "awaiting_approval", "governor", "Approval required");
+  mission = core.approveMission(mission, { approved: true, approver: "owner" });
+  mission = core.transitionMission(mission, "running", "runtime", "Run approved");
+  const first = await core.runMissionWave(mission, async (task, context) => ({
+    output: task.title + " completed for " + context.goal,
+    evidence: ["artifact://" + task.id]
+  }), { maxParallelism: 2 });
+  assert.deepEqual(first.started, ["research", "analysis"]);
+  assert.deepEqual(first.completed, ["research", "analysis"]);
+  assert.deepEqual(first.failed, []);
+  assert.deepEqual(core.getReadyTasks(first.mission, 2).map(task => task.id), ["verify"]);
+  const second = await core.runMissionWave(first.mission, async task => ({
+    output: "Verified",
+    evidence: ["verification://" + task.id]
+  }), { maxParallelism: 2 });
+  assert.deepEqual(second.completed, ["verify"]);
+  assert.equal(second.mission.tasks.every(task => task.status === "completed"), true);
+});
+
+test("mission runner fails closed when a provider returns no evidence", async () => {
+  let mission = core.createMission({ goal: "Evidence required", steps: [{ id: "work", title: "Do work" }] });
+  mission = core.transitionMission(mission, "planned", "pet", "Plan ready");
+  mission = core.transitionMission(mission, "awaiting_approval", "governor", "Approval required");
+  mission = core.approveMission(mission, { approved: true, approver: "owner" });
+  mission = core.transitionMission(mission, "running", "runtime", "Run approved");
+  const result = await core.runMissionWave(mission, async () => ({ output: "I claim it worked", evidence: [] }));
+  assert.deepEqual(result.completed, []);
+  assert.deepEqual(result.failed, ["task-1"]);
+  assert.equal(result.mission.tasks[0].status, "failed");
+  assert.match(result.mission.tasks[0].error, /evidence/);
+});
