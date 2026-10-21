@@ -219,6 +219,52 @@
     });
   }
 
+  async function runMissionWave(mission, executor, options) {
+    if (typeof executor !== "function") throw new TypeError("An executor adapter is required; no model or computer provider is bundled into the core.");
+    if (!mission || mission.state !== "running") throw new Error("The mission must be running before dispatching Bot tasks.");
+    const settings = options && typeof options === "object" ? options : {};
+    const limit = Number.isInteger(settings.maxParallelism) ? Math.max(1, Math.min(32, settings.maxParallelism)) : 3;
+    const ready = getReadyTasks(mission, limit);
+    if (!ready.length) return { mission, started: [], completed: [], failed: [] };
+    let current = mission;
+    for (const task of ready) current = startTask(current, task.id, "mission-runtime", limit);
+    const results = await Promise.all(ready.map(async task => {
+      try {
+        const output = await executor(Object.assign({}, task), Object.freeze({
+          missionId: mission.id,
+          goal: mission.goal,
+          department: mission.department,
+          ownerPet: mission.ownerPet,
+          risk: mission.risk,
+          budget: mission.budget,
+          budgetCurrency: mission.budgetCurrency,
+          acceptanceCriteria: mission.acceptanceCriteria.slice(),
+          toolScopes: task.toolScopes.slice()
+        }));
+        return { id: task.id, ok: true, output };
+      } catch (error) {
+        return { id: task.id, ok: false, error: error && error.message ? error.message : "Executor failed without a diagnostic." };
+      }
+    }));
+    const completed = [];
+    const failed = [];
+    for (const result of results) {
+      if (result.ok) {
+        try {
+          current = completeTask(current, result.id, result.output, "mission-runtime");
+          completed.push(result.id);
+        } catch (error) {
+          current = failTask(current, result.id, error && error.message ? error.message : "Output contract validation failed.", "mission-runtime");
+          failed.push(result.id);
+        }
+      } else {
+        current = failTask(current, result.id, result.error, "mission-runtime");
+        failed.push(result.id);
+      }
+    }
+    return { mission: current, started: ready.map(task => task.id), completed, failed };
+  }
+
   function transitionMission(mission, nextState, actor, reason) {
     if (!mission || !MISSION_STATES.includes(mission.state)) throw new TypeError("Invalid mission");
     if (!MISSION_STATES.includes(nextState)) throw new TypeError("Invalid target state");
@@ -339,6 +385,6 @@
   return Object.freeze({
     MISSION_STATES, TERMINAL, TRANSITIONS, PETS, SPECIALIST_ROLES,
     createMission, transitionMission, approveMission, evaluateAction, verifyOutcome, createReceipt,
-    getReadyTasks, startTask, completeTask, failTask, retryTask
+    getReadyTasks, startTask, completeTask, failTask, retryTask, runMissionWave
   });
 });
