@@ -95,6 +95,18 @@
         if (dep === task.id) throw new TypeError("A task cannot depend on itself");
       }
     }
+    const taskById = new Map(tasks.map(task => [task.id, task]));
+    const visiting = new Set();
+    const visited = new Set();
+    function visitTask(id) {
+      if (visiting.has(id)) throw new TypeError("Task dependencies contain a cycle at '" + id + "'.");
+      if (visited.has(id)) return;
+      visiting.add(id);
+      for (const dependency of taskById.get(id).dependsOn) visitTask(dependency);
+      visiting.delete(id);
+      visited.add(id);
+    }
+    for (const task of tasks) visitTask(task.id);
     const now = new Date().toISOString();
     return {
       id: String(input.id || "mission-" + Date.now().toString(36)),
@@ -116,6 +128,95 @@
       updatedAt: now,
       deliveredAt: null
     };
+  }
+
+  function getReadyTasks(mission, maxParallelism) {
+    if (!mission || mission.state !== "running") return [];
+    const limit = Number.isInteger(maxParallelism) ? Math.max(1, Math.min(32, maxParallelism)) : 3;
+    const tasks = Array.isArray(mission.tasks) ? mission.tasks : [];
+    const running = tasks.filter(task => task.status === "running").length;
+    const slots = Math.max(0, limit - running);
+    if (!slots) return [];
+    return tasks.filter(task =>
+      task.status === "queued" &&
+      task.dependsOn.every(id => tasks.some(candidate => candidate.id === id && candidate.status === "completed"))
+    ).slice(0, slots).map(task => Object.assign({}, task));
+  }
+
+  function startTask(mission, taskId, actor, maxParallelism) {
+    if (!mission || mission.state !== "running") throw new Error("The mission must be running before a Bot task can start.");
+    const task = (mission.tasks || []).find(candidate => candidate.id === taskId);
+    if (!task) throw new Error("Unknown task: " + taskId);
+    if (task.status !== "queued") throw new Error("Only queued tasks can be started.");
+    if (!task.dependsOn.every(id => mission.tasks.some(candidate => candidate.id === id && candidate.status === "completed"))) {
+      throw new Error("Task dependencies are not complete.");
+    }
+    const limit = Number.isInteger(maxParallelism) ? Math.max(1, Math.min(32, maxParallelism)) : 3;
+    if (mission.tasks.filter(candidate => candidate.status === "running").length >= limit) {
+      throw new Error("Mission parallelism limit reached.");
+    }
+    const at = new Date().toISOString();
+    const tasks = mission.tasks.map(candidate => candidate.id === taskId
+      ? Object.assign({}, candidate, { status: "running", attempt: candidate.attempt + 1, startedAt: at, error: null })
+      : candidate);
+    return Object.assign({}, mission, {
+      tasks,
+      updatedAt: at,
+      events: (mission.events || []).concat([{ type: "task_started", taskId, actor: typeof actor === "string" ? actor.slice(0,160) : "runtime", at }])
+    });
+  }
+
+  function completeTask(mission, taskId, result, actor) {
+    if (!mission || mission.state !== "running") throw new Error("The mission must be running before a task can complete.");
+    const task = (mission.tasks || []).find(candidate => candidate.id === taskId);
+    if (!task || task.status !== "running") throw new Error("Only a running task can be completed.");
+    const input = result && typeof result === "object" ? result : {};
+    const output = assertString(input.output, "result.output", 20000);
+    const evidence = cleanList(input.evidence, []);
+    if (!evidence.length) throw new Error("A Bot result needs at least one evidence item before it can be accepted.");
+    const at = new Date().toISOString();
+    const tasks = mission.tasks.map(candidate => candidate.id === taskId
+      ? Object.assign({}, candidate, { status: "completed", completedAt: at, result: { output, evidence, artifactUri: typeof input.artifactUri === "string" ? input.artifactUri.slice(0,2000) : null }, error: null })
+      : candidate);
+    return Object.assign({}, mission, {
+      tasks,
+      evidence: cleanList([...(mission.evidence || []), ...evidence], []),
+      updatedAt: at,
+      events: (mission.events || []).concat([{ type: "task_completed", taskId, actor: typeof actor === "string" ? actor.slice(0,160) : "runtime", at, evidenceCount: evidence.length }])
+    });
+  }
+
+  function failTask(mission, taskId, error, actor) {
+    if (!mission || mission.state !== "running") throw new Error("The mission must be running before a task can fail.");
+    const task = (mission.tasks || []).find(candidate => candidate.id === taskId);
+    if (!task || task.status !== "running") throw new Error("Only a running task can fail.");
+    const at = new Date().toISOString();
+    const message = typeof error === "string" ? error.slice(0,1000) : "Task failed without a diagnostic.";
+    const tasks = mission.tasks.map(candidate => candidate.id === taskId
+      ? Object.assign({}, candidate, { status: "failed", error: message, failedAt: at })
+      : candidate);
+    return Object.assign({}, mission, {
+      tasks,
+      updatedAt: at,
+      events: (mission.events || []).concat([{ type: "task_failed", taskId, actor: typeof actor === "string" ? actor.slice(0,160) : "runtime", at, error: message }])
+    });
+  }
+
+  function retryTask(mission, taskId, maxAttempts) {
+    if (!mission || mission.state !== "running") throw new Error("The mission must be running before a task can be retried.");
+    const task = (mission.tasks || []).find(candidate => candidate.id === taskId);
+    const cap = Number.isInteger(maxAttempts) ? Math.max(1, Math.min(10, maxAttempts)) : 2;
+    if (!task || task.status !== "failed") throw new Error("Only failed tasks can be retried.");
+    if (task.attempt >= cap) throw new Error("Task retry limit reached; escalate instead of looping.");
+    const at = new Date().toISOString();
+    const tasks = mission.tasks.map(candidate => candidate.id === taskId
+      ? Object.assign({}, candidate, { status: "queued", error: null, failedAt: null })
+      : candidate);
+    return Object.assign({}, mission, {
+      tasks,
+      updatedAt: at,
+      events: (mission.events || []).concat([{ type: "task_requeued", taskId, at, attempt: task.attempt + 1 }])
+    });
   }
 
   function transitionMission(mission, nextState, actor, reason) {
@@ -237,6 +338,7 @@
 
   return Object.freeze({
     MISSION_STATES, TERMINAL, TRANSITIONS, PETS, SPECIALIST_ROLES,
-    createMission, transitionMission, approveMission, evaluateAction, verifyOutcome, createReceipt
+    createMission, transitionMission, approveMission, evaluateAction, verifyOutcome, createReceipt,
+    getReadyTasks, startTask, completeTask, failTask, retryTask
   });
 });
