@@ -26,7 +26,7 @@ Desktop: `cd desktop/whilo-swas-desktop && npm install && npm run check`; packag
 ## Deployment
 
 **Production URL:** https://whilo-swas.vercel.app  
-**Latest confirmed Vercel deployment:** `dpl_BtpCM1AwtPeudZwUJbxWH7MNuXTo` — READY, commit `e069322bfdbcefeb4ad18eea0b18d02acf80a6c5`. The Vercel project root is `web/whilo-swas`; the latest build log confirms the pinned site bundle and shared mission core were packaged successfully.
+**Latest confirmed Vercel deployment:** `dpl_4RVV9sT5HmLoeUYsCAHjaSjRs8Lz` — READY, commit `5c407e716a0cdc142468c31b17a330bb765da527`. The Vercel project root is `web/whilo-swas`; the latest build log confirms the pinned site bundle and shared mission core were packaged successfully.
 
 The base site bundle is still release-built rather than first-party source in this repository. The current Web UI models mission planning and manual evidence review, but **does not yet invoke a production server-side autonomous worker**. Data in the Work extension remains browser-local; multi-device identity, active OAuth connectors, durable job queue, real cloud-computer provider and server-side audit storage remain to be built and tested.
 
