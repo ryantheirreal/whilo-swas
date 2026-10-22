@@ -80,6 +80,10 @@
   let messagesMembersLoading = false;
   let messagesMembersFeedback = '';
   let messagesRows = [];
+  let messagesPins = [];
+  let messagesPinsOpen = false;
+  let messagesPinsLoading = false;
+  let messagesPinsFeedback = '';
   let messagesSelectedId = '';
   let messagesScope = 'inbox';
   let messagesSearch = '';
@@ -460,6 +464,11 @@
 .message-person-result{display:flex;align-items:center;gap:9px;text-align:left;background:#0c1420;border:1px solid #2b3a4f;border-radius:10px;padding:8px;color:#e7edf6;cursor:pointer;min-width:0}
 .message-person-result>span:nth-child(2){display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .message-person-result strong{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.message-pins-panel{background:#101a28;border-bottom:1px solid #293449;padding:12px 15px;max-height:220px;overflow:auto}
+.message-pin-row{display:flex;align-items:center;gap:9px;border:1px solid #2b3b50;border-radius:9px;padding:8px 10px;margin-top:7px;background:#0c1420}
+.message-pin-content{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;text-align:left;background:transparent;border:0;color:#e4eef8;cursor:pointer}
+.message-pin-content strong{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.message-pinned-indicator{font-size:9px;color:#a5e8d9;margin:3px 0 5px}
 .message-members-panel{background:#101a28;border-bottom:1px solid #293449;padding:12px 15px;max-height:245px;overflow:auto}
 .message-members-panel h3{font-size:13px;margin:0}
 .message-members-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}
@@ -477,7 +486,7 @@
 .message-intro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
 .message-feature-icon{font-size:22px;color:#b5eddf;margin-bottom:12px}
 @media(max-width:850px){.messages-shell{grid-template-columns:280px minmax(0,1fr)}.messages-chat-head strong{max-width:34vw}.message-bubble{max-width:92%}}
-@media(max-width:650px){.messages-shell{height:min(72vh,760px);min-height:470px;grid-template-columns:minmax(0,1fr)}.messages-shell[data-selected="true"] .messages-sidebar{display:none}.messages-shell[data-selected="true"] .messages-chat{display:flex}.messages-shell[data-selected="false"] .messages-chat{display:none}.messages-shell[data-selected="false"] .messages-sidebar{display:flex}.messages-chat-head{padding:10px}.messages-chat-head .row>.row{gap:8px;min-width:0}.messages-chat-head strong{max-width:42vw}.messages-chat-head .actions{gap:4px}.messages-chat-head .btn{font-size:9px;padding:7px}.messages-scroll{padding:13px 9px}.message-create-form{grid-template-columns:1fr}.message-create-form .fieldgroup:nth-child(3),.message-create-form .fieldgroup:nth-child(4),.message-create-form .actions{grid-column:auto}.message-people-results,.message-intro-grid{grid-template-columns:1fr}.messages-hero .actions{margin-top:12px}.message-bubble{max-width:91%;padding:9px}.message-quick-reactions{opacity:1}.message-members-list{grid-template-columns:1fr}.message-member-actions .message-action{font-size:9px}}
+@media(max-width:650px){.messages-shell{height:min(72vh,760px);min-height:470px;grid-template-columns:minmax(0,1fr)}.messages-shell[data-selected="true"] .messages-sidebar{display:none}.messages-shell[data-selected="true"] .messages-chat{display:flex}.messages-shell[data-selected="false"] .messages-chat{display:none}.messages-shell[data-selected="false"] .messages-sidebar{display:flex}.messages-chat-head{padding:10px}.messages-chat-head .row>.row{gap:8px;min-width:0}.messages-chat-head strong{max-width:42vw}.messages-chat-head .actions{gap:4px}.messages-chat-head .btn{font-size:9px;padding:7px}.messages-scroll{padding:13px 9px}.message-create-form{grid-template-columns:1fr}.message-create-form .fieldgroup:nth-child(3),.message-create-form .fieldgroup:nth-child(4),.message-create-form .actions{grid-column:auto}.message-people-results,.message-intro-grid{grid-template-columns:1fr}.messages-hero .actions{margin-top:12px}.message-bubble{max-width:91%;padding:9px}.message-quick-reactions{opacity:1}.message-members-list{grid-template-columns:1fr}.message-member-actions .message-action{font-size:9px}.message-pin-content strong{max-width:58vw}}
 `;
   const style = document.createElement('style'); style.textContent = css + messageCss; shadow.appendChild(style);
   const veil = document.createElement('div'); veil.className = 'veil'; veil.setAttribute('role','dialog'); veil.setAttribute('aria-modal','true'); veil.setAttribute('aria-label','Whilo Enterprise workspace');
@@ -732,6 +741,8 @@
     }
 
     const myId = cloudAuthSession && cloudAuthSession.id;
+    const role = conversation.my_membership && conversation.my_membership.member_role || '';
+    const canPin = conversation.conversation_type === 'direct' || ['owner','admin','moderator'].includes(role);
     return messagesRows.map(function (message) {
       const mine = message.sender_user_id === myId;
       const senderName = message.sender && message.sender.display_name
@@ -757,12 +768,18 @@
         ? '<button class="message-action" data-act="edit-message" data-id="' + esc(message.id) + '">Edit</button><button class="message-action" data-act="delete-message" data-id="' + esc(message.id) + '">Delete</button>'
         : '';
       const workAction = '<button class="message-action" data-act="create-work-from-message" data-id="' + esc(message.id) + '">↗ Turn into Work</button>';
+      const pinAction = canPin
+        ? (message.pinned_at
+          ? '<button class="message-action" data-act="unpin-message" data-id="' + esc(message.id) + '">📌 Unpin</button>'
+          : '<button class="message-action" data-act="pin-message" data-id="' + esc(message.id) + '">📌 Pin</button>')
+        : '';
+      const pinnedBadge = message.pinned_at ? '<div class="message-pinned-indicator">📌 Pinned in this conversation</div>' : '';
       return '<div class="message-line ' + (mine ? 'mine' : '') + '" data-message-id="' + esc(message.id) + '">' +
         (mine ? '' : '<span class="message-avatar tiny">' + esc(initials) + '</span>') +
         '<div class="message-bubble"><div class="message-sender">' + esc(senderName) + '</div>' +
-        reply + '<div class="message-content">' + esc(message.content || 'Message deleted') + '</div>' +
+        pinnedBadge + reply + '<div class="message-content">' + esc(message.content || 'Message deleted') + '</div>' +
         '<div class="message-meta">' + esc(messageDate(message.created_at, true)) + esc(edited) + '</div>' +
-        '<div class="message-actions"><button class="message-action" data-act="message-reply" data-id="' + esc(message.id) + '">Reply</button>' + thread + workAction + ownerActions + '</div>' +
+        '<div class="message-actions"><button class="message-action" data-act="message-reply" data-id="' + esc(message.id) + '">Reply</button>' + thread + workAction + pinAction + ownerActions + '</div>' +
         (reactionHtml ? '<div class="message-reactions">' + reactionHtml + '</div>' : '') +
         '<div class="message-quick-reactions">' + ['👍','❤️','😂','🔥'].map(function (emoji) { return '<button type="button" aria-label="React ' + esc(emoji) + '" data-act="message-react" data-id="' + esc(message.id) + '" data-emoji="' + esc(emoji) + '">' + esc(emoji) + '</button>'; }).join('') + '</div>' +
         '</div></div>';
@@ -847,8 +864,9 @@
       '<input class="field" id="message-conversation-search" data-role="message-search" placeholder="Search chats and channels" value="' + esc(messagesSearch) + '" autocomplete="off"></div>' +
       '<div id="message-conversation-list" class="message-conversation-list">' + messageConversationListHtml() + '</div></aside>' +
       '<section class="messages-chat"><header class="messages-chat-head"><div class="row"><div class="row"><span class="message-avatar">' + esc(conversation ? (title.trim().split(/\s+/).slice(0,2).map(function (part) { return part.charAt(0); }).join('').toUpperCase() || 'W') : 'W') + '</span><div><strong>' + esc(title) + '</strong><div class="mini">' + esc(subtitle) + '</div></div></div>' +
-      '<div class="actions"><button class="btn secondary" data-act="open-message-members"' + (!conversation || isNotMember ? ' disabled' : '') + '>Members</button><button class="btn secondary" data-act="refresh-message-timeline"' + (!conversation || messagesBusy || isNotMember ? ' disabled' : '') + '>Refresh</button>' +
+      '<div class="actions"><button class="btn secondary" data-act="open-message-pins"' + (!conversation || isNotMember ? ' disabled' : '') + '>📌 Pins</button><button class="btn secondary" data-act="open-message-members"' + (!conversation || isNotMember ? ' disabled' : '') + '>Members</button><button class="btn secondary" data-act="refresh-message-timeline"' + (!conversation || messagesBusy || isNotMember ? ' disabled' : '') + '>Refresh</button>' +
       (messagesThreadRootId ? '<button class="btn secondary" data-act="close-message-thread">Close thread</button>' : '') + '</div></div></header>' +
+      messagePinsPanelHtml(conversation) +
       messageMembersPanelHtml(conversation) +
       (messagesThreadRootId ? '<div class="message-thread-banner">↳ Thread view · replies stay attached to the original message</div>' : '') +
       '<div class="messages-scroll" id="message-timeline">' + (isNotMember ? messageTimelineHtml() : messageTimelineHtml()) + '</div>' +
@@ -907,6 +925,34 @@
       out += '<form id="message-add-members-form" class="message-add-members"><label class="label" for="message-add-members-input">Add workspace people</label><div class="row"><input id="message-add-members-input" name="participants" class="field" required maxlength="800" placeholder="@alex, @maria"><button type="submit" class="btn"' + (messagesBusy ? ' disabled' : '') + '>Add people</button></div><div class="mini">All new members must already be members of this Whilo workspace. Channel additions start as subscribers.</div></form>';
     }
     if (myRole && myRole !== 'owner') out += '<div class="actions"><button class="btn danger" data-act="leave-message-conversation">Leave conversation</button></div>';
+    return out + '</section>';
+  }
+
+  async function loadMessagePins(conversationId) {
+    if (!conversationId || !cloudAuthSession || messagesPinsLoading) return;
+    messagesPinsLoading = true;
+    messagesPinsFeedback = '';
+    try {
+      const data = await whiloApi('/api/messages/pins?conversationId=' + encodeURIComponent(conversationId), { method: 'GET' });
+      messagesPins = Array.isArray(data.pins) ? data.pins : [];
+    } catch (error) {
+      messagesPinsFeedback = error && error.message ? error.message : 'Pinned messages could not be loaded.';
+    } finally {
+      messagesPinsLoading = false;
+      if (active === 'messages') render();
+    }
+  }
+
+  function messagePinsPanelHtml(conversation) {
+    if (!messagesPinsOpen || !conversation) return '';
+    let out = '<section class="message-pins-panel"><div class="row"><div><div class="sectionlabel">Pinned messages</div><strong>' + messagesPins.length + ' pins</strong></div><div class="actions"><button class="btn secondary" data-act="refresh-message-pins">Refresh</button><button class="btn secondary" data-act="close-message-pins">Close</button></div></div>';
+    if (messagesPinsFeedback) out += '<div class="notice">' + esc(messagesPinsFeedback) + '</div>';
+    if (messagesPinsLoading && !messagesPins.length) out += '<div class="mini">Loading pinned messages…</div>';
+    if (!messagesPins.length && !messagesPinsLoading) out += '<div class="mini">Nothing pinned here yet. Pin important context so everyone can find it.</div>';
+    out += messagesPins.map(function (pin) {
+      const message = pin.message || {};
+      return '<div class="message-pin-row"><button class="message-pin-content" data-act="jump-to-pinned-message" data-id="' + esc(pin.message_id) + '"><strong>' + esc(message.content || 'Message unavailable') + '</strong><span class="mini">' + esc(messageDate(message.created_at, false)) + '</span></button><button class="message-action" data-act="unpin-message" data-id="' + esc(pin.message_id) + '">Unpin</button></div>';
+    }).join('');
     return out + '</section>';
   }
 
@@ -1168,6 +1214,32 @@
         })
         .catch(function (error) { messagesMembersFeedback = error && error.message ? error.message : 'Could not leave this conversation.'; })
         .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
+      return;
+    }
+    if (act === 'open-message-pins') {
+      messagesPinsOpen = true;
+      const convo = currentConversation();
+      render();
+      if (convo) loadMessagePins(convo.id);
+      return;
+    }
+    if (act === 'close-message-pins') { messagesPinsOpen = false; render(); return; }
+    if (act === 'refresh-message-pins') { const convo = currentConversation(); if (convo) loadMessagePins(convo.id); return; }
+    if (act === 'jump-to-pinned-message') {
+      const row = shadow.querySelector('[data-message-id="' + id + '"]');
+      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      else messagesFeedback = 'That message is older than the current timeline. Refresh or load older messages to locate it.';
+      return;
+    }
+    if (act === 'pin-message' || act === 'unpin-message') {
+      const convo = currentConversation();
+      if (!convo) return;
+      whiloApi('/api/messages/pins', {
+        method: 'POST',
+        body: JSON.stringify({ conversationId: convo.id, messageId: id, action: act === 'pin-message' ? 'pin' : 'unpin' })
+      }).then(function () {
+        return Promise.all([loadMessageTimeline(convo.id, messagesThreadRootId, true), loadMessagePins(convo.id)]);
+      }).catch(function (error) { messagesFeedback = error && error.message ? error.message : 'Pinned message could not be updated.'; render(); });
       return;
     }
     if (act === 'refresh-message-timeline') {
