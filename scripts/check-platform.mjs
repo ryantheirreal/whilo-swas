@@ -35,6 +35,7 @@ const jsFiles = [
   ...walk(path.join(root, 'web', 'whilo-swas', 'api')).filter(file => file.endsWith('.js')),
   ...walk(path.join(root, 'scripts')).filter(file => (file.endsWith('.mjs') || file.endsWith('.js')) && !file.endsWith('check-platform.mjs')),
   path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'),
+  path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'),
   path.join(root, 'shared', 'whilo-agent-core', 'index.cjs'),
   path.join(root, 'shared', 'whilo-agent-core', 'index.js'),
   path.join(root, 'shared', 'whilo-agent-core', 'index.test.cjs')
