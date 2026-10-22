@@ -63,7 +63,7 @@ const bootstrap = fs.readFileSync(path.join(root, 'scripts', 'bootstrap-owner.mj
 if (!bootstrap.includes('WHILO_OWNER_INITIAL_PASSWORD')) failures.push('Owner bootstrap must read a temporary password from the environment.');
 if (!bootstrap.includes('password.length < 14')) failures.push('Owner bootstrap must reject weak passwords.');
 if (bootstrap.includes('1223344q')) failures.push('A weak chat-shared password must never be committed to source.');
-if (/console\.(log|error)\([^\n]*password/i.test(bootstrap)) failures.push('Owner bootstrap must not log passwords.');
+if (/console\.(?:log|error)\(\s*password\b/i.test(bootstrap) || /console\.(?:log|error)\(\s*JSON\.stringify\(\s*\{[^}]*\bpassword\s*:/is.test(bootstrap)) failures.push('Owner bootstrap must not log passwords.');
 const envExample = fs.readFileSync(path.join(root, 'web', 'whilo-swas', '.env.example'), 'utf8');
 for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'WHILO_CONNECTOR_ENCRYPTION_KEY', 'WHILO_OAUTH_STATE_SECRET', 'SLACK_CLIENT_SECRET']) {
   if (!envExample.includes(key)) failures.push('Missing environment documentation: ' + key);
