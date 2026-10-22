@@ -26,7 +26,7 @@
   const portuguese = /pt/i.test(document.documentElement.lang || '');
   let live = false, loading = false, saving = false, listings = [];
   let page = 'discover', filter = 'all', query = '', billingInterval = 'monthly', feedback = '';
-  let creator = {session:false,dashboard:null}, authMode = 'signin';
+  let creator = {session:false,dashboard:null}, library = {session:false,installations:[],error:''}, authMode = 'signin';
 
   const host = document.createElement('div');
   host.id = 'whilo-marketplace-root';
@@ -48,7 +48,7 @@
   veil.setAttribute('role','dialog');
   veil.setAttribute('aria-modal','true');
   veil.setAttribute('aria-label','Whilo Marketplace');
-  veil.innerHTML = '<section class="panel"><header class="head"><div class="mark">W</div><div class="brand"><div class="eyebrow">WHILO / CREATOR ECONOMY</div><h1>Marketplace</h1><div class="sub">Discover agents. Package expertise. Earn from every verified sale.</div></div><button class="close" data-action="close" aria-label="Close">×</button></header><nav class="nav" aria-label="Marketplace"><button class="active" data-page="discover">Discover</button><button data-page="creator">Creator Studio</button><button data-page="plans">Plans</button></nav><main class="content" id="content"></main><footer class="footer"><span>20% platform commission on completed paid sales</span><span>Preview assets are not real listings.</span></footer></section>';
+  veil.innerHTML = '<section class="panel"><header class="head"><div class="mark">W</div><div class="brand"><div class="eyebrow">WHILO / CREATOR ECONOMY</div><h1>Marketplace</h1><div class="sub">Discover agents. Package expertise. Earn from every verified sale.</div></div><button class="close" data-action="close" aria-label="Close">×</button></header><nav class="nav" aria-label="Marketplace"><button class="active" data-page="discover">Discover</button><button data-page="library">My Library</button><button data-page="creator">Creator Studio</button><button data-page="plans">Plans</button></nav><main class="content" id="content"></main><footer class="footer"><span>20% platform commission on completed paid sales</span><span>Preview assets are not real listings.</span></footer></section>';
   root.appendChild(veil);
   document.documentElement.appendChild(host);
   const content = veil.querySelector('#content');
@@ -101,6 +101,18 @@
     out+=owned.length?owned.map(function(item){return '<div class="list-row"><div class="asset">'+esc(ICONS[item.listing_type]||'◇')+'</div><div class="list-main"><strong>'+esc(item.title)+'</strong><span>'+esc(TYPES[item.listing_type]||item.listing_type)+' · '+esc(item.status)+' · '+(item.price_minor?money(item.price_minor):'Free')+(item.review_note?' · '+esc(item.review_note):'')+'</span></div>'+(['draft','rejected'].includes(item.status)?'<button class="btn secondary" data-action="submit-listing" data-id="'+esc(item.id)+'">Submit for review</button>':'')+'</div>';}).join(''):'<div class="empty"><strong>No listings yet.</strong><p>Save a draft above. It will appear in public search only after review and publication.</p></div>';
     return out;
   }
+  function libraryPage() {
+    let out='<div class="hero"><div><div class="eyebrow">YOUR INSTALLED ASSETS</div><h2>My Library</h2><p>Purchased and free assets are tied to your workspace. Pets are created as Pet records; Bots and Skills remain bounded manifests until invoked by a task.</p></div><button class="btn secondary" data-action="reload-library">Refresh</button></div>'+notice();
+    if(!library.session) return out+authCard();
+    if(library.error) return out+'<div class="notice info">'+esc(library.error)+'</div>';
+    const items=Array.isArray(library.installations)?library.installations:[];
+    if(!items.length) return out+'<div class="empty"><strong>Your library is empty.</strong><p>Install a free asset or buy a published listing. Paid access appears only after the payment webhook confirms it.</p></div>';
+    out+='<div class="grid">'+items.map(function(item){
+      const listing=item.listing||{};
+      return '<article class="card"><div class="card-head"><div class="asset">'+esc(ICONS[item.asset_type]||'◇')+'</div><div><div class="eyebrow">'+esc(TYPES[item.asset_type]||item.asset_type)+'</div><h3>'+esc(listing.title||'Marketplace asset')+'</h3><div class="meta">Version '+esc(item.listing_version||'1.0.0')+'</div></div></div><p>'+esc(listing.summary||'Installed marketplace configuration.')+'</p><div class="pills"><span class="pill live">'+esc(item.state||'active')+'</span><span class="pill">Installed '+esc(item.installed_at?new Date(item.installed_at).toLocaleDateString('pt-BR'):'recently')+'</span></div><div class="card-foot"><div class="meta">'+(item.pet_instance_id?'Pet linked to workspace':'Bounded asset ready for task use')+'</div><button class="btn secondary" data-action="asset-details" data-id="'+esc(item.id)+'">Details</button></div></article>';
+    }).join('')+'</div>';
+    return out;
+  }
   function plansPage() {
     let out='<div class="hero"><div><div class="eyebrow">ONE SUBSCRIPTION. YOUR WORKSPACE.</div><h2>Scale your outcomes, not just your prompts.</h2><p>Proposed Whilo launch prices anchored to the reference you shared. Usage budgets stay bounded until cost telemetry supports accurate allowances.</p><div class="pills"><span class="pill">No unlimited-compute promises</span><span class="pill">Subscription and creator commerce are separate</span></div></div></div>'+notice();
     out+='<div class="toolbar"><button class="filter '+(billingInterval==='monthly'?'active':'')+'" data-interval="monthly">Monthly</button><button class="filter '+(billingInterval==='annual'?'active':'')+'" data-interval="annual">Annual · about 2 months free</button></div>';
@@ -115,7 +127,7 @@
   }
   function render() {
     veil.querySelectorAll('[data-page]').forEach(function(button){button.classList.toggle('active',button.getAttribute('data-page')===page);});
-    content.innerHTML=page==='creator'?creatorPage():(page==='plans'?plansPage():discoverPage());
+    content.innerHTML=page==='creator'?creatorPage():(page==='plans'?plansPage():(page==='library'?libraryPage():discoverPage()));
   }
   async function getToken() {
     if(!window.WhiloCloudAuth) throw new Error('Whilo cloud authentication is not loaded. Refresh the app and verify setup.');
@@ -142,14 +154,24 @@
     finally{loading=false;if(veil.classList.contains('open')&&page==='discover')render();}
   }
   async function loadCreator() {
+    let authenticated=false;
     try{
-      await getToken();
+      await getToken(); authenticated=true;
       const data=await api('my-listings');
       creator={session:true,dashboard:data};
     }catch(error){
-      const session=window.WhiloCloudAuth&&await window.WhiloCloudAuth.getSession().catch(function(){return null;});
-      creator={session:false,dashboard:null};
-      if(session)feedback=error.message;
+      creator=authenticated?{session:true,dashboard:{seller:null,listings:[]}}:{session:false,dashboard:null};
+      if(authenticated)feedback=error.message;
+    }
+  }
+  async function loadLibrary() {
+    let authenticated=false;
+    try{
+      await getToken(); authenticated=true;
+      const data=await api('my-entitlements');
+      library={session:true,installations:Array.isArray(data.installations)?data.installations:[],error:''};
+    }catch(error){
+      library=authenticated?{session:true,installations:[],error:error.message}:{session:false,installations:[],error:''};
     }
   }
   async function open() {
@@ -158,6 +180,7 @@
     render();
     if(page==='discover')loadCatalog();
     if(page==='creator')loadCreator().then(render);
+    if(page==='library')loadLibrary().then(render);
     veil.querySelector('[data-action="close"]').focus();
   }
   function close(){veil.classList.remove('open');document.body.style.overflow='';}
@@ -167,9 +190,11 @@
     try{
       if(action==='refresh'){await loadCatalog();feedback=live?'Catalog refreshed from the live server.':'Supabase is not configured; sample listings remain in preview mode.';}
       else if(action==='preview'){feedback='This is a visual sample only. It cannot be installed or purchased.';}
-      else if(action==='install'){const result=await api('install-free',{listingId:id});feedback=result.detail||'Installed.';await loadCatalog();}
+      else if(action==='install'){const result=await api('install-free',{listingId:id});feedback=result.detail||'Installed.';await loadCatalog();await loadLibrary();}
       else if(action==='buy'){const result=await api('checkout',{listingId:id});if(result.checkoutUrl&&/^https:\/\/checkout\.stripe\.com\//.test(result.checkoutUrl)){window.location.assign(result.checkoutUrl);return;}throw new Error('A valid checkout URL was not returned.');}
       else if(action==='reload-creator'){await loadCreator();feedback='Creator dashboard refreshed.';}
+      else if(action==='reload-library'){await loadLibrary();feedback='Library refreshed.';}
+      else if(action==='asset-details'){const item=(library.installations||[]).find(function(row){return row.id===id;});feedback=item?(item.pet_instance_id?'Installed Pet ID: '+item.pet_instance_id:'Asset installation ID: '+item.id):'Installation not found.';}
       else if(action==='submit-listing'){const result=await api('submit-listing',{listingId:id});feedback=result.detail||'Submitted for review.';await loadCreator();}
       else if(action==='connect-payouts'){
         const terms=content.querySelector('#market-terms');
@@ -199,7 +224,7 @@
   veil.addEventListener('click',function(event){
     if(event.target===veil){close();return;}
     const pageBtn=event.target.closest('[data-page]');
-    if(pageBtn){page=pageBtn.getAttribute('data-page');feedback='';render();if(page==='discover')loadCatalog();if(page==='creator')loadCreator().then(render);return;}
+    if(pageBtn){page=pageBtn.getAttribute('data-page');feedback='';render();if(page==='discover')loadCatalog();if(page==='creator')loadCreator().then(render);if(page==='library')loadLibrary().then(render);return;}
     const f=event.target.closest('[data-filter]');
     if(f){filter=f.getAttribute('data-filter');render();return;}
     const iv=event.target.closest('[data-interval]');
@@ -209,7 +234,7 @@
     const action=b.getAttribute('data-action'), id=b.getAttribute('data-id')||b.getAttribute('data-plan')||'';
     if(action==='close'){close();return;}
     if(action==='toggle-auth'){authMode=authMode==='signin'?'signup':'signin';render();return;}
-    if(['refresh','preview','install','buy','reload-creator','submit-listing','connect-payouts','choose-plan'].includes(action)){runAction(action,id);}
+    if(['refresh','preview','install','buy','reload-creator','reload-library','asset-details','submit-listing','connect-payouts','choose-plan'].includes(action)){runAction(action,id);}
   });
   veil.addEventListener('submit',async function(event){
     event.preventDefault();
@@ -221,7 +246,7 @@
       try{
         const result=authMode==='signup'?await window.WhiloCloudAuth.signUp(email,password):await window.WhiloCloudAuth.signIn(email,password);
         if(result&&result.confirmationRequired){authMode='signin';creator={session:false,dashboard:null};feedback='Account created. Confirm the email through Supabase and then sign in.';}
-        else{creator={session:true,dashboard:await api('my-listings')};feedback='Signed in. Creator workspace loaded.';}
+        else{creator={session:true,dashboard:await api('my-listings')};if(page==='library')await loadLibrary();feedback='Signed in. Workspace loaded.';}
       }catch(error){feedback=error&&error.message?error.message:'Authentication failed.';}
       finally{saving=false;render();}
       return;
