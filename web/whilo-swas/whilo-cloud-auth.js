@@ -156,7 +156,7 @@
 
   async function resetPasswordForEmail(email) {
     const normalizedEmail = String(email || '').trim().toLowerCase();
-    if (!/^\\S+@\\S+\\.\\S+$/.test(normalizedEmail)) throw new Error('Enter a valid email address.');
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) throw new Error('Enter a valid email address.');
     const redirect = new URL('/', window.location.origin);
     redirect.searchParams.set('whilo_recovery', '1');
     await authRequest('/auth/v1/recover?redirect_to=' + encodeURIComponent(redirect.toString()), { email: normalizedEmail });
