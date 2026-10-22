@@ -619,6 +619,7 @@
       if (!quiet && active === 'messages') render();
       return;
     }
+    const previousSelectedId = messagesSelectedId;
     messagesLoading = true;
     try {
       const data = await whiloApi('/api/messages/conversations?scope=' + encodeURIComponent(requestedScope), { method: 'GET' });
@@ -634,6 +635,9 @@
       messagesFeedback = error && error.message ? error.message : 'Conversations could not be loaded.';
     } finally {
       messagesLoading = false;
+      if (!previousSelectedId && messagesSelectedId && requestedScope === messagesScope && requestedScope === 'inbox' && !messagesRows.length) {
+        await loadMessageTimeline(messagesSelectedId, '', true);
+      }
       if (!quiet && active === 'messages') render();
     }
   }
