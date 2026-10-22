@@ -7,5 +7,8 @@
     "build": "bash build.sh",
     "check": "bash -n build.sh && node --check whilo-enterprise.js",
     "build:clean": "rm -rf public"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
   }
 }
