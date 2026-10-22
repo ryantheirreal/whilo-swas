@@ -192,7 +192,7 @@
     } finally {
       cloudAuthLoading = false;
       cloudAuthChecked = true;
-      if (active === 'work' || active === 'connect' || active === 'messages') render();
+      if (active === 'work' || active === 'connect' || active === 'messages' || active === 'account') render();
     }
   }
 
