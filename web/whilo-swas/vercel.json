@@ -34,6 +34,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/messages/:route",
+      "destination": "/api/messages?route=:route"
+    },
+    {
       "source": "/((?!assets/|pets/|.*\\.[a-z0-9]+$).*)",
       "destination": "/index.html"
     }
