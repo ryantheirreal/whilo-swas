@@ -230,7 +230,7 @@
       return connectorLoading ? 'Checking…' : 'Not connected';
     };
     let out = '<div class="hero"><div><h2 class="h2">Connected systems</h2><p class="muted">Connector state is loaded from the server, not guessed from a button click. External sends remain approval-gated.</p></div></div>';
-    out += '<div class="notice">' + (connectorFeedback ? esc(connectorFeedback) : (connectorLoading ? 'Checking the authenticated connector API…' : 'Only integrations returned by the server are marked connected. A successful OAuth grant is not permission to send messages automatically.')) + '</div>';
+    out += '<div class="notice">' + (connectorFeedback ? esc(connectorFeedback) : (connectorLoading ? 'Checking the authenticated connector API…' : 'Only integrations returned by the server are marked connected. A successful OAuth grant is not permission to send messages automatically.')) + (connectorFeedback ? ' <button class="btn secondary" data-act="refresh-connectors">Retry status</button>' : '') + '</div>';
     out += '<div class="grid">';
     out += INTEGRATIONS.map(function (i) {
       const found = apiItems.find(function (item) { return item.id === i.id; });
@@ -474,13 +474,13 @@
       active = 'connect';
       connectorCache = null;
       connectorFeedback = oauthResult === 'slack_success'
-        ? 'Slack OAuth completed. The server will confirm the workspace connection.'
+        ? 'Slack OAuth returned successfully. Verifying the saved workspace connection…'
         : oauthResult === 'slack_cancelled' ? 'Slack authorization was cancelled.'
         : oauthResult === 'slack_expired' ? 'That Slack authorization expired. Start again.'
         : 'Slack authorization failed. Check the OAuth app settings and server logs.';
       const cleanUrl = new URL(window.location.href); cleanUrl.searchParams.delete('whilo_connect');
       window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
-      setTimeout(function () { openPanel('connect'); }, 0);
+      setTimeout(function () { openPanel('connect'); loadConnectors(); }, 0);
     }
     injectTopbar();
     // The existing React shell may replace the navigation after a route change.
