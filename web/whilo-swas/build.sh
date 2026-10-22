@@ -26,17 +26,25 @@ const fs = require("node:fs");
 const path = require("node:path");
 const htmlPath = path.join(process.cwd(), "public", "index.html");
 let html = fs.readFileSync(htmlPath, "utf8");
+
 const coreScript = '<script src="/whilo-agent-core.js" defer></script>';
 const cloudAuthScript = '<script src="/whilo-cloud-auth.js" defer></script>';
 const enterpriseScript = '<script src="/whilo-enterprise.js" defer></script>';
-if (!html.includes("/whilo-agent-core.js") || !html.includes("/whilo-cloud-auth.js") || !html.includes("/whilo-enterprise.js")) {
-  const pos = html.toLowerCase().lastIndexOf("</body>");
-  if (pos < 0) throw new Error("Whilo index.html has no closing body tag");
-  const tags = (html.includes("/whilo-agent-core.js") ? "" : coreScript) +
-    (html.includes("/whilo-cloud-auth.js") ? "" : cloudAuthScript) +
-    (html.includes("/whilo-enterprise.js") ? "" : enterpriseScript);
-  html = html.slice(0, pos) + tags + html.slice(pos);
+
+// Remove prior copies of our injected scripts, then add exactly one copy in dependency order.
+for (const fileName of ["whilo-agent-core.js", "whilo-cloud-auth.js", "whilo-enterprise.js"]) {
+  const token = html.indexOf(fileName);
+  if (token < 0) continue;
+  const scriptStart = html.lastIndexOf("<script", token);
+  const openTagEnd = html.indexOf(">", scriptStart);
+  const scriptEnd = html.indexOf("</script>", openTagEnd);
+  if (scriptStart >= 0 && openTagEnd > token && scriptEnd > token) {
+    html = html.slice(0, scriptStart) + html.slice(scriptEnd + "</script>".length);
+  }
 }
+const pos = html.toLowerCase().lastIndexOf("</body>");
+if (pos < 0) throw new Error("Whilo index.html has no closing body tag");
+html = html.slice(0, pos) + coreScript + cloudAuthScript + enterpriseScript + html.slice(pos);
 fs.writeFileSync(htmlPath, html);
 NODE
 
