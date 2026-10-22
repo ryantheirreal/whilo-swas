@@ -393,6 +393,7 @@
       { key: 'work', en: 'Work', pt: 'Trabalho', mark: '▤' },
       { key: 'company', en: 'Company', pt: 'Empresa', mark: '▦' },
       { key: 'connect', en: 'Connect', pt: 'Conexões', mark: '↗' },
+      { key: 'account', en: 'Account', pt: 'Conta', mark: '◉' },
       { key: 'results', en: 'Results', pt: 'Resultados', mark: '◷' }
     ];
     items.forEach(function (item) {
