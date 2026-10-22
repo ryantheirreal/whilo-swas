@@ -7,7 +7,7 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 - `web/whilo-swas/` — browser app and Vercel build boundary, including the first server-side APIs.
 - `web/whilo-swas/api/` — cloud public config, authenticated mission endpoints, connector APIs, Slack OAuth, QR bridge pairing and human messaging APIs.
 - `web/whilo-swas/whilo-cloud-auth.js` — browser Supabase sign-in, session refresh and logout; passwords are never stored by Whilo.
-- `supabase/migrations/` — tenant isolation, Pets, durable mission queue, approvals, encrypted integrations, audit trail, human messaging and invitations.
+- `supabase/migrations/` — tenant isolation, Pets, durable mission queue, approvals, encrypted integrations, audit trail, human messaging, invitations, marketplace fees/entitlements and transactional installs.
 - `scripts/bootstrap-owner.mjs` — secure Supabase Auth owner/workspace provisioning; reads a temporary strong password from the environment and never logs it.
 - `scripts/check-platform.mjs` — static API, migration and secret-hygiene checks.
 - `desktop/whilo-swas-desktop/` — separate Electron client and packaging workflow for macOS, Windows and Linux.
@@ -37,7 +37,7 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 
 ## Configuration gate — not yet active
 
-Cloud operations are not activated yet. The workspace owner must connect/configure Supabase, apply all nine migrations in ascending order, set server-side Vercel environment variables, and provision the owner account with a strong temporary password. Marketplace payments also require Stripe Connect, recurring Price IDs, test-mode webhooks, seller verification and end-to-end payment/refund/dispute tests before public sales. Follow `docs/connectors-and-identity.md` and `docs/marketplace-and-pricing-strategy.md`.
+Cloud operations are not activated yet. The workspace owner must connect/configure Supabase, apply all ten migrations in ascending order, set server-side Vercel environment variables, and provision the owner account with a strong temporary password. Marketplace payments also require Stripe Connect, recurring Price IDs, test-mode webhooks, seller verification and end-to-end payment/refund/dispute tests before public sales. Follow `docs/connectors-and-identity.md` and `docs/marketplace-and-pricing-strategy.md`.
 
 No production owner account was created, no migration has been applied to a live database, and no Slack, Twilio, Stripe Connect or subscription billing account was activated in this session. The actual autonomous worker and native iMessage bridge also remain unimplemented. Do not represent plans, queued jobs, a QR pair or connector metadata as completed execution without evidence from the provider.
 
