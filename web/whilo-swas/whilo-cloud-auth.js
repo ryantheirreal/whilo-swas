@@ -78,6 +78,31 @@
     }
   }
 
+  function consumeAuthRedirect() {
+    try {
+      const raw = String(window.location.hash || '').replace(/^#/, '');
+      if (!raw || !/access_token=/.test(raw) || !/refresh_token=/.test(raw)) return;
+      const params = new URLSearchParams(raw);
+      const accessToken = params.get('access_token') || '';
+      const refreshToken = params.get('refresh_token') || '';
+      if (!accessToken || !refreshToken) return;
+      const expiresIn = Number(params.get('expires_in')) || 3600;
+      const expiresAt = Number(params.get('expires_at')) || Math.floor(Date.now() / 1000) + expiresIn;
+      saveSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_type: params.get('token_type') || 'bearer',
+        expires_in: expiresIn,
+        expires_at: expiresAt
+      });
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.hash = '';
+      window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+    } catch (_) {
+      // Do not log auth fragments or tokens. An unparseable redirect can be retried via sign-in.
+    }
+  }
+
   async function getAccessToken() {
     let session = readStoredSession();
     if (!session) return '';
@@ -126,6 +151,8 @@
     const user = await response.json();
     return user && user.id ? { id: user.id, email: user.email || '' } : null;
   }
+
+  consumeAuthRedirect();
 
   window.WhiloCloudAuth = Object.freeze({
     publicConfig: publicConfig,
