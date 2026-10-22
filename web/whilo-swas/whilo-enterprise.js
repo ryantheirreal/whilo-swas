@@ -473,10 +473,13 @@
           return '<li><strong>' + esc(step.role) + '</strong> — ' + esc(step.title) + '<div class="mini">' + esc(step.status) + esc(deps) + '</div></li>';
         }).join('') + '</ol><p class="mini">Plan only. No Bot has run and no external system has been changed.</p></details>'
       : '<div class="mini">Pet-only plan · no specialist Bots.</div>';
+    const sourceBadge = t.sourceContext
+      ? '<div class="mini">↗ Created from a human message · source preserved locally</div>'
+      : '';
     const cloudBadge = t.serverMissionId
       ? '<div class="mini">Cloud mission: ' + esc(t.serverMissionState || 'persisted') + ' · ' + esc(t.serverMissionId) + '</div>'
       : '<div class="actions"><button class="btn secondary" data-act="save-cloud-mission" data-id="' + esc(t.id) + '">Save plan to cloud</button></div>';
-    return '<div class="task"><div><div class="taskname">' + esc(t.title) + '</div><div class="mini">' + esc(t.department) + ' · ' + esc(t.priority) + ' priority</div><div class="mini">Local mission state: ' + esc(missionState) + '</div>' + cloudBadge + plan + '</div><div class="mobilehide"><strong>Lead Pet:</strong> ' + esc(t.owner) + '<div class="mini">' + esc(workers) + '</div></div><div><span class="pill ' + status + '">' + esc(t.status) + '</span></div><div class="mini mobilehide">' + esc(t.created) + '</div><div class="actions">' + (t.status !== 'Done' ? '<button class="btn secondary" data-act="advance" data-id="' + esc(t.id) + '">' + esc(actionLabel) + '</button>' : '<button class="btn secondary" data-act="remove" data-id="' + esc(t.id) + '">Archive</button>') + '</div></div>';
+    return '<div class="task"><div><div class="taskname">' + esc(t.title) + '</div><div class="mini">' + esc(t.department) + ' · ' + esc(t.priority) + ' priority</div><div class="mini">Local mission state: ' + esc(missionState) + '</div>' + sourceBadge + cloudBadge + plan + '</div><div class="mobilehide"><strong>Lead Pet:</strong> ' + esc(t.owner) + '<div class="mini">' + esc(workers) + '</div></div><div><span class="pill ' + status + '">' + esc(t.status) + '</span></div><div class="mini mobilehide">' + esc(t.created) + '</div><div class="actions">' + (t.status !== 'Done' ? '<button class="btn secondary" data-act="advance" data-id="' + esc(t.id) + '">' + esc(actionLabel) + '</button>' : '<button class="btn secondary" data-act="remove" data-id="' + esc(t.id) + '">Archive</button>') + '</div></div>';
   }
   function workPage() {
     const activeCount = state.tasks.filter(function (t) { return t.status !== 'Done'; }).length;
@@ -722,12 +725,13 @@
       const ownerActions = mine
         ? '<button class="message-action" data-act="edit-message" data-id="' + esc(message.id) + '">Edit</button><button class="message-action" data-act="delete-message" data-id="' + esc(message.id) + '">Delete</button>'
         : '';
+      const workAction = '<button class="message-action" data-act="create-work-from-message" data-id="' + esc(message.id) + '">↗ Turn into Work</button>';
       return '<div class="message-line ' + (mine ? 'mine' : '') + '" data-message-id="' + esc(message.id) + '">' +
         (mine ? '' : '<span class="message-avatar tiny">' + esc(initials) + '</span>') +
         '<div class="message-bubble"><div class="message-sender">' + esc(senderName) + '</div>' +
         reply + '<div class="message-content">' + esc(message.content || 'Message deleted') + '</div>' +
         '<div class="message-meta">' + esc(messageDate(message.created_at, true)) + esc(edited) + '</div>' +
-        '<div class="message-actions"><button class="message-action" data-act="message-reply" data-id="' + esc(message.id) + '">Reply</button>' + thread + ownerActions + '</div>' +
+        '<div class="message-actions"><button class="message-action" data-act="message-reply" data-id="' + esc(message.id) + '">Reply</button>' + thread + workAction + ownerActions + '</div>' +
         (reactionHtml ? '<div class="message-reactions">' + reactionHtml + '</div>' : '') +
         '<div class="message-quick-reactions">' + ['👍','❤️','😂','🔥'].map(function (emoji) { return '<button type="button" aria-label="React ' + esc(emoji) + '" data-act="message-react" data-id="' + esc(message.id) + '" data-emoji="' + esc(emoji) + '">' + esc(emoji) + '</button>'; }).join('') + '</div>' +
         '</div></div>';
@@ -1045,6 +1049,23 @@
     }
     if (act === 'refresh-message-timeline') {
       const convo = currentConversation(); if (convo) loadMessageTimeline(convo.id, messagesThreadRootId, false); return;
+    }
+    if (act === 'create-work-from-message') {
+      const source = messagesRows.find(function (row) { return row.id === id; });
+      if (!source || !String(source.content || '').trim()) return;
+      const taskTitle = String(source.content).replace(/\s+/g, ' ').trim().slice(0, 180);
+      addTask(taskTitle, 'Operations', 'Whilo', 'High', 'pet-bots');
+      const task = state.tasks[state.tasks.length - 1];
+      task.sourceContext = {
+        conversationId: messagesSelectedId,
+        messageId: source.id,
+        excerpt: String(source.content).slice(0, 4000),
+        sourceTimestamp: source.created_at
+      };
+      save();
+      active = 'work';
+      render();
+      return;
     }
     if (act === 'message-reply') {
       messagesReplyToId = id; render();
