@@ -136,6 +136,12 @@ module.exports = async function handler(req, res) {
       if (!conversation || conversation.conversation_type !== 'channel' || !conversation.is_public) {
         return send(res, 404, { error: 'A joinable public channel was not found' });
       }
+      const existingMembership = await db('message_conversation_members?organization_id=eq.' + encodeURIComponent(orgId) +
+        '&conversation_id=eq.' + encodeURIComponent(conversationId) +
+        '&user_id=eq.' + encodeURIComponent(user.id) + '&select=member_status,member_role&limit=1');
+      if (Array.isArray(existingMembership) && existingMembership[0] && existingMembership[0].member_status === 'banned') {
+        return send(res, 403, { error: 'You cannot rejoin this channel because a moderator removed your access.' });
+      }
       await db('message_conversation_members?on_conflict=conversation_id,user_id', {
         method: 'POST',
         headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
