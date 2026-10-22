@@ -10,7 +10,7 @@ The password shared in chat is short and should be replaced before production us
 
 Prerequisites:
 1. Create/select the intended Supabase project and set `SUPABASE_URL`, `SUPABASE_ANON_KEY` and the server-only `SUPABASE_SERVICE_ROLE_KEY`.
-2. Apply all nine files under `supabase/migrations/` in ascending filename order (001 through 009), including mission transactions, owner/Pet bootstrap, explicit server-role grants, human Messages, invitations, marketplace listings, payment-order ledger and subscription state. Use a separate staging project before production.
+2. Apply all ten files under `supabase/migrations/` in ascending filename order (001 through 010), including mission transactions, owner/Pet bootstrap, explicit server-role grants, human Messages, invitations, marketplace listings, payment-order ledger, subscription state and the transactional buyer-install ledger. Use a separate staging project before production.
 3. Set the temporary owner password in a local secret manager or hidden terminal prompt, then run `node scripts/bootstrap-owner.mjs`.
 4. The Whilo extension now provides a cloud sign-in card in **Work** and **Connect**, using `whilo-cloud-auth.js` and `/api/public-config`. Sign in with the owner account created by Supabase Auth. The script stores only a Supabase session/refresh token in this browser, never the password. Do not expose the service-role key to browser code.
 5. Verify the owner row and workspace membership through Supabase, then remove the temporary password from the process environment.
@@ -75,4 +75,4 @@ The first marketplace release is scoped to published declarative Pets, Bots, Ski
 - Required server env keys: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `WHILO_MARKETPLACE_ADMIN_USER_IDS`, plus all eight recurring Price IDs. Keep them out of Git and browser code.
 - The current proposed launch test prices are Free, Plus R$39.90/month, Premium R$169.90/month, Super R$399.90/month and Ultra R$999.90/month; annual prices are R$399, R$1,699, R$3,999 and R$9,999. These are pricing hypotheses, not active subscriptions.
 
-The database/API/UI code does not itself activate the live marketplace. It remains in preview until Supabase is configured, migrations 001–009 are applied, Stripe test-mode onboarding/checkout/webhooks are verified, and the production terms/refund/tax and seller-verification policies are reviewed.
+The database/API/UI code does not itself activate the live marketplace. It remains in preview until Supabase is configured, migrations 001–010 are applied, Stripe test-mode onboarding/checkout/webhooks are verified, and the production terms/refund/tax and seller-verification policies are reviewed.
