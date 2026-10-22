@@ -64,9 +64,20 @@
   let cloudMissionsLoading = false;
   let cloudMissionsFeedback = '';
   let cloudMissionBusy = false;
+  let cloudAuthSession = null;
+  let cloudAuthConfigured = false;
+  let cloudAuthChecked = false;
+  let cloudAuthLoading = false;
+  let cloudAuthBusy = false;
+  let cloudAuthFeedback = '';
 
   async function whiloAccessToken() {
     try {
+      const cloudAuth = window.WhiloCloudAuth;
+      if (cloudAuth && typeof cloudAuth.getAccessToken === 'function') {
+        const cloudToken = await cloudAuth.getAccessToken();
+        if (typeof cloudToken === 'string' && cloudToken) return cloudToken;
+      }
       const auth = window.whiloAuth;
       if (auth && typeof auth.getAccessToken === 'function') {
         const found = await auth.getAccessToken();
@@ -108,6 +119,43 @@
     try { data = await response.json(); } catch (_) {}
     if (!response.ok) throw new Error(data && data.error ? data.error : 'Whilo connector API is not ready. Check server configuration.');
     return data;
+  }
+
+  async function loadCloudAuth() {
+    if (cloudAuthLoading || cloudAuthChecked) return;
+    cloudAuthLoading = true;
+    try {
+      if (!window.WhiloCloudAuth) throw new Error('Cloud authentication script is not loaded. Refresh Whilo and retry.');
+      await window.WhiloCloudAuth.publicConfig();
+      cloudAuthConfigured = true;
+      cloudAuthSession = await window.WhiloCloudAuth.getSession();
+      cloudAuthFeedback = '';
+    } catch (error) {
+      cloudAuthConfigured = false;
+      cloudAuthSession = null;
+      cloudAuthFeedback = error && error.message ? error.message : 'Cloud identity is not configured.';
+    } finally {
+      cloudAuthLoading = false;
+      cloudAuthChecked = true;
+      if (active === 'work' || active === 'connect') render();
+    }
+  }
+
+  function cloudAuthCard() {
+    if (!cloudAuthChecked && !cloudAuthLoading) loadCloudAuth();
+    if (cloudAuthLoading) return '<div class="notice">Checking cloud identity configuration…</div>';
+    if (cloudAuthSession) {
+      return '<div class="card" style="margin:12px 0"><div class="row"><div><div class="sectionlabel">Cloud identity</div><strong>' + esc(cloudAuthSession.email || 'Whilo workspace member') + '</strong><div class="mini">Authenticated session · server-side workspace access is checked on every request.</div></div><button class="btn secondary" data-act="cloud-signout"' + (cloudAuthBusy ? ' disabled' : '') + '>Sign out</button></div>' +
+        (cloudAuthFeedback ? '<p class="muted">' + esc(cloudAuthFeedback) + '</p>' : '') + '</div>';
+    }
+    const unavailable = !cloudAuthConfigured;
+    return '<div class="card" style="margin:12px 0"><div class="sectionlabel">Cloud identity</div><h3>Sign in to sync your workspace</h3>' +
+      '<p class="muted">Use the account provisioned in Supabase Auth. Your password is sent only to Supabase over HTTPS for verification; Whilo does not store the password. The session token is kept in this browser and may be signed out below.</p>' +
+      (cloudAuthFeedback ? '<div class="notice">' + esc(cloudAuthFeedback) + '</div>' : '') +
+      '<form id="cloud-signin-form"><div class="fieldgroup"><label class="label" for="whilo-cloud-email">Workspace email</label><input id="whilo-cloud-email" class="field" name="email" type="email" autocomplete="username" required maxlength="320" placeholder="you@company.com"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
+      '<div class="fieldgroup"><label class="label" for="whilo-cloud-password">Password</label><input id="whilo-cloud-password" class="field" name="password" type="password" autocomplete="current-password" required maxlength="256"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
+      '<button class="btn" type="submit"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '>' + (cloudAuthBusy ? 'Signing in…' : 'Sign in to cloud') + '</button></form>' +
+      (unavailable ? '<p class="mini">Cloud sign-in remains disabled until SUPABASE_URL and SUPABASE_ANON_KEY are configured in Vercel.</p>' : '') + '</div>';
   }
 
   async function loadConnectors() {
@@ -302,6 +350,7 @@
     const doneCount = state.tasks.filter(function (t) { return t.status === 'Done'; }).length;
     const evidenceCount = state.tasks.filter(function (t) { return t.mission && t.mission.verification && t.mission.verification.passed === true; }).length;
     let out = '<div class="hero"><div><h2 class="h2">Work queue</h2><p class="muted">Create a Pet-led mission with specialist Bots, explicit approval, a review step and required evidence. This browser-only queue records workflow intent; it does not call an autonomous runtime or execute Bots yet.</p></div><button class="btn secondary" data-act="sample">Add example job</button></div>';
+    out += cloudAuthCard();
     out += '<div class="statrow"><div class="stat"><div class="n">' + state.tasks.length + '</div><div class="l">All jobs tracked</div></div><div class="stat"><div class="n">' + activeCount + '</div><div class="l">Open jobs</div></div><div class="stat"><div class="n">' + doneCount + '</div><div class="l">Manually completed</div></div><div class="stat"><div class="n">' + evidenceCount + '</div><div class="l">Jobs with evidence recorded</div></div></div>';
     out += '<form id="new-task" class="form"><input class="field wide" name="title" required maxlength="180" placeholder="Outcome to deliver (e.g. Prepare 25 qualified target accounts)" aria-label="Outcome to deliver"><select class="field" name="department" aria-label="Department">' + DEPARTMENTS.map(function (d) { return '<option>' + esc(d.name) + '</option>'; }).join('') + '</select><select class="field" name="owner" aria-label="Lead Pet">' + PETS.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join('') + '</select><select class="field" name="execution" aria-label="Agent execution pattern"><option value="pet-bots">Pet + specialist Bots</option><option value="pet-only">Pet only</option></select><select class="field" name="priority" aria-label="Priority"><option>Normal</option><option>High</option><option>Critical</option></select><button class="btn" type="submit">Create job</button></form>';
     out += '<div class="row"><div class="sectionlabel">Latest jobs</div><span class="mini">' + state.tasks.length + ' tracked in this browser</span></div>';
@@ -332,6 +381,7 @@
       return connectorLoading ? 'Checking…' : 'Not connected';
     };
     let out = '<div class="hero"><div><h2 class="h2">Connected systems</h2><p class="muted">Connector state is loaded from the server, not guessed from a button click. External sends remain approval-gated.</p></div></div>';
+    out += cloudAuthCard();
     out += '<div class="notice">' + (connectorFeedback ? esc(connectorFeedback) : (connectorLoading ? 'Checking the authenticated connector API…' : 'Only integrations returned by the server are marked connected. A successful OAuth grant is not permission to send messages automatically.')) + (connectorFeedback ? ' <button class="btn secondary" data-act="refresh-connectors">Retry status</button>' : '') + '</div>';
     out += '<div class="grid">';
     out += INTEGRATIONS.map(function (i) {
@@ -503,6 +553,18 @@
       if (dept) addTask(dept.template, dept.name, 'Whilo', 'High');
       active = 'work'; render(); return;
     }
+    if (act === 'cloud-signout') {
+      cloudAuthBusy = true; cloudAuthFeedback = 'Signing out…'; render();
+      window.WhiloCloudAuth.signOut()
+        .catch(function () { /* Local session is cleared even if remote logout is unavailable. */ })
+        .finally(function () {
+          cloudAuthSession = null; cloudAuthConfigured = true; cloudAuthChecked = true; cloudAuthBusy = false;
+          cloudAuthFeedback = 'Signed out of this browser.';
+          connectorCache = null; connectorFeedback = ''; cloudMissionsCache = null; cloudMissionsFeedback = '';
+          render();
+        });
+      return;
+    }
     if (act === 'connect-setup') { addTask('Plan and verify integration setup: ' + id, 'IT & systems', 'Whilo', 'High'); active = 'work'; render(); return; }
     if (act === 'refresh-connectors') { connectorFeedback = ''; connectorCache = null; loadConnectors(); render(); return; }
     if (act === 'connect-slack') {
@@ -555,6 +617,22 @@
   shadow.addEventListener('submit', function (event) {
     event.preventDefault();
     const form = event.target;
+    if (form.id === 'cloud-signin-form') {
+      const fd = new FormData(form);
+      const email = String(fd.get('email') || '');
+      const password = String(fd.get('password') || '');
+      cloudAuthBusy = true; cloudAuthFeedback = 'Signing in securely…'; render();
+      window.WhiloCloudAuth.signIn(email, password)
+        .then(function (user) {
+          cloudAuthSession = user; cloudAuthConfigured = true; cloudAuthChecked = true;
+          cloudAuthFeedback = 'Signed in as ' + (user.email || email) + '.';
+          connectorCache = null; connectorFeedback = ''; cloudMissionsCache = null; cloudMissionsFeedback = '';
+          return Promise.all([loadConnectors(), loadCloudMissions()]);
+        })
+        .catch(function (error) { cloudAuthFeedback = error && error.message ? error.message : 'Cloud sign-in failed.'; })
+        .finally(function () { cloudAuthBusy = false; render(); });
+      return;
+    }
     if (form.id === 'connect-twilio-form') {
       const fd = new FormData(form);
       connectorBusy = true; connectorFeedback = 'Verifying credentials and storing an encrypted connection…'; render();
