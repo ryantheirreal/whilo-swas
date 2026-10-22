@@ -393,6 +393,7 @@
 .message-conversation-trailing{display:flex;flex-direction:column;gap:5px;align-items:flex-end;align-self:stretch;justify-content:flex-start}
 .message-time{font-size:9px;color:#75859d;white-space:nowrap}
 .message-pill{font-size:9px;border-radius:999px;padding:4px 6px;background:#1c3b35;color:#9ee5d4}
+.message-unread-dot{width:7px;height:7px;background:#9be7d4;border-radius:50%;display:inline-block;margin:4px 0 2px}
 .message-join-label{font-size:10px;color:#a8dfd4;white-space:nowrap}
 .messages-chat{display:flex;flex-direction:column;min-width:0;min-height:0;background:radial-gradient(ellipse at top right,rgba(58,94,116,.13),transparent 42%),#0c131e}
 .messages-chat-head{padding:12px 16px;border-bottom:1px solid #293449;background:#101927;min-width:0}
@@ -474,7 +475,7 @@
         }).join('') + '</ol><p class="mini">Plan only. No Bot has run and no external system has been changed.</p></details>'
       : '<div class="mini">Pet-only plan · no specialist Bots.</div>';
     const sourceBadge = t.sourceContext
-      ? '<div class="mini">↗ Created from a human message · source preserved locally</div>'
+      ? '<div class="mini">↗ Created from a human message · source reference retained</div>'
       : '';
     const cloudBadge = t.serverMissionId
       ? '<div class="mini">Cloud mission: ' + esc(t.serverMissionState || 'persisted') + ' · ' + esc(t.serverMissionId) + '</div>'
@@ -606,7 +607,8 @@
       const isMember = messagesScope === 'inbox' || conversation.is_member === true || Boolean(conversation.my_membership);
       const trailing = messagesScope === 'discover'
         ? (isMember ? '<span class="message-pill">Joined</span>' : '<span class="message-join-label">Join →</span>')
-        : '<span class="message-time">' + esc(messageDate(conversation.last_message_at || conversation.created_at, true)) + '</span>';
+        : (conversation.unread ? '<span class="message-unread-dot" title="Unread message"></span>' : '') +
+          '<span class="message-time">' + esc(messageDate(conversation.last_message_at || conversation.created_at, true)) + '</span>';
       return '<button type="button" class="message-conversation ' + (isSelected ? 'selected' : '') + '" data-act="' + (messagesScope === 'discover' && !isMember ? 'join-message-channel' : 'open-message-conversation') + '" data-id="' + esc(conversation.id) + '">' +
         '<span class="message-avatar ' + esc(conversation.conversation_type) + '">' + esc(initials) + '</span>' +
         '<span class="message-conversation-copy"><span class="message-conversation-title">' + esc(title) + '</span><span class="message-conversation-preview">' + esc(preview) + '</span><span class="message-conversation-type">' + esc(messageTypeLabel(conversation.conversation_type)) + (conversation.member_count != null ? ' · ' + esc(conversation.member_count) + ' members' : '') + '</span></span>' +
@@ -1059,7 +1061,6 @@
       task.sourceContext = {
         conversationId: messagesSelectedId,
         messageId: source.id,
-        excerpt: String(source.content).slice(0, 4000),
         sourceTimestamp: source.created_at
       };
       save();
