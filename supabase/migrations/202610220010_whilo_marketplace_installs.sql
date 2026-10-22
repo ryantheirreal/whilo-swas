@@ -1,6 +1,32 @@
 -- Whilo marketplace installs preserve the purchased manifest and instantiate the asset inside the buyer workspace.
 -- Apply after migration 009. Run against staging before production.
 
+drop trigger if exists marketplace_orders_snapshot_immutable on public.marketplace_orders;
+create or replace function public.prevent_marketplace_order_snapshot_mutation()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $
+begin
+  if row(new.listing_id, new.seller_id, new.buyer_organization_id, new.buyer_user_id,
+         new.currency, new.price_minor, new.platform_fee_bps,
+         new.platform_fee_minor, new.seller_proceeds_minor)
+     is distinct from
+     row(old.listing_id, old.seller_id, old.buyer_organization_id, old.buyer_user_id,
+         old.currency, old.price_minor, old.platform_fee_bps,
+         old.platform_fee_minor, old.seller_proceeds_minor) then
+    raise exception 'Marketplace order pricing snapshots are immutable' using errcode = '22000';
+  end if;
+  return new;
+end;
+$;
+
+create trigger marketplace_orders_snapshot_immutable
+before update on public.marketplace_orders
+for each row execute function public.prevent_marketplace_order_snapshot_mutation();
+
+revoke all on function public.prevent_marketplace_order_snapshot_mutation() from public, anon, authenticated;
+
 create table if not exists public.marketplace_installations (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
@@ -43,8 +69,8 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
-as $$
+set search_path = pg_catalog, public
+as $
 declare
   listing_row public.marketplace_listings%rowtype;
   entitlement_row public.marketplace_entitlements%rowtype;
