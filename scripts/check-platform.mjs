@@ -92,7 +92,7 @@ const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-sw
 if (!cloudAuth.includes('resetPasswordForEmail') || !cloudAuth.includes('updatePassword')) failures.push('Cloud auth must provide password reset request and password update flows.');
 if (!enterpriseUi.includes("data-mode=\"signup\"") || !enterpriseUi.includes("data-mode=\"reset-request\"") || !enterpriseUi.includes("data-tab=\"account\"")) failures.push('The workspace must expose sign-up, recovery and a direct Account tab.');
 if (!enterpriseUi.includes('/api/account/bootstrap')) failures.push('Successful and restored sessions must provision the signed-in workspace.');
-if (!accountBootstrap.includes('authenticate(req)') || !accountBootstrap.includes('user.email') || accountBootstrap.includes('body.email')) failures.push('Account bootstrap must bind workspace provisioning only to the authenticated user's email.');
+if (!accountBootstrap.includes('authenticate(req)') || !accountBootstrap.includes('user.email') || accountBootstrap.includes('body.email')) failures.push('Account bootstrap must bind workspace provisioning only to the authenticated account email.');
 if (!routeMap.includes("'account-bootstrap': require('../../server/routes/account-bootstrap')")) failures.push('Account bootstrap must be routed through the shared API function.');
 if (!(vercelConfig.rewrites || []).some(item => item.source === '/api/account/bootstrap' && item.destination === '/api/messages?route=account-bootstrap')) failures.push('Account bootstrap rewrite is missing.');
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'package.json'), 'utf8'));
