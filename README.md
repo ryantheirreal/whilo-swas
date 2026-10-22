@@ -16,11 +16,13 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 - `docs/30-day-proof-of-market.md` — commercial sprint and measurable proof targets.
 - `docs/agentic-runtime-and-linux-desktop.md` — Pets/Bots and computer-runtime architecture.
 - `docs/connectors-and-identity.md` — setup instructions, OAuth/token security and actual limitations.
-- `docs/human-messages-product-architecture.md` — Telegram/Matrix/Zulip open-source research, Messages architecture and activation boundaries.
+- `docs/human-messages-product-architecture.md` — Telegram/Matrix/Zulip research and Messages architecture.
+- `docs/database-platform-evaluation-2026-10-22.md` — decision matrix across 27 database platforms.
+- `docs/marketplace-and-pricing-strategy.md` — plan pricing, creator economy and 20% commission strategy.
 
 ## Product model
 
-**Chat** is the command surface. **Pets** are persistent agents with a role, user-approved memory and policy. **Bots** are task-scoped specialists spawned for bounded work. **Store** distributes Pets and playbooks. **Rotinas** schedules repeatable work. **Work, Company, Connect and Results** provide the operating layer.
+**Chat** is the command surface. **Pets** are persistent agents with a role, user-approved memory and policy. **Bots** are task-scoped specialists spawned for bounded work. **Marketplace** distributes vetted Pets, Bots, Skills, Playbooks and Templates. **Rotinas** schedules repeatable work. **Work, Company, Connect and Results** provide the operating layer.
 
 ## New platform foundations
 
@@ -35,9 +37,9 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 
 ## Configuration gate — not yet active
 
-The code is committed, but Vercel's current environment-variable inventory is empty. Before cloud operations can run, the workspace owner must connect/configure a Supabase project, apply all eight migrations in ascending order, configure the missing encrypted Vercel environment variables, provision the owner account using a strong temporary password, and register the Slack app. Follow `docs/connectors-and-identity.md`.
+Cloud operations are not activated yet. The workspace owner must connect/configure Supabase, apply all nine migrations in ascending order, set server-side Vercel environment variables, and provision the owner account with a strong temporary password. Marketplace payments also require Stripe Connect, recurring Price IDs, test-mode webhooks, seller verification and end-to-end payment/refund/dispute tests before public sales. Follow `docs/connectors-and-identity.md` and `docs/marketplace-and-pricing-strategy.md`.
 
-No production owner account was created, no migration has been applied to a live database, and no Slack or Twilio account was connected in this session. The actual autonomous worker and native iMessage bridge also remain unimplemented. Do not represent plans, queued jobs, a QR pair or connector metadata as completed execution without evidence from the provider.
+No production owner account was created, no migration has been applied to a live database, and no Slack, Twilio, Stripe Connect or subscription billing account was activated in this session. The actual autonomous worker and native iMessage bridge also remain unimplemented. Do not represent plans, queued jobs, a QR pair or connector metadata as completed execution without evidence from the provider.
 
 ## Build and checks
 
@@ -53,7 +55,7 @@ Desktop: `cd desktop/whilo-swas-desktop && npm install && npm run check`; packag
 
 The Vercel project root is `web/whilo-swas`; framework Vite, build command `npm run build`, output `public`, Node 24.x. Verify the latest deployment is **READY** before treating a commit as live.
 
-The base site bundle is still release-built rather than first-party source in this repository. The current Work extension's mission planning and manual evidence review are not a production server-side autonomous worker. Data in that extension remains browser-local until the authenticated APIs and database are configured and the UI is migrated end-to-end.
+The base site bundle is still release-built rather than first-party source in this repository. Marketplace UI/API code is first-party extension code in this repository and remains in preview until its database and payment setup is complete. The current Work extension's mission planning and manual evidence review are not a production server-side autonomous worker. Data in that extension remains browser-local until the authenticated APIs and database are configured and the UI is migrated end-to-end.
 
 The desktop project remains a secure Electron shell which opens the hosted Whilo site. Its build workflow targets macOS, Windows and Linux; no installer artifacts or platform signing should be assumed until a platform build has succeeded. It does not yet provide native computer control or a remote VM by itself.
 
