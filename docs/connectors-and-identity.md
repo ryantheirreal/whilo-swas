@@ -10,7 +10,7 @@ The password shared in chat is short and should be replaced before production us
 
 Prerequisites:
 1. Create/select the intended Supabase project and set `SUPABASE_URL`, `SUPABASE_ANON_KEY` and the server-only `SUPABASE_SERVICE_ROLE_KEY`.
-2. Apply all eight files under `supabase/migrations/` in ascending filename order (001 through 005), including the mission transaction, owner/Pet bootstrap and explicit server-role grants.
+2. Apply all eight files under `supabase/migrations/` in ascending filename order (001 through 008), including the mission transaction, owner/Pet bootstrap and explicit server-role grants.
 3. Set the temporary owner password in a local secret manager or hidden terminal prompt, then run `node scripts/bootstrap-owner.mjs`.
 4. The Whilo extension now provides a cloud sign-in card in **Work** and **Connect**, using `whilo-cloud-auth.js` and `/api/public-config`. Sign in with the owner account created by Supabase Auth. The script stores only a Supabase session/refresh token in this browser, never the password. Do not expose the service-role key to browser code.
 5. Verify the owner row and workspace membership through Supabase, then remove the temporary password from the process environment.
