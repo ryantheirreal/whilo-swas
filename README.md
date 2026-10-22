@@ -16,6 +16,7 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 - `docs/30-day-proof-of-market.md` — commercial sprint and measurable proof targets.
 - `docs/agentic-runtime-and-linux-desktop.md` — Pets/Bots and computer-runtime architecture.
 - `docs/connectors-and-identity.md` — setup instructions, OAuth/token security and actual limitations.
+- `docs/human-messages-product-architecture.md` — Telegram/Matrix/Zulip open-source research, Messages architecture and activation boundaries.
 
 ## Product model
 
