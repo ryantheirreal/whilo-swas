@@ -86,7 +86,10 @@ module.exports = async function handler(req, res) {
       const conversations = Array.isArray(conversationRows) ? conversationRows : [];
       const messages = Array.isArray(messageRows) ? messageRows : [];
       const allMembers = Array.isArray(memberRows) ? memberRows : [];
-      const senderIds = [...new Set(messages.map(message => message.sender_user_id).filter(Boolean))];
+      const senderIds = [...new Set([
+        ...messages.map(message => message.sender_user_id).filter(Boolean),
+        ...allMembers.map(row => row.user_id).filter(Boolean)
+      ])];
       const profiles = senderIds.length
         ? await db('human_profiles?id=' + inFilter(senderIds) + '&select=id,username,display_name,avatar_url,presence,last_seen_at')
         : [];
@@ -100,11 +103,24 @@ module.exports = async function handler(req, res) {
       }
       const counts = new Map();
       for (const row of allMembers) counts.set(row.conversation_id, (counts.get(row.conversation_id) || 0) + 1);
-      const result = conversations.map(conversation => Object.assign({}, conversation, {
-        my_membership: membershipMap.get(conversation.id) || null,
-        member_count: counts.get(conversation.id) || 0,
-        last_message: lastMessageMap.get(conversation.id) || null
-      })).sort((a,b) => {
+      const result = conversations.map(conversation => {
+        const mine = membershipMap.get(conversation.id) || null;
+        const sharedMembers = allMembers.filter(row => row.conversation_id === conversation.id);
+        const peer = conversation.conversation_type === 'direct'
+          ? sharedMembers.find(row => row.user_id !== user.id)
+          : null;
+        const peerProfile = peer ? profileMap.get(peer.user_id) : null;
+        return Object.assign({}, conversation, {
+          title: conversation.conversation_type === 'direct' && peerProfile ? peerProfile.display_name : conversation.title,
+          peer: peerProfile || null,
+          my_membership: mine,
+          member_count: counts.get(conversation.id) || 0,
+          last_message: lastMessageMap.get(conversation.id) || null,
+          unread: Boolean(lastMessageMap.get(conversation.id) &&
+            lastMessageMap.get(conversation.id).sender_user_id !== user.id &&
+            (!mine || !mine.last_read_at || Date.parse(lastMessageMap.get(conversation.id).created_at) > Date.parse(mine.last_read_at)))
+        });
+      }).sort((a,b) => {
         const ad = Date.parse(a.last_message_at || a.created_at || 0) || 0;
         const bd = Date.parse(b.last_message_at || b.created_at || 0) || 0;
         return bd - ad;
