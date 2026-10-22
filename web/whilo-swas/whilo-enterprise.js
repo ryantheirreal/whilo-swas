@@ -80,6 +80,7 @@
   let messagesSearch = '';
   let messagesLoading = false;
   let messagesBusy = false;
+  let messagesTimelineLoading = false;
   let messagesFeedback = '';
   let messagesCreateOpen = false;
   let messagesPeopleQuery = '';
@@ -356,7 +357,91 @@
   document.documentElement.appendChild(shadowHost);
   const shadow = shadowHost.attachShadow ? shadowHost.attachShadow({ mode: 'open' }) : shadowHost;
   const css = ':host{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e9edf5}*{box-sizing:border-box}.veil{position:fixed;inset:0;z-index:2147483000;background:rgba(5,8,14,.78);backdrop-filter:blur(12px);display:none;padding:clamp(8px,2.5vw,26px)}.veil.open{display:flex}.panel{width:min(1420px,100%);height:min(900px,100%);margin:auto;background:#0d111a;border:1px solid #242d3d;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 100px rgba(0,0,0,.55)}.top{display:flex;align-items:center;gap:18px;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #242d3d;background:#101622}.brand{display:flex;align-items:center;gap:12px;min-width:0}.mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(140deg,#9be7d4,#8ea6ff);color:#0c1722;display:grid;place-items:center;font-weight:900}.eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#8d9ab0}.title{font-size:20px;font-weight:750;letter-spacing:-.03em;margin-top:2px}.sub{font-size:12px;color:#91a0b6;margin-top:3px}.close{border:1px solid #323e53;background:#182132;color:#e9edf5;width:38px;height:38px;border-radius:12px;font-size:22px;cursor:pointer}.tabs{display:flex;gap:6px;padding:12px 22px;border-bottom:1px solid #242d3d;overflow:auto}.tab{border:1px solid transparent;background:transparent;color:#94a1b6;padding:10px 14px;border-radius:10px;font-size:13px;white-space:nowrap;cursor:pointer}.tab.active{background:#1c293a;color:#d9f8f0;border-color:#355b61}.body{overflow:auto;padding:clamp(16px,3vw,32px);flex:1}.hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:22px}.h2{font-size:26px;font-weight:750;letter-spacing:-.04em;margin:0 0 8px}.muted{color:#9ba9bf;font-size:13px;line-height:1.65;max-width:720px}.btn{background:#b8f1e0;color:#0b191b;border:0;font-weight:700;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:12px}.btn.secondary{background:#1a2535;color:#dce5f3;border:1px solid #344157}.btn.danger{background:#3a2229;color:#ffc0c7;border:1px solid #65424b}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.card{border:1px solid #293449;background:#121a27;border-radius:15px;padding:17px;min-width:0}.card h3{margin:0 0 7px;font-size:14px;letter-spacing:-.01em}.card p{margin:0;color:#9ba9bf;font-size:12px;line-height:1.6}.card .actions{display:flex;gap:8px;margin-top:15px;flex-wrap:wrap}.statrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.stat{padding:17px;border:1px solid #293449;border-radius:14px;background:#121a27}.stat .n{font-size:27px;font-weight:800;letter-spacing:-.04em}.stat .l{font-size:11px;color:#96a4ba;margin-top:4px}.form{display:grid;grid-template-columns:2fr 1fr 1fr .9fr .9fr auto;gap:9px;margin-bottom:18px;padding:14px;background:#101724;border:1px solid #293449;border-radius:14px}.field{width:100%;background:#0b1019;color:#e9edf5;border:1px solid #313e53;border-radius:9px;padding:10px 11px;font:inherit;font-size:12px;min-width:0}.label{display:block;font-size:11px;color:#a9b5c8;margin:0 0 6px}.task{display:grid;grid-template-columns:minmax(0,1.8fr) .85fr .8fr .7fr auto;gap:12px;align-items:center;padding:14px;border-bottom:1px solid #242d3d;font-size:12px}.task:first-child{border-top:1px solid #242d3d}.mission-plan{margin-top:10px;border:1px solid #2a364a;border-radius:9px;padding:8px 10px;color:#c7d4e6;font-size:11px}.mission-plan summary{cursor:pointer;font-weight:650}.mission-plan ol{padding-left:18px;margin:10px 0}.mission-plan li{margin:8px 0;line-height:1.5}.mission-plan .mini{margin-top:3px}.taskname{font-weight:650;color:#e9edf5}.pill{display:inline-flex;width:max-content;padding:5px 8px;border-radius:999px;background:#253041;color:#cbd5e5;font-size:10px}.pill.done{background:#16372f;color:#a7f0d8}.pill.active{background:#2b294b;color:#c9c2ff}.pill.review{background:#49351c;color:#ffd9a0}.empty{padding:36px 20px;text-align:center;color:#8f9db3;border:1px dashed #364257;border-radius:14px;font-size:13px}.notice{padding:12px 14px;border-radius:12px;background:#192332;border:1px solid #344157;color:#aab8cd;font-size:11px;line-height:1.6;margin-bottom:18px}.sectionlabel{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:#8293aa;margin:22px 0 10px}.mini{font-size:10px;color:#8594aa;line-height:1.5}.twocol{display:grid;grid-template-columns:1.3fr .7fr;gap:14px}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.footer{padding:10px 22px;border-top:1px solid #242d3d;color:#7f8ca1;font-size:10px;display:flex;justify-content:space-between;gap:12px}.fieldgroup{margin:12px 0}.currency{font-size:13px;color:#becce0}@media(max-width:760px){.grid{grid-template-columns:1fr}.statrow{grid-template-columns:repeat(2,minmax(0,1fr))}.form{grid-template-columns:1fr 1fr}.form .wide{grid-column:1/-1}.task{grid-template-columns:1fr auto}.task .mobilehide{display:none}.twocol{grid-template-columns:1fr}.top{padding:14px}.tabs{padding:10px}.hero{display:block}.hero .btn{margin-top:14px}.body{padding:14px}.title{font-size:18px}.footer{padding:9px 14px}}';
-  const style = document.createElement('style'); style.textContent = css; shadow.appendChild(style);
+  const messageCss = `
+.messages-hero .actions{display:flex;gap:8px;flex-wrap:wrap}
+.messages-shell{height:min(68vh,690px);min-height:450px;display:grid;grid-template-columns:320px minmax(0,1fr);border:1px solid #2a3549;border-radius:16px;overflow:hidden;background:#0b111b}
+.messages-sidebar{min-width:0;min-height:0;display:flex;flex-direction:column;background:#0e1520;border-right:1px solid #293449}
+.messages-sidebar-head{padding:14px;border-bottom:1px solid #253044;display:grid;gap:12px}
+.messages-scope{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#090e16;padding:4px;border:1px solid #263247;border-radius:10px}
+.messages-scope button{background:transparent;border:0;color:#8998af;border-radius:7px;padding:8px;cursor:pointer;font-size:11px}
+.messages-scope button.active{background:#1d2b3b;color:#d3f8ee;box-shadow:0 0 0 1px #344e62 inset}
+.message-conversation-list{overflow:auto;min-height:0;flex:1;padding:7px}
+.message-conversation{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:transparent;border:1px solid transparent;border-radius:11px;padding:10px 8px;margin:1px 0;color:#e5edf7;cursor:pointer;min-width:0}
+.message-conversation:hover{background:#162131}
+.message-conversation.selected{background:#1a2a3b;border-color:#31495c}
+.message-avatar{display:inline-flex;flex:0 0 42px;width:42px;height:42px;border-radius:14px;align-items:center;justify-content:center;background:linear-gradient(145deg,#b6f0df,#92a7ff);color:#10212b;font-weight:800;font-size:12px;letter-spacing:-.02em}
+.message-avatar.direct{border-radius:50%}
+.message-avatar.channel{background:linear-gradient(145deg,#f0c5a4,#d994b3);color:#2b1b23}
+.message-avatar.supergroup{background:linear-gradient(145deg,#a9cbf4,#b8a4f2);color:#202039}
+.message-avatar.tiny{flex-basis:28px;width:28px;height:28px;border-radius:10px;font-size:9px}
+.message-conversation-copy{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.message-conversation-title{font-size:12px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.message-conversation-preview{font-size:10px;color:#91a0b7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.message-conversation-type{font-size:9px;color:#73839c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.message-conversation-trailing{display:flex;flex-direction:column;gap:5px;align-items:flex-end;align-self:stretch;justify-content:flex-start}
+.message-time{font-size:9px;color:#75859d;white-space:nowrap}
+.message-pill{font-size:9px;border-radius:999px;padding:4px 6px;background:#1c3b35;color:#9ee5d4}
+.message-join-label{font-size:10px;color:#a8dfd4;white-space:nowrap}
+.messages-chat{display:flex;flex-direction:column;min-width:0;min-height:0;background:radial-gradient(ellipse at top right,rgba(58,94,116,.13),transparent 42%),#0c131e}
+.messages-chat-head{padding:12px 16px;border-bottom:1px solid #293449;background:#101927;min-width:0}
+.messages-chat-head strong{font-size:13px;max-width:28vw;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.messages-chat-head .mini{margin-top:4px}
+.messages-chat-head .actions{display:flex;gap:6px;flex-wrap:wrap}
+.messages-chat-head .btn{padding:8px 10px}
+.messages-scroll{overflow:auto;min-height:0;flex:1;padding:20px clamp(12px,2.5vw,28px);display:flex;flex-direction:column;gap:11px;scroll-behavior:smooth}
+.message-line{display:flex;align-items:flex-end;gap:8px;max-width:100%}
+.message-line.mine{justify-content:flex-end}
+.message-bubble{max-width:min(84%,720px);min-width:95px;background:#172332;border:1px solid #27364b;border-radius:14px 14px 14px 5px;padding:10px 12px;overflow-wrap:anywhere;box-shadow:0 5px 18px rgba(0,0,0,.08)}
+.message-line.mine .message-bubble{background:#18352f;border-color:#2d6258;border-radius:14px 14px 5px 14px}
+.message-sender{font-size:10px;font-weight:800;color:#a8e9d9;margin-bottom:5px}
+.message-line.mine .message-sender{color:#b5e8dc}
+.message-content{font-size:12px;line-height:1.65;color:#e8eef6;white-space:pre-wrap;overflow-wrap:anywhere}
+.message-meta{font-size:9px;color:#788ba4;text-align:right;margin-top:5px}
+.message-reply-indicator{font-size:10px;color:#9edccb;border-left:2px solid #76c8b7;padding-left:7px;margin:4px 0}
+.message-actions{display:flex;gap:10px;flex-wrap:wrap;opacity:.85;margin-top:7px}
+.message-action{background:transparent;border:0;padding:0;color:#95a9be;cursor:pointer;font-size:9px}
+.message-action:hover{color:#c4fff0}
+.message-reactions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.message-reaction{background:#101b27;color:#b9c9dd;border:1px solid #33465c;border-radius:999px;padding:4px 7px;font-size:10px;cursor:pointer}
+.message-reaction.mine{border-color:#62ad9e;background:#183a35}
+.message-quick-reactions{display:flex;gap:4px;margin-top:6px;opacity:0;transition:opacity .12s}
+.message-line:hover .message-quick-reactions,.message-line:focus-within .message-quick-reactions{opacity:1}
+.message-quick-reactions button{padding:3px 5px;border-radius:7px;border:1px solid #2d3a4d;background:#0f1925;cursor:pointer;font-size:11px}
+.message-compose-wrap{border-top:1px solid #293449;padding:12px 14px;background:#101724}
+.message-compose{display:flex;gap:9px;align-items:flex-end}
+.message-compose textarea{min-height:42px;max-height:140px;resize:vertical;background:#0a111b;color:#e9f0fa;border:1px solid #344258;border-radius:12px;padding:12px;width:100%;font:inherit;font-size:12px;line-height:1.5;outline:none}
+.message-compose textarea:focus,.messages-sidebar .field:focus{border-color:#6eb6a9;box-shadow:0 0 0 2px rgba(110,182,169,.12)}
+.message-compose .btn{min-height:42px;white-space:nowrap}
+.message-compose-foot{display:flex;justify-content:space-between;gap:8px;color:#7788a0;font-size:9px;margin-top:7px}
+.message-reply-bar{display:flex;align-items:center;justify-content:space-between;background:#162c2a;border:1px solid #2d5c53;border-radius:8px;padding:7px 10px;margin-bottom:8px;color:#a8e5d8;font-size:10px}
+.message-reply-bar button{background:transparent;color:#bdece3;border:0;cursor:pointer}
+.message-thread-banner{font-size:10px;color:#a2e6d8;padding:8px 16px;background:#132723;border-bottom:1px solid #284a43}
+.message-empty{margin:auto;max-width:300px;text-align:center;padding:24px 12px;color:#96a6bd;font-size:11px;line-height:1.7}
+.message-empty strong{display:block;color:#dce8f4;font-size:13px;margin:12px 0 6px}
+.message-empty p{margin:0 0 15px}
+.message-empty-mark{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;margin:0 auto;background:#1b2b3b;color:#b6f0df;font-size:22px;border:1px solid #37505f}
+.message-create-panel{border:1px solid #2d3c52;background:#101a28;border-radius:16px;padding:16px;margin-bottom:14px}
+.message-create-panel h3{margin:0;font-size:15px}
+.message-create-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin-top:12px}
+.message-create-form .fieldgroup{margin:0}
+.message-create-form .fieldgroup:nth-child(3),.message-create-form .fieldgroup:nth-child(4){grid-column:1/-1}
+.message-create-form .actions{grid-column:1/-1}
+.message-checkbox{display:flex;align-items:center;gap:8px;font-size:10px;color:#b2c0d4;grid-column:1/-1}
+.message-checkbox input{accent-color:#9be7d4}
+.message-people-search{border-top:1px solid #293449;margin-top:14px;padding-top:12px}
+.message-people-search .row{align-items:center}
+.message-people-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}
+.message-person-result{display:flex;align-items:center;gap:9px;text-align:left;background:#0c1420;border:1px solid #2b3a4f;border-radius:10px;padding:8px;color:#e7edf6;cursor:pointer;min-width:0}
+.message-person-result>span:nth-child(2){display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.message-person-result strong{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.message-security-note{display:flex;gap:8px;align-items:flex-start;color:#7c8da5;font-size:10px;line-height:1.6;margin:12px 2px}
+.message-security-note span{color:#72c1aa}
+.message-intro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+.message-feature-icon{font-size:22px;color:#b5eddf;margin-bottom:12px}
+@media(max-width:850px){.messages-shell{grid-template-columns:280px minmax(0,1fr)}.messages-chat-head strong{max-width:34vw}.message-bubble{max-width:92%}}
+@media(max-width:650px){.messages-shell{height:min(72vh,760px);min-height:470px;grid-template-columns:minmax(0,1fr)}.messages-shell[data-selected="true"] .messages-sidebar{display:none}.messages-shell[data-selected="true"] .messages-chat{display:flex}.messages-shell[data-selected="false"] .messages-chat{display:none}.messages-shell[data-selected="false"] .messages-sidebar{display:flex}.messages-chat-head{padding:10px}.messages-chat-head .row>.row{gap:8px;min-width:0}.messages-chat-head strong{max-width:42vw}.messages-chat-head .actions{gap:4px}.messages-chat-head .btn{font-size:9px;padding:7px}.messages-scroll{padding:13px 9px}.message-create-form{grid-template-columns:1fr}.message-create-form .fieldgroup:nth-child(3),.message-create-form .fieldgroup:nth-child(4),.message-create-form .actions{grid-column:auto}.message-people-results,.message-intro-grid{grid-template-columns:1fr}.messages-hero .actions{margin-top:12px}.message-bubble{max-width:91%;padding:9px}.message-quick-reactions{opacity:1}}
+`;
+  const style = document.createElement('style'); style.textContent = css + messageCss; shadow.appendChild(style);
   const veil = document.createElement('div'); veil.className = 'veil'; veil.setAttribute('role','dialog'); veil.setAttribute('aria-modal','true'); veil.setAttribute('aria-label','Whilo Enterprise workspace');
   veil.innerHTML = '<section class="panel"><header class="top"><div class="brand"><div class="mark">W</div><div><div class="eyebrow">Whilo / Operations</div><div class="title">Company workspace</div><div class="sub">Turn repeatable work into measurable outcomes.</div></div></div><button class="close" data-act="close" aria-label="Close workspace">×</button></header><nav class="tabs" aria-label="Enterprise workspace"><button class="tab" data-tab="work">▤ Work</button><button class="tab" data-tab="company">▦ Company</button><button class="tab" data-tab="connect">↗ Connect</button><button class="tab" data-tab="results">◷ Results</button></nav><main class="body" id="view"></main><footer class="footer"><span>Local workspace data · stored in this browser</span><span>Outcome-first operations · approvals before consequential actions</span></footer></section>';
   shadow.appendChild(veil);
@@ -542,8 +627,8 @@
   }
 
   async function loadMessageTimeline(conversationId, threadRootId, quiet) {
-    if (!conversationId || !cloudAuthSession || messagesBusy) return;
-    messagesBusy = true;
+    if (!conversationId || !cloudAuthSession || messagesTimelineLoading) return;
+    messagesTimelineLoading = true;
     const activeElement = shadow.activeElement;
     const restoreComposerFocus = !!activeElement && activeElement.id === 'message-compose-input';
     const selectionStart = restoreComposerFocus ? activeElement.selectionStart : null;
@@ -564,7 +649,7 @@
     } catch (error) {
       messagesFeedback = error && error.message ? error.message : 'Messages could not be loaded.';
     } finally {
-      messagesBusy = false;
+      messagesTimelineLoading = false;
       if (!quiet && active === 'messages') {
         render();
         if (restoreComposerFocus) {
@@ -658,7 +743,7 @@
         cloudAuthCard() +
         '<div class="message-intro-grid"><article class="card"><div class="message-feature-icon">↔</div><h3>Direct messages</h3><p>Private one-to-one conversations with human workspace members.</p></article><article class="card"><div class="message-feature-icon">◎</div><h3>Groups & supergroups</h3><p>Teams, communities, pinned knowledge, replies and moderation.</p></article><article class="card"><div class="message-feature-icon">▤</div><h3>Channels</h3><p>One-to-many announcements, with publishing rights separated from subscribers.</p></article></div>';
     }
-    if (!messagesInbox.length && !messagesLoading && !messagesFeedback) loadMessageConversations('inbox', true);
+    if (!messagesInbox.length && !messagesLoading && !messagesFeedback) loadMessageConversations('inbox', false);
     const conversation = currentConversation();
     const isInDiscover = messagesScope === 'discover';
     const title = conversation ? (conversation.title || 'Direct message') : 'Choose a conversation';
@@ -666,6 +751,8 @@
       ? messageTypeLabel(conversation.conversation_type) + (conversation.member_count != null ? ' · ' + conversation.member_count + ' members' : '') + ' · refreshes while open'
       : 'Human conversations and communities';
     const isNotMember = isInDiscover && conversation && conversation.is_member !== true;
+    const myRole = conversation && conversation.my_membership ? conversation.my_membership.member_role : '';
+    const cannotPublish = conversation && conversation.conversation_type === 'channel' && myRole && !['owner','admin','moderator'].includes(myRole);
     let out = '<div class="hero messages-hero"><div><div class="eyebrow">WHILO / PEOPLE</div><h2 class="h2">Messages</h2><p class="muted">Real people first. DMs, groups, supergroups and channels share one communication layer; Pets and Bots can participate later with distinct identities and permissions.</p></div><div class="actions"><button class="btn" data-act="new-message-conversation">＋ New</button><button class="btn secondary" data-act="refresh-message-conversations">↻ Refresh</button></div></div>';
     out += cloudAuthCard();
     if (messagesFeedback) out += '<div class="notice">' + esc(messagesFeedback) + '</div>';
@@ -680,7 +767,7 @@
       (messagesThreadRootId ? '<button class="btn secondary" data-act="close-message-thread">Close thread</button>' : '') + '</div></div></header>' +
       (messagesThreadRootId ? '<div class="message-thread-banner">↳ Thread view · replies stay attached to the original message</div>' : '') +
       '<div class="messages-scroll" id="message-timeline">' + (isNotMember ? messageTimelineHtml() : messageTimelineHtml()) + '</div>' +
-      (isNotMember ? '' : '<div class="message-compose-wrap">' +
+      ((isNotMember || cannotPublish) ? (cannotPublish ? '<div class="message-compose-wrap"><div class="notice">You are subscribed to this channel. Only owners and moderators can publish; replies and reactions remain available.</div></div>' : '') : '<div class="message-compose-wrap">' +
         (messagesReplyToId ? '<div class="message-reply-bar"><span>Replying to a message</span><button data-act="clear-message-reply" type="button">×</button></div>' : '') +
         '<form id="message-compose" class="message-compose"><textarea id="message-compose-input" name="content" maxlength="12000" rows="1" required placeholder="' + (conversation && conversation.conversation_type === 'channel' ? 'Write a channel announcement…' : 'Message people… (Enter to send, Shift+Enter for newline)') + '">' + esc(messageComposerDraft) + '</textarea><button type="submit" class="btn" ' + (!conversation || messagesBusy ? 'disabled' : '') + '>Send ↗</button></form><div class="message-compose-foot"><span>Human messages · moderation and channel permissions apply</span><span>' + messageComposerDraft.length + '/12000</span></div></div>') +
       '</section></div>' +
