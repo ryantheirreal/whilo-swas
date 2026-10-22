@@ -644,6 +644,10 @@
         await loadMessageTimeline(messagesSelectedId, '', true);
       }
       if (!quiet && active === 'messages') render();
+      else if (quiet && active === 'messages') {
+        const list = shadow.querySelector('#message-conversation-list');
+        if (list) list.innerHTML = messageConversationListHtml();
+      }
     }
   }
 
@@ -923,6 +927,9 @@
     veil.classList.add('open');
     render();
     document.body.style.overflow = 'hidden';
+    if (active === 'messages' && messagesSelectedId && cloudAuthSession) {
+      startMessageConversation(messagesSelectedId).catch(function () {});
+    }
   }
   function closePanel() {
     veil.classList.remove('open'); document.body.style.overflow = '';
@@ -1031,7 +1038,6 @@
       messagesScope = id === 'discover' ? 'discover' : 'inbox';
       messagesSearch = ''; messagesFeedback = ''; messagesSelectedId = ''; messagesRows = [];
       loadMessageConversations(messagesScope, true).then(function () { if (active === 'messages') render(); });
-      if (messagesScope === 'inbox') loadMessageConversations('inbox', true);
       render(); return;
     }
     if (act === 'refresh-message-conversations') {
@@ -1155,6 +1161,10 @@
           cloudAuthSession = null; cloudAuthConfigured = true; cloudAuthChecked = true; cloudAuthBusy = false;
           cloudAuthFeedback = 'Signed out of this browser.';
           connectorCache = null; connectorFeedback = ''; cloudMissionsCache = null; cloudMissionsFeedback = '';
+          if (messagePollTimer) { window.clearInterval(messagePollTimer); messagePollTimer = null; }
+          messagesInbox = []; messagesDiscover = []; messagesPeople = []; messagesRows = [];
+          messagesSelectedId = ''; messagesReplyToId = ''; messagesThreadRootId = ''; messageComposerDraft = '';
+          messagesFeedback = ''; messagesInviteLink = ''; messagesInviteStatus = '';
           render();
         });
       return;
