@@ -19,6 +19,7 @@ tar --extract --gzip --file "$TMP" --directory "$ROOT/public"
 rm -f "$ROOT/public/vercel.json"
 cp "$ROOT/whilo-enterprise.js" "$ROOT/public/whilo-enterprise.js"
 cp "$ROOT/whilo-cloud-auth.js" "$ROOT/public/whilo-cloud-auth.js"
+cp "$ROOT/whilo-marketplace.js" "$ROOT/public/whilo-marketplace.js"
 cp "$ROOT/../../shared/whilo-agent-core/index.js" "$ROOT/public/whilo-agent-core.js"
 
 node <<'NODE'
@@ -30,9 +31,10 @@ let html = fs.readFileSync(htmlPath, "utf8");
 const coreScript = '<script src="/whilo-agent-core.js" defer></script>';
 const cloudAuthScript = '<script src="/whilo-cloud-auth.js" defer></script>';
 const enterpriseScript = '<script src="/whilo-enterprise.js" defer></script>';
+const marketplaceScript = '<script src="/whilo-marketplace.js" defer></script>';
 
 // Remove prior copies of our injected scripts, then add exactly one copy in dependency order.
-for (const fileName of ["whilo-agent-core.js", "whilo-cloud-auth.js", "whilo-enterprise.js"]) {
+for (const fileName of ["whilo-agent-core.js", "whilo-cloud-auth.js", "whilo-enterprise.js", "whilo-marketplace.js"]) {
   const token = html.indexOf(fileName);
   if (token < 0) continue;
   const scriptStart = html.lastIndexOf("<script", token);
@@ -44,7 +46,7 @@ for (const fileName of ["whilo-agent-core.js", "whilo-cloud-auth.js", "whilo-ent
 }
 const pos = html.toLowerCase().lastIndexOf("</body>");
 if (pos < 0) throw new Error("Whilo index.html has no closing body tag");
-html = html.slice(0, pos) + coreScript + cloudAuthScript + enterpriseScript + html.slice(pos);
+html = html.slice(0, pos) + coreScript + cloudAuthScript + enterpriseScript + marketplaceScript + html.slice(pos);
 fs.writeFileSync(htmlPath, html);
 NODE
 
@@ -53,5 +55,6 @@ test -s "$ROOT/public/whilo-auth.js"
 test -s "$ROOT/public/whilo-runtime.js"
 test -s "$ROOT/public/whilo-enterprise.js"
 test -s "$ROOT/public/whilo-cloud-auth.js"
+test -s "$ROOT/public/whilo-marketplace.js"
 test -s "$ROOT/public/whilo-agent-core.js"
 echo "Whilo web bundle ready: $ROOT/public"
