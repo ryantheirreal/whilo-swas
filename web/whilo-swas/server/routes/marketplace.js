@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const Stripe = require('stripe');
 const { send, authenticate, organizationFor, db, readJson, safeError, audit, appUrl } = require('../../api/_lib/platform');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -62,6 +63,7 @@ function requireStripeKey() {
   if (!/^sk_(test|live)_/.test(key)) fail(503, 'The payment provider key is not valid for this deployment.');
   return key;
 }
+function stripeClient() { return new Stripe(requireStripeKey()); }
 function formEncode(value, prefix, params) {
   for (const [key, raw] of Object.entries(value || {})) {
     const name = prefix ? prefix + '[' + key + ']' : key;
@@ -466,20 +468,6 @@ async function readRaw(req, maxBytes) {
   }
   return Buffer.concat(chunks);
 }
-function verifyStripeSignature(raw, signature, secret) {
-  const pieces = String(signature || '').split(',').map(x => x.split('='));
-  const time = (pieces.find(x => x[0] === 't') || [])[1];
-  const v1 = pieces.filter(x => x[0] === 'v1').map(x => x[1]);
-  const timestamp = Number(time);
-  if (!Number.isFinite(timestamp) || !v1.length || Math.abs(Date.now() / 1000 - timestamp) > 300) return false;
-  const signed = String(time) + '.' + raw.toString('utf8');
-  const expected = crypto.createHmac('sha256', secret).update(signed).digest();
-  return v1.some(hex => {
-    if (!/^[a-f0-9]{64}$/i.test(hex)) return false;
-    const supplied = Buffer.from(hex, 'hex');
-    return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
-  });
-}
 async function syncSubscription(subscriptionId, forcedStatus) {
   if (!subscriptionId) return;
   const subscription = await stripeRequest('subscriptions/' + encodeURIComponent(subscriptionId), 'GET');
@@ -627,9 +615,13 @@ async function handleWebhook(req, res) {
     }
     const raw = await readRaw(req, 1024 * 1024);
     const signature = req.headers['stripe-signature'];
-    if (!verifyStripeSignature(raw, signature, secret)) return send(res, 400, { error: 'Invalid payment webhook signature.' });
     let event;
-    try { event = JSON.parse(raw.toString('utf8')); } catch (_) { return send(res, 400, { error: 'Invalid webhook JSON.' }); }
+    try {
+      // Use Stripe's maintained SDK verifier against the exact raw body and timestamp tolerance.
+      event = stripeClient().webhooks.constructEvent(raw, signature, secret);
+    } catch (_) {
+      return send(res, 400, { error: 'Invalid payment webhook signature or payload.' });
+    }
     if (!event.id || !event.type) return send(res, 400, { error: 'Invalid payment webhook event.' });
     const inserted = await db('marketplace_webhook_events?on_conflict=stripe_event_id', {
       method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
