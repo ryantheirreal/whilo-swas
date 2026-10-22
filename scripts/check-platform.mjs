@@ -60,7 +60,8 @@ for (const [label, pattern] of [
   ['owner provisioning without password column', /function public\.ensure_owner_workspace/i],
   ['human messaging entities', /create table if not exists public\.message_conversations/i],
   ['message membership roles', /create table if not exists public\.message_conversation_members/i],
-  ['single-use workspace invitations', /function public\.accept_workspace_invitation/i]
+  ['single-use workspace invitations', /function public\.accept_workspace_invitation/i],
+  ['pinned message storage', /create table if not exists public\.message_pins/i]
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
