@@ -250,6 +250,21 @@ async function handleMain(req, res) {
     return send(res, 200, { listing: Array.isArray(rows) ? rows[0] : null, detail: 'Submitted for moderation. Publishing requires an authorized marketplace reviewer.' });
   }
 
+  if (action === 'moderation-queue') {
+    const ids = String(process.env.WHILO_MARKETPLACE_ADMIN_USER_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
+    if (!ids.includes(user.id)) fail(403, 'This account is not authorized to review marketplace listings.');
+    const rows = await db('marketplace_listings?status=eq.in_review&select=id,organization_id,seller_id,listing_type,title,summary,category,version,license,pricing_model,price_minor,created_at&order=created_at.asc&limit=100');
+    const items = Array.isArray(rows) ? rows : [];
+    const sellerIds = [...new Set(items.map(item => item.seller_id).filter(Boolean))];
+    const sellers = sellerIds.length
+      ? await db('marketplace_sellers?id=in.(' + sellerIds.join(',') + ')&select=id,display_name,status')
+      : [];
+    const sellerMap = new Map((Array.isArray(sellers) ? sellers : []).map(item => [item.id, item]));
+    return send(res, 200, {
+      items: items.map(item => Object.assign({}, item, { seller: sellerMap.get(item.seller_id) || null }))
+    });
+  }
+
   if (action === 'moderate-listing') {
     const ids = String(process.env.WHILO_MARKETPLACE_ADMIN_USER_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
     if (!ids.includes(user.id)) fail(403, 'This account is not on the server-side marketplace moderator allowlist.');
