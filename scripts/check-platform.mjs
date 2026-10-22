@@ -72,7 +72,9 @@ for (const [label, pattern] of [
   ['marketplace listings and creator moderation', /create table if not exists public\.marketplace_listings/i],
   ['20 percent marketplace commission snapshot', /platform_fee_bps integer not null default 2000/i],
   ['idempotent Stripe webhook events', /create table if not exists public\.marketplace_webhook_events/i],
-  ['subscription entitlement ledger', /create table if not exists public\.marketplace_entitlements/i]
+  ['subscription entitlement ledger', /create table if not exists public\.marketplace_entitlements/i],
+  ['workspace asset installation ledger', /create table if not exists public\.marketplace_installations/i],
+  ['transactional marketplace install RPC', /function public\.install_marketplace_asset/i]
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
