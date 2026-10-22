@@ -602,6 +602,8 @@ async function handleWebhook(req, res) {
       const error = new Error('Stripe webhook is not configured.');
       error.statusCode = 503; error.missingEnv = ['STRIPE_WEBHOOK_SECRET']; throw error;
     }
+    // Missing Stripe API credentials are a configuration failure, not a bad signature.
+    requireStripeKey();
     const raw = await readRaw(req, 1024 * 1024);
     const signature = req.headers['stripe-signature'];
     let event;
