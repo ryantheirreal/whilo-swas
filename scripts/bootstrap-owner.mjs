@@ -56,7 +56,7 @@ if (password.length < 14 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) |
     body: JSON.stringify({ p_email: email })
   });
   if (!provision.ok) {
-    console.error('The owner identity could not be verified or its workspace could not be provisioned. Confirm all four migrations were applied.');
+    console.error('The owner identity could not be verified or its workspace could not be provisioned. Confirm all five migrations were applied.');
     process.exit(1);
   }
   const rows = await provision.json();
