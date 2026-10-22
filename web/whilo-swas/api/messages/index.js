@@ -3,6 +3,14 @@ const { send, authenticate, organizationFor, db, readJson, audit, safeError } = 
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REACTIONS = ['👍','❤️','😂','🎉','🔥','👀','✅','🙏','💡'];
+const MESSAGE_ROUTES = Object.freeze({
+  conversations: require('../../server/routes/messages/conversations'),
+  reactions: require('../../server/routes/messages/reactions'),
+  people: require('../../server/routes/messages/people'),
+  invitations: require('../../server/routes/messages/invitations'),
+  members: require('../../server/routes/messages/members'),
+  pins: require('../../server/routes/messages/pins')
+});
 
 function inFilter(values) { return 'in.(' + values.map(String).join(',') + ')'; }
 
@@ -65,6 +73,12 @@ async function loadHydrated(orgId, conversationId, messages) {
 }
 
 module.exports = async function handler(req, res) {
+  const routedPath = new URL(req.url, 'https://whilo.invalid').searchParams.get('route') || '';
+  if (routedPath) {
+    const routedHandler = MESSAGE_ROUTES[routedPath];
+    if (!routedHandler) return send(res, 404, { error: 'Unknown Messages route' });
+    return routedHandler(req, res);
+  }
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
     return send(res, 405, { error: 'Method not allowed' });
