@@ -10,12 +10,18 @@ The password shared in chat is short and should be replaced before production us
 
 Prerequisites:
 1. Create/select the intended Supabase project and set `SUPABASE_URL`, `SUPABASE_ANON_KEY` and the server-only `SUPABASE_SERVICE_ROLE_KEY`.
-2. Apply `supabase/migrations/202610210001_whilo_platform.sql` and `202610210002_whilo_bridge_pairing.sql` to that project.
+2. Apply all five files under `supabase/migrations/` in ascending filename order (001 through 005), including the mission transaction, owner/Pet bootstrap and explicit server-role grants.
 3. Set the temporary owner password in a local secret manager or hidden terminal prompt, then run `node scripts/bootstrap-owner.mjs`.
-4. Configure the web app's existing sign-in flow to authenticate against this same Supabase project. Do not expose the service-role key to browser code.
+4. The Whilo extension now provides a cloud sign-in card in **Work** and **Connect**, using `whilo-cloud-auth.js` and `/api/public-config`. Sign in with the owner account created by Supabase Auth. The script stores only a Supabase session/refresh token in this browser, never the password. Do not expose the service-role key to browser code.
 5. Verify the owner row and workspace membership through Supabase, then remove the temporary password from the process environment.
 
-No Supabase credentials were available during implementation, so the owner account has **not** been created and no production database has been mutated.
+The intended Vercel project had no Supabase credentials when this was implemented. The public canonical URL and Slack callback URL have been configured, but `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, encryption key and OAuth state secret still need secure configuration. The owner account has **not** been created and no live production database has been mutated.
+
+## Cloud sign-in
+
+- Public configuration endpoint: `GET /api/public-config`. It returns only `SUPABASE_URL` and the public anon/publishable key; the service-role key is never exposed.
+- Sign-in: Supabase Auth password grant over HTTPS; sessions refresh through the Supabase Auth API and logout clears the local session.
+- Authenticated server APIs independently validate the access token with Supabase Auth and resolve organization membership server-side. A browser-supplied organization ID is never trusted.
 
 ## Slack OAuth setup
 
@@ -55,4 +61,4 @@ Copy names from `web/whilo-swas/.env.example` into Vercel's encrypted Environmen
 
 Implemented in code: database migrations, Supabase owner provisioning script, authenticated connector API, Slack OAuth start/callback, encrypted integration storage, Twilio credential verification, QR pairing token issuance/claiming, and bridge heartbeat identity.
 
-Not yet activated: the actual Supabase/Vercel secrets, running migrations in a live database, Slack app credentials, tested OAuth against a real workspace, Twilio account credentials, a native macOS bridge, iMessage message transport, and autonomous worker execution. Never market these as live until verified end-to-end.
+Not yet activated: the actual Supabase/Vercel secrets, running migrations in a live database, owner account provisioning, Slack app credentials, tested OAuth against a real workspace, Twilio account credentials, a native macOS bridge, iMessage message transport, and autonomous worker execution. Never market these as live until verified end-to-end.
