@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
     return res.end('Method not allowed');
   }
   try {
-    requiredEnv('SLACK_CLIENT_ID', 'SLACK_CLIENT_SECRET', 'SLACK_REDIRECT_URI', 'WHILO_PUBLIC_URL', 'WHILO_CONNECTOR_ENCRYPTION_KEY');
+    requiredEnv('SLACK_CLIENT_ID', 'SLACK_CLIENT_SECRET', 'SLACK_REDIRECT_URI', 'WHILO_PUBLIC_URL', 'WHILO_CONNECTOR_ENCRYPTION_KEY', 'WHILO_OAUTH_STATE_SECRET');
     if (process.env.SLACK_REDIRECT_URI !== appUrl() + '/api/connectors/slack/callback') {
       const error = new Error('Slack callback URL is not configured correctly');
       error.statusCode = 503;
