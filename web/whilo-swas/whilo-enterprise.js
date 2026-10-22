@@ -71,6 +71,24 @@
   let cloudAuthBusy = false;
   let cloudAuthFeedback = '';
 
+  let messagesInbox = [];
+  let messagesDiscover = [];
+  let messagesPeople = [];
+  let messagesRows = [];
+  let messagesSelectedId = '';
+  let messagesScope = 'inbox';
+  let messagesSearch = '';
+  let messagesLoading = false;
+  let messagesBusy = false;
+  let messagesFeedback = '';
+  let messagesCreateOpen = false;
+  let messagesPeopleQuery = '';
+  let messagesPeopleLoading = false;
+  let messagesThreadRootId = '';
+  let messagesReplyToId = '';
+  let messageComposerDraft = '';
+  let messagePollTimer = null;
+
   async function whiloAccessToken() {
     try {
       const cloudAuth = window.WhiloCloudAuth;
@@ -142,7 +160,7 @@
     } finally {
       cloudAuthLoading = false;
       cloudAuthChecked = true;
-      if (active === 'work' || active === 'connect') render();
+      if (active === 'work' || active === 'connect' || active === 'messages') render();
     }
   }
 
@@ -297,6 +315,19 @@
     }
     const sample = found.routines;
     const parent = sample.parentElement || common;
+    if (!parent.querySelector('[data-whilo-message-tab]')) {
+      const portugueseMessages = /pt/i.test(document.documentElement.lang || '') || norm(found.chat.innerText || found.chat.textContent).includes('convers');
+      const messageButton = found.chat.cloneNode(false);
+      messageButton.removeAttribute('id'); messageButton.removeAttribute('href'); messageButton.removeAttribute('aria-current');
+      messageButton.removeAttribute('aria-pressed'); messageButton.removeAttribute('data-state');
+      messageButton.setAttribute('type', 'button');
+      messageButton.setAttribute('data-whilo-message-tab', 'messages');
+      messageButton.setAttribute('aria-label', portugueseMessages ? 'Mensagens' : 'Messages');
+      messageButton.title = portugueseMessages ? 'Mensagens' : 'Messages';
+      messageButton.innerHTML = '<span aria-hidden="true" style="margin-right:6px;opacity:.8">✉</span><span>' + (portugueseMessages ? 'Mensagens' : 'Messages') + '</span>';
+      messageButton.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); openPanel('messages'); });
+      found.chat.insertAdjacentElement('afterend', messageButton);
+    }
     const portuguese = /pt/i.test(document.documentElement.lang || '') || !!found.routines && norm(found.routines.innerText || found.routines.textContent).includes('rotina');
     const items = [
       { key: 'work', en: 'Work', pt: 'Trabalho', mark: '▤' },
@@ -422,6 +453,314 @@
     }
     return out;
   }
+  function messageDate(value, compact) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    const now = new Date();
+    const sameDay = date.toDateString() === now.toDateString();
+    return compact && sameDay
+      ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function messageTypeLabel(type) {
+    return ({ direct: 'Direct message', group: 'Group', supergroup: 'Supergroup', channel: 'Channel' })[type] || 'Conversation';
+  }
+
+  function currentConversation() {
+    const all = messagesScope === 'discover' ? messagesDiscover : messagesInbox;
+    return all.find(function (conversation) { return conversation.id === messagesSelectedId; }) ||
+      messagesInbox.find(function (conversation) { return conversation.id === messagesSelectedId; }) ||
+      messagesDiscover.find(function (conversation) { return conversation.id === messagesSelectedId; }) || null;
+  }
+
+  function filteredMessageConversations() {
+    const source = messagesScope === 'discover' ? messagesDiscover : messagesInbox;
+    const term = messagesSearch.trim().toLowerCase();
+    if (!term) return source;
+    return source.filter(function (conversation) {
+      const preview = conversation.last_message && conversation.last_message.content || '';
+      return [conversation.title, conversation.description, preview, messageTypeLabel(conversation.conversation_type)]
+        .some(function (value) { return String(value || '').toLowerCase().includes(term); });
+    });
+  }
+
+  function messageConversationListHtml() {
+    const list = filteredMessageConversations();
+    if (messagesLoading && !list.length) return '<div class="message-empty">Loading your conversations…</div>';
+    if (messagesScope === 'inbox' && !list.length) {
+      return '<div class="message-empty"><div class="message-empty-mark">✉</div><strong>No conversations yet</strong><p>Start a direct chat, gather a group, create a large community or launch a channel for announcements.</p><button class="btn" data-act="new-message-conversation">Start a conversation</button></div>';
+    }
+    if (messagesScope === 'discover' && !list.length) {
+      return '<div class="message-empty"><div class="message-empty-mark">◎</div><strong>No public channels yet</strong><p>Public Whilo channels in your workspace will appear here.</p></div>';
+    }
+    return list.map(function (conversation) {
+      const title = conversation.title || 'Untitled conversation';
+      const last = conversation.last_message;
+      const preview = last
+        ? (last.sender && last.sender.display_name ? last.sender.display_name + ': ' : '') + String(last.content || 'Attachment').replace(/\s+/g, ' ')
+        : (conversation.description || messageTypeLabel(conversation.conversation_type));
+      const initials = title.trim().split(/\s+/).slice(0,2).map(function (part) { return part.charAt(0); }).join('').toUpperCase() || 'W';
+      const isSelected = conversation.id === messagesSelectedId;
+      const isMember = messagesScope === 'inbox' || conversation.is_member === true || Boolean(conversation.my_membership);
+      const trailing = messagesScope === 'discover'
+        ? (isMember ? '<span class="message-pill">Joined</span>' : '<span class="message-join-label">Join →</span>')
+        : '<span class="message-time">' + esc(messageDate(conversation.last_message_at || conversation.created_at, true)) + '</span>';
+      return '<button type="button" class="message-conversation ' + (isSelected ? 'selected' : '') + '" data-act="' + (messagesScope === 'discover' && !isMember ? 'join-message-channel' : 'open-message-conversation') + '" data-id="' + esc(conversation.id) + '">' +
+        '<span class="message-avatar ' + esc(conversation.conversation_type) + '">' + esc(initials) + '</span>' +
+        '<span class="message-conversation-copy"><span class="message-conversation-title">' + esc(title) + '</span><span class="message-conversation-preview">' + esc(preview) + '</span><span class="message-conversation-type">' + esc(messageTypeLabel(conversation.conversation_type)) + (conversation.member_count != null ? ' · ' + esc(conversation.member_count) + ' members' : '') + '</span></span>' +
+        '<span class="message-conversation-trailing">' + trailing + '</span></button>';
+    }).join('');
+  }
+
+  async function loadMessageConversations(scope, quiet) {
+    if (messagesLoading) return;
+    const requestedScope = scope || messagesScope;
+    if (!cloudAuthSession) {
+      messagesFeedback = 'Sign in to Whilo cloud to load conversations shared with real people.';
+      if (!quiet && active === 'messages') render();
+      return;
+    }
+    messagesLoading = true;
+    try {
+      const data = await whiloApi('/api/messages/conversations?scope=' + encodeURIComponent(requestedScope), { method: 'GET' });
+      const conversations = Array.isArray(data.conversations) ? data.conversations : [];
+      if (requestedScope === 'discover') messagesDiscover = conversations;
+      else messagesInbox = conversations;
+      messagesFeedback = '';
+      const all = requestedScope === 'discover' ? messagesDiscover : messagesInbox;
+      if (!messagesSelectedId && all.length && requestedScope === messagesScope) messagesSelectedId = all[0].id;
+      if (messagesSelectedId && !messagesInbox.some(function (x) { return x.id === messagesSelectedId; }) &&
+          !messagesDiscover.some(function (x) { return x.id === messagesSelectedId; })) messagesSelectedId = '';
+    } catch (error) {
+      messagesFeedback = error && error.message ? error.message : 'Conversations could not be loaded.';
+    } finally {
+      messagesLoading = false;
+      if (!quiet && active === 'messages') render();
+    }
+  }
+
+  async function loadMessageTimeline(conversationId, threadRootId, quiet) {
+    if (!conversationId || !cloudAuthSession || messagesBusy) return;
+    messagesBusy = true;
+    const activeElement = shadow.activeElement;
+    const restoreComposerFocus = !!activeElement && activeElement.id === 'message-compose-input';
+    const selectionStart = restoreComposerFocus ? activeElement.selectionStart : null;
+    const selectionEnd = restoreComposerFocus ? activeElement.selectionEnd : null;
+    try {
+      const params = new URLSearchParams({ conversationId: conversationId, limit: '60' });
+      if (threadRootId) params.set('threadRootId', threadRootId);
+      const data = await whiloApi('/api/messages?' + params.toString(), { method: 'GET' });
+      messagesRows = Array.isArray(data.messages) ? data.messages : [];
+      messagesFeedback = '';
+      const latest = messagesRows.length ? messagesRows[messagesRows.length - 1] : null;
+      if (latest && latest.id) {
+        whiloApi('/api/messages', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'mark_read', conversationId: conversationId, lastReadMessageId: latest.id })
+        }).catch(function () {});
+      }
+    } catch (error) {
+      messagesFeedback = error && error.message ? error.message : 'Messages could not be loaded.';
+    } finally {
+      messagesBusy = false;
+      if (!quiet && active === 'messages') {
+        render();
+        if (restoreComposerFocus) {
+          const input = shadow.querySelector('#message-compose-input');
+          if (input) {
+            input.focus();
+            try { input.setSelectionRange(selectionStart, selectionEnd); } catch (_) {}
+          }
+        }
+      } else if (quiet && active === 'messages') {
+        const timeline = shadow.querySelector('#message-timeline');
+        if (timeline) timeline.innerHTML = messageTimelineHtml();
+      }
+    }
+  }
+
+  function messageTimelineHtml() {
+    const conversation = currentConversation();
+    if (!conversation) {
+      return '<div class="message-empty"><div class="message-empty-mark">◉</div><strong>Your human network starts here</strong><p>Create a chat, invite coworkers into a workspace, or discover a public channel. Pets and Bots can participate later with their own explicit identities.</p></div>';
+    }
+    if (messagesScope === 'discover' && !conversation.is_member) {
+      return '<div class="message-empty"><div class="message-empty-mark">#</div><strong>' + esc(conversation.title || 'Public channel') + '</strong><p>' + esc(conversation.description || 'Public channel in this Whilo workspace.') + '</p><p>' + esc(conversation.member_count || 0) + ' members</p><button class="btn" data-act="join-message-channel" data-id="' + esc(conversation.id) + '">Join channel</button></div>';
+    }
+    if (messagesFeedback && !messagesRows.length) {
+      return '<div class="message-empty"><div class="message-empty-mark">↻</div><strong>Could not load this conversation</strong><p>' + esc(messagesFeedback) + '</p><button class="btn secondary" data-act="refresh-message-timeline">Retry</button></div>';
+    }
+    if (!messagesRows.length) {
+      return '<div class="message-empty"><div class="message-empty-mark">✳</div><strong>This is the beginning</strong><p>Write the first message. A conversation belongs to real workspace members, with clear membership and moderation controls.</p></div>';
+    }
+
+    const myId = cloudAuthSession && cloudAuthSession.id;
+    return messagesRows.map(function (message) {
+      const mine = message.sender_user_id === myId;
+      const senderName = message.sender && message.sender.display_name
+        ? message.sender.display_name
+        : (mine ? 'You' : 'Whilo member');
+      const initials = senderName.split(/\s+/).slice(0,2).map(function (part) { return part.charAt(0); }).join('').toUpperCase() || '?';
+      const reactions = Array.isArray(message.reactions) ? message.reactions : [];
+      const grouped = {};
+      reactions.forEach(function (reaction) {
+        if (!grouped[reaction.emoji]) grouped[reaction.emoji] = { count: 0, mine: false };
+        grouped[reaction.emoji].count += 1;
+        if (reaction.user_id === myId) grouped[reaction.emoji].mine = true;
+      });
+      const reactionHtml = Object.keys(grouped).map(function (emoji) {
+        return '<button type="button" class="message-reaction ' + (grouped[emoji].mine ? 'mine' : '') + '" data-act="message-react" data-id="' + esc(message.id) + '" data-emoji="' + esc(emoji) + '">' + esc(emoji) + ' ' + grouped[emoji].count + '</button>';
+      }).join('');
+      const reply = message.reply_to_message_id ? '<div class="message-reply-indicator">↪ Reply</div>' : '';
+      const edited = message.edited_at ? ' · edited' : '';
+      const thread = Number(message.thread_reply_count || 0) > 0
+        ? '<button class="message-action" data-act="open-message-thread" data-id="' + esc(message.id) + '">↳ ' + esc(message.thread_reply_count) + ' replies</button>'
+        : '<button class="message-action" data-act="open-message-thread" data-id="' + esc(message.id) + '">↳ Thread</button>';
+      const ownerActions = mine
+        ? '<button class="message-action" data-act="edit-message" data-id="' + esc(message.id) + '">Edit</button><button class="message-action" data-act="delete-message" data-id="' + esc(message.id) + '">Delete</button>'
+        : '';
+      return '<div class="message-line ' + (mine ? 'mine' : '') + '" data-message-id="' + esc(message.id) + '">' +
+        (mine ? '' : '<span class="message-avatar tiny">' + esc(initials) + '</span>') +
+        '<div class="message-bubble"><div class="message-sender">' + esc(senderName) + '</div>' +
+        reply + '<div class="message-content">' + esc(message.content || 'Message deleted') + '</div>' +
+        '<div class="message-meta">' + esc(messageDate(message.created_at, true)) + esc(edited) + '</div>' +
+        '<div class="message-actions"><button class="message-action" data-act="message-reply" data-id="' + esc(message.id) + '">Reply</button>' + thread + ownerActions + '</div>' +
+        (reactionHtml ? '<div class="message-reactions">' + reactionHtml + '</div>' : '') +
+        '<div class="message-quick-reactions">' + ['👍','❤️','😂','🔥'].map(function (emoji) { return '<button type="button" aria-label="React ' + esc(emoji) + '" data-act="message-react" data-id="' + esc(message.id) + '" data-emoji="' + esc(emoji) + '">' + esc(emoji) + '</button>'; }).join('') + '</div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function messageCreateFormHtml() {
+    if (!messagesCreateOpen) return '';
+    return '<section class="message-create-panel"><div class="row"><div><div class="sectionlabel">New conversation</div><h3>Create a space for real people</h3></div><button class="btn secondary" type="button" data-act="close-message-create">Close</button></div>' +
+      '<form id="message-create-conversation" class="message-create-form">' +
+      '<div class="fieldgroup"><label class="label" for="message-type">Conversation type</label><select id="message-type" class="field" name="type"><option value="direct">Direct message</option><option value="group">Group</option><option value="supergroup">Supergroup · large community</option><option value="channel">Channel · broadcasts</option></select></div>' +
+      '<div class="fieldgroup"><label class="label" for="message-title">Name (not needed for a direct message)</label><input id="message-title" class="field" name="title" maxlength="100" placeholder="e.g. Product launch team"></div>' +
+      '<div class="fieldgroup"><label class="label" for="message-description">Description</label><input id="message-description" class="field" name="description" maxlength="1600" placeholder="Purpose, norms and what belongs here"></div>' +
+      '<div class="fieldgroup"><label class="label" for="message-participants">Whilo usernames</label><input id="message-participants" class="field" name="participants" maxlength="800" placeholder="@alex, @maria" autocomplete="off"><div class="mini">Use usernames of existing members of your Whilo workspace. Direct messages require exactly one other person.</div></div>' +
+      '<label class="message-checkbox"><input type="checkbox" name="isPublic" value="true"> Public channel · members of this workspace can discover and join</label>' +
+      '<div class="actions"><button type="submit" class="btn"' + (messagesBusy ? ' disabled' : '') + '>Create conversation</button></div></form>' +
+      '<form id="message-people-search-form" class="message-people-search"><label class="label" for="message-people-query">Find workspace people</label><div class="row"><input id="message-people-query" class="field" name="q" maxlength="50" placeholder="Search display name or username" value="' + esc(messagesPeopleQuery) + '"><button class="btn secondary" type="submit">Search</button></div>' +
+      (messagesPeopleLoading ? '<div class="mini">Searching…</div>' : messagesPeople.length ? '<div class="message-people-results">' + messagesPeople.map(function (person) {
+        const initials = String(person.display_name || person.username).split(/\s+/).slice(0,2).map(function (part) { return part.charAt(0); }).join('').toUpperCase();
+        return '<button class="message-person-result" type="button" data-act="use-message-person" data-id="' + esc(person.username) + '"><span class="message-avatar tiny">' + esc(initials) + '</span><span><strong>' + esc(person.display_name) + '</strong><span class="mini">@' + esc(person.username) + '</span></span><span class="message-join-label">Add ↗</span></button>';
+      }).join('') + '</div>' : '') +
+      '</form></section>';
+  }
+
+  function messagesPage() {
+    if (!cloudAuthChecked && !cloudAuthLoading) loadCloudAuth();
+    if (!cloudAuthSession) {
+      return '<div class="hero"><div><div class="eyebrow">WHILO / PEOPLE</div><h2 class="h2">Messages</h2><p class="muted">A real-human communication layer: private chats, groups, supergroups and broadcast channels, built for humans working alongside AI.</p></div></div>' +
+        cloudAuthCard() +
+        '<div class="message-intro-grid"><article class="card"><div class="message-feature-icon">↔</div><h3>Direct messages</h3><p>Private one-to-one conversations with human workspace members.</p></article><article class="card"><div class="message-feature-icon">◎</div><h3>Groups & supergroups</h3><p>Teams, communities, pinned knowledge, replies and moderation.</p></article><article class="card"><div class="message-feature-icon">▤</div><h3>Channels</h3><p>One-to-many announcements, with publishing rights separated from subscribers.</p></article></div>';
+    }
+    if (!messagesInbox.length && !messagesLoading && !messagesFeedback) loadMessageConversations('inbox', true);
+    const conversation = currentConversation();
+    const isInDiscover = messagesScope === 'discover';
+    const title = conversation ? (conversation.title || 'Direct message') : 'Choose a conversation';
+    const subtitle = conversation
+      ? messageTypeLabel(conversation.conversation_type) + (conversation.member_count != null ? ' · ' + conversation.member_count + ' members' : '') + ' · refreshes while open'
+      : 'Human conversations and communities';
+    const isNotMember = isInDiscover && conversation && conversation.is_member !== true;
+    let out = '<div class="hero messages-hero"><div><div class="eyebrow">WHILO / PEOPLE</div><h2 class="h2">Messages</h2><p class="muted">Real people first. DMs, groups, supergroups and channels share one communication layer; Pets and Bots can participate later with distinct identities and permissions.</p></div><div class="actions"><button class="btn" data-act="new-message-conversation">＋ New</button><button class="btn secondary" data-act="refresh-message-conversations">↻ Refresh</button></div></div>';
+    out += cloudAuthCard();
+    if (messagesFeedback) out += '<div class="notice">' + esc(messagesFeedback) + '</div>';
+    out += messageCreateFormHtml();
+    out += '<div class="messages-shell" data-selected="' + (conversation ? 'true' : 'false') + '"><aside class="messages-sidebar">' +
+      '<div class="messages-sidebar-head"><div class="row"><strong>' + (isInDiscover ? 'Discover' : 'Inbox') + '</strong><span class="mini">' + (isInDiscover ? messagesDiscover.length + ' channels' : messagesInbox.length + ' chats') + '</span></div>' +
+      '<div class="messages-scope"><button class="' + (!isInDiscover ? 'active' : '') + '" data-act="message-scope" data-id="inbox">Inbox</button><button class="' + (isInDiscover ? 'active' : '') + '" data-act="message-scope" data-id="discover">Discover</button></div>' +
+      '<input class="field" id="message-conversation-search" data-role="message-search" placeholder="Search chats and channels" value="' + esc(messagesSearch) + '" autocomplete="off"></div>' +
+      '<div id="message-conversation-list" class="message-conversation-list">' + messageConversationListHtml() + '</div></aside>' +
+      '<section class="messages-chat"><header class="messages-chat-head"><div class="row"><div class="row"><span class="message-avatar">' + esc(conversation ? (title.trim().split(/\s+/).slice(0,2).map(function (part) { return part.charAt(0); }).join('').toUpperCase() || 'W') : 'W') + '</span><div><strong>' + esc(title) + '</strong><div class="mini">' + esc(subtitle) + '</div></div></div>' +
+      '<div class="actions"><button class="btn secondary" data-act="refresh-message-timeline"' + (!conversation || messagesBusy || isNotMember ? ' disabled' : '') + '>Refresh</button>' +
+      (messagesThreadRootId ? '<button class="btn secondary" data-act="close-message-thread">Close thread</button>' : '') + '</div></div></header>' +
+      (messagesThreadRootId ? '<div class="message-thread-banner">↳ Thread view · replies stay attached to the original message</div>' : '') +
+      '<div class="messages-scroll" id="message-timeline">' + (isNotMember ? messageTimelineHtml() : messageTimelineHtml()) + '</div>' +
+      (isNotMember ? '' : '<div class="message-compose-wrap">' +
+        (messagesReplyToId ? '<div class="message-reply-bar"><span>Replying to a message</span><button data-act="clear-message-reply" type="button">×</button></div>' : '') +
+        '<form id="message-compose" class="message-compose"><textarea id="message-compose-input" name="content" maxlength="12000" rows="1" required placeholder="' + (conversation && conversation.conversation_type === 'channel' ? 'Write a channel announcement…' : 'Message people… (Enter to send, Shift+Enter for newline)') + '">' + esc(messageComposerDraft) + '</textarea><button type="submit" class="btn" ' + (!conversation || messagesBusy ? 'disabled' : '') + '>Send ↗</button></form><div class="message-compose-foot"><span>Human messages · moderation and channel permissions apply</span><span>' + messageComposerDraft.length + '/12000</span></div></div>') +
+      '</section></div>' +
+      '<div class="message-security-note"><span>●</span> Messages are workspace-scoped. Real-time delivery, media uploads and invitations activate after the backend is configured; do not use this preview for confidential content yet.</div>';
+    return out;
+  }
+
+  async function searchMessagePeople(query) {
+    if (!cloudAuthSession) return;
+    messagesPeopleQuery = String(query || '').trim().slice(0,50);
+    messagesPeopleLoading = true;
+    render();
+    try {
+      const params = new URLSearchParams();
+      if (messagesPeopleQuery) params.set('q', messagesPeopleQuery);
+      const data = await whiloApi('/api/messages/people?' + params.toString(), { method: 'GET' });
+      messagesPeople = Array.isArray(data.people) ? data.people : [];
+      messagesFeedback = '';
+    } catch (error) {
+      messagesFeedback = error && error.message ? error.message : 'Workspace people could not be searched.';
+    } finally {
+      messagesPeopleLoading = false;
+      if (active === 'messages') render();
+    }
+  }
+
+  async function startMessageConversation(id) {
+    messagesSelectedId = id;
+    messagesScope = messagesInbox.some(function (row) { return row.id === id; }) ? 'inbox' : messagesScope;
+    messagesThreadRootId = '';
+    messagesReplyToId = '';
+    messageComposerDraft = '';
+    messagesRows = [];
+    if (messagePollTimer) { window.clearInterval(messagePollTimer); messagePollTimer = null; }
+    await loadMessageTimeline(id, '', false);
+    if (messagePollTimer) window.clearInterval(messagePollTimer);
+    messagePollTimer = window.setInterval(function () {
+      if (active === 'messages' && veil.classList.contains('open') && messagesSelectedId && !messagesThreadRootId) {
+        loadMessageTimeline(messagesSelectedId, '', true);
+        loadMessageConversations('inbox', true);
+      }
+    }, 10000);
+  }
+
+  async function sendHumanMessage(form) {
+    const conversation = currentConversation();
+    if (!conversation) throw new Error('Choose a conversation first.');
+    const content = String(form.elements.content.value || '').trim();
+    if (!content) return;
+    const payload = {
+      conversationId: conversation.id,
+      content,
+      threadRootId: messagesThreadRootId || null,
+      replyToMessageId: messagesReplyToId || (messagesThreadRootId || null)
+    };
+    messagesBusy = true;
+    messagesFeedback = '';
+    const draft = messageComposerDraft;
+    messageComposerDraft = '';
+    render();
+    try {
+      await whiloApi('/api/messages', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'msg-' + (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)) },
+        body: JSON.stringify(payload)
+      });
+      messagesReplyToId = '';
+      await loadMessageTimeline(conversation.id, messagesThreadRootId, true);
+      await loadMessageConversations('inbox', true);
+    } catch (error) {
+      messageComposerDraft = draft;
+      messagesFeedback = error && error.message ? error.message : 'Message could not be sent.';
+    } finally {
+      messagesBusy = false;
+      if (active === 'messages') render();
+      const input = shadow.querySelector('#message-compose-input');
+      if (input) input.focus();
+    }
+  }
+
   function resultsPage() {
     const done = state.tasks.filter(function (t) { return t.status === 'Done'; }).length;
     const evidenceCount = state.tasks.filter(function (t) { return t.mission && t.mission.verification && t.mission.verification.passed === true; }).length;
@@ -435,6 +774,7 @@
     if (active === 'company') view.innerHTML = companyPage();
     if (active === 'connect') view.innerHTML = connectPage();
     if (active === 'results') view.innerHTML = resultsPage();
+    if (active === 'messages') view.innerHTML = messagesPage();
   }
   function openPanel(tab) {
     active = tab || 'work';
@@ -442,7 +782,10 @@
     render();
     document.body.style.overflow = 'hidden';
   }
-  function closePanel() { veil.classList.remove('open'); document.body.style.overflow = ''; }
+  function closePanel() {
+    veil.classList.remove('open'); document.body.style.overflow = '';
+    if (messagePollTimer) { window.clearInterval(messagePollTimer); messagePollTimer = null; }
+  }
   function newMissionForTask(task) {
     const core = window.WhiloAgentCore;
     if (!core) return null;
@@ -529,6 +872,83 @@
     if (!action) return;
     const act = action.getAttribute('data-act'), id = action.getAttribute('data-id');
     if (act === 'close') { closePanel(); return; }
+    if (act === 'new-message-conversation') { messagesCreateOpen = !messagesCreateOpen; render(); return; }
+    if (act === 'close-message-create') { messagesCreateOpen = false; render(); return; }
+    if (act === 'message-scope') {
+      messagesScope = id === 'discover' ? 'discover' : 'inbox';
+      messagesSearch = ''; messagesFeedback = ''; messagesSelectedId = ''; messagesRows = [];
+      loadMessageConversations(messagesScope, true).then(function () { if (active === 'messages') render(); });
+      if (messagesScope === 'inbox') loadMessageConversations('inbox', true);
+      render(); return;
+    }
+    if (act === 'refresh-message-conversations') {
+      messagesFeedback = ''; loadMessageConversations(messagesScope, false); return;
+    }
+    if (act === 'open-message-conversation') {
+      startMessageConversation(id).catch(function (error) { messagesFeedback = error.message || 'Conversation could not be opened.'; render(); }); return;
+    }
+    if (act === 'join-message-channel') {
+      messagesBusy = true; messagesFeedback = 'Joining channel…'; render();
+      whiloApi('/api/messages/conversations', { method: 'POST', body: JSON.stringify({ action: 'join', conversationId: id }) })
+        .then(function () { messagesScope = 'inbox'; messagesFeedback = 'Joined the channel.'; return loadMessageConversations('inbox', true); })
+        .then(function () { return startMessageConversation(id); })
+        .catch(function (error) { messagesFeedback = error && error.message ? error.message : 'Could not join this channel.'; })
+        .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
+      return;
+    }
+    if (act === 'refresh-message-timeline') {
+      const convo = currentConversation(); if (convo) loadMessageTimeline(convo.id, messagesThreadRootId, false); return;
+    }
+    if (act === 'message-reply') {
+      messagesReplyToId = id; render();
+      const compose = shadow.querySelector('#message-compose-input'); if (compose) compose.focus(); return;
+    }
+    if (act === 'clear-message-reply') { messagesReplyToId = ''; render(); const compose = shadow.querySelector('#message-compose-input'); if (compose) compose.focus(); return; }
+    if (act === 'open-message-thread') {
+      messagesThreadRootId = id; messagesRows = [];
+      loadMessageTimeline(messagesSelectedId, id, false); return;
+    }
+    if (act === 'close-message-thread') {
+      messagesThreadRootId = ''; loadMessageTimeline(messagesSelectedId, '', false); return;
+    }
+    if (act === 'message-react') {
+      const convo = currentConversation(); const emoji = action.getAttribute('data-emoji');
+      if (!convo || !emoji) return;
+      whiloApi('/api/messages/reactions', { method: 'POST', body: JSON.stringify({ conversationId: convo.id, messageId: id, emoji: emoji }) })
+        .then(function () { return loadMessageTimeline(convo.id, messagesThreadRootId, false); })
+        .catch(function (error) { messagesFeedback = error && error.message ? error.message : 'Reaction could not be saved.'; render(); });
+      return;
+    }
+    if (act === 'edit-message') {
+      const convo = currentConversation(); const target = messagesRows.find(function (row) { return row.id === id; });
+      if (!convo || !target) return;
+      const edited = window.prompt('Edit message', target.content || '');
+      if (edited == null || !edited.trim() || edited.trim() === target.content) return;
+      whiloApi('/api/messages', { method: 'POST', body: JSON.stringify({ action: 'edit', conversationId: convo.id, messageId: id, content: edited.trim() }) })
+        .then(function () { return loadMessageTimeline(convo.id, messagesThreadRootId, false); })
+        .catch(function (error) { messagesFeedback = error && error.message ? error.message : 'Message could not be edited.'; render(); });
+      return;
+    }
+    if (act === 'delete-message') {
+      const convo = currentConversation();
+      if (!convo || !window.confirm('Delete this message? This removes its content from the conversation timeline.')) return;
+      whiloApi('/api/messages', { method: 'POST', body: JSON.stringify({ action: 'delete', conversationId: convo.id, messageId: id }) })
+        .then(function () { return loadMessageTimeline(convo.id, messagesThreadRootId, false); })
+        .catch(function (error) { messagesFeedback = error && error.message ? error.message : 'Message could not be deleted.'; render(); });
+      return;
+    }
+    if (act === 'use-message-person') {
+      const field = shadow.querySelector('#message-participants');
+      if (field) {
+        const existing = field.value.split(',').map(function (value) { return value.trim(); }).filter(Boolean);
+        if (!existing.some(function (value) { return value.replace(/^@/,'').toLowerCase() === id.toLowerCase(); })) existing.push('@' + id);
+        field.value = existing.join(', ');
+        const type = shadow.querySelector('#message-type');
+        if (type && type.value === 'direct' && existing.length > 1) type.value = 'group';
+        field.focus();
+      }
+      return;
+    }
     if (act === 'sample') { addTask('Map one repeatable outsourced workflow and define its acceptance criteria', 'Operations', 'Whilo', 'High'); render(); return; }
     if (act === 'advance') {
       const task = state.tasks.find(function (t) { return t.id === id; });
@@ -622,6 +1042,36 @@
   shadow.addEventListener('submit', function (event) {
     event.preventDefault();
     const form = event.target;
+    if (form.id === 'message-create-conversation') {
+      const fd = new FormData(form);
+      const type = String(fd.get('type') || 'direct');
+      const handles = String(fd.get('participants') || '').split(',').map(function (value) { return value.trim(); }).filter(Boolean);
+      const payload = {
+        type: type,
+        title: String(fd.get('title') || '').trim(),
+        description: String(fd.get('description') || '').trim(),
+        participants: handles,
+        isPublic: fd.get('isPublic') === 'true'
+      };
+      messagesBusy = true; messagesFeedback = 'Creating conversation and recording membership…'; render();
+      whiloApi('/api/messages/conversations', { method: 'POST', body: JSON.stringify(payload) })
+        .then(function (data) {
+          messagesCreateOpen = false; messagesScope = 'inbox'; messagesSearch = ''; messagesSelectedId = data.conversationId; messagesRows = [];
+          messagesFeedback = 'Conversation created. You can now message its members.';
+          return loadMessageConversations('inbox', true).then(function () { return startMessageConversation(data.conversationId); });
+        })
+        .catch(function (error) { messagesFeedback = error && error.message ? error.message : 'Conversation could not be created.'; })
+        .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
+      return;
+    }
+    if (form.id === 'message-people-search-form') {
+      const fd = new FormData(form);
+      searchMessagePeople(fd.get('q')); return;
+    }
+    if (form.id === 'message-compose') {
+      event.preventDefault();
+      sendHumanMessage(form); return;
+    }
     if (form.id === 'cloud-signin-form') {
       const fd = new FormData(form);
       const email = String(fd.get('email') || '');
@@ -666,6 +1116,27 @@
       state.hoursPerTask = Math.max(0, Math.min(1000, Number(fd.get('hours')) || 0));
       state.hourlyCost = Math.max(0, Math.min(100000, Number(fd.get('cost')) || 0));
       save(); render();
+    }
+  });
+  shadow.addEventListener('input', function (event) {
+    const target = event.target;
+    if (target && target.id === 'message-conversation-search') {
+      messagesSearch = target.value || '';
+      const list = shadow.querySelector('#message-conversation-list');
+      if (list) list.innerHTML = messageConversationListHtml();
+      return;
+    }
+    if (target && target.id === 'message-compose-input') {
+      messageComposerDraft = target.value || '';
+      const count = shadow.querySelector('.message-compose-foot span:last-child');
+      if (count) count.textContent = messageComposerDraft.length + '/12000';
+    }
+  });
+  shadow.addEventListener('keydown', function (event) {
+    if (event.target && event.target.id === 'message-compose-input' && event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      const form = event.target.closest('form');
+      if (form && !messagesBusy) sendHumanMessage(form);
     }
   });
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && veil.classList.contains('open')) closePanel(); });
