@@ -74,6 +74,10 @@
   let messagesInbox = [];
   let messagesDiscover = [];
   let messagesPeople = [];
+  let messagesMembers = [];
+  let messagesMembersOpen = false;
+  let messagesMembersLoading = false;
+  let messagesMembersFeedback = '';
   let messagesRows = [];
   let messagesSelectedId = '';
   let messagesScope = 'inbox';
@@ -447,12 +451,24 @@
 .message-person-result{display:flex;align-items:center;gap:9px;text-align:left;background:#0c1420;border:1px solid #2b3a4f;border-radius:10px;padding:8px;color:#e7edf6;cursor:pointer;min-width:0}
 .message-person-result>span:nth-child(2){display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .message-person-result strong{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.message-members-panel{background:#101a28;border-bottom:1px solid #293449;padding:12px 15px;max-height:245px;overflow:auto}
+.message-members-panel h3{font-size:13px;margin:0}
+.message-members-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}
+.message-member-row{display:flex;align-items:center;gap:8px;border:1px solid #28374b;border-radius:10px;background:#0b1420;padding:8px;min-width:0}
+.message-member-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.message-member-copy strong{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.message-member-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.message-member-actions .message-action{white-space:nowrap}
+.message-member-actions .danger-text{color:#e49aa3}
+.message-add-members{border-top:1px solid #2b3749;padding-top:10px;margin-top:8px}
+.message-add-members .row{gap:8px}
+.message-add-members .btn{white-space:nowrap}
 .message-security-note{display:flex;gap:8px;align-items:flex-start;color:#7c8da5;font-size:10px;line-height:1.6;margin:12px 2px}
 .message-security-note span{color:#72c1aa}
 .message-intro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
 .message-feature-icon{font-size:22px;color:#b5eddf;margin-bottom:12px}
 @media(max-width:850px){.messages-shell{grid-template-columns:280px minmax(0,1fr)}.messages-chat-head strong{max-width:34vw}.message-bubble{max-width:92%}}
-@media(max-width:650px){.messages-shell{height:min(72vh,760px);min-height:470px;grid-template-columns:minmax(0,1fr)}.messages-shell[data-selected="true"] .messages-sidebar{display:none}.messages-shell[data-selected="true"] .messages-chat{display:flex}.messages-shell[data-selected="false"] .messages-chat{display:none}.messages-shell[data-selected="false"] .messages-sidebar{display:flex}.messages-chat-head{padding:10px}.messages-chat-head .row>.row{gap:8px;min-width:0}.messages-chat-head strong{max-width:42vw}.messages-chat-head .actions{gap:4px}.messages-chat-head .btn{font-size:9px;padding:7px}.messages-scroll{padding:13px 9px}.message-create-form{grid-template-columns:1fr}.message-create-form .fieldgroup:nth-child(3),.message-create-form .fieldgroup:nth-child(4),.message-create-form .actions{grid-column:auto}.message-people-results,.message-intro-grid{grid-template-columns:1fr}.messages-hero .actions{margin-top:12px}.message-bubble{max-width:91%;padding:9px}.message-quick-reactions{opacity:1}}
+@media(max-width:650px){.messages-shell{height:min(72vh,760px);min-height:470px;grid-template-columns:minmax(0,1fr)}.messages-shell[data-selected="true"] .messages-sidebar{display:none}.messages-shell[data-selected="true"] .messages-chat{display:flex}.messages-shell[data-selected="false"] .messages-chat{display:none}.messages-shell[data-selected="false"] .messages-sidebar{display:flex}.messages-chat-head{padding:10px}.messages-chat-head .row>.row{gap:8px;min-width:0}.messages-chat-head strong{max-width:42vw}.messages-chat-head .actions{gap:4px}.messages-chat-head .btn{font-size:9px;padding:7px}.messages-scroll{padding:13px 9px}.message-create-form{grid-template-columns:1fr}.message-create-form .fieldgroup:nth-child(3),.message-create-form .fieldgroup:nth-child(4),.message-create-form .actions{grid-column:auto}.message-people-results,.message-intro-grid{grid-template-columns:1fr}.messages-hero .actions{margin-top:12px}.message-bubble{max-width:91%;padding:9px}.message-quick-reactions{opacity:1}.message-members-list{grid-template-columns:1fr}.message-member-actions .message-action{font-size:9px}}
 `;
   const style = document.createElement('style'); style.textContent = css + messageCss; shadow.appendChild(style);
   const veil = document.createElement('div'); veil.className = 'veil'; veil.setAttribute('role','dialog'); veil.setAttribute('aria-modal','true'); veil.setAttribute('aria-label','Whilo Enterprise workspace');
@@ -822,8 +838,9 @@
       '<input class="field" id="message-conversation-search" data-role="message-search" placeholder="Search chats and channels" value="' + esc(messagesSearch) + '" autocomplete="off"></div>' +
       '<div id="message-conversation-list" class="message-conversation-list">' + messageConversationListHtml() + '</div></aside>' +
       '<section class="messages-chat"><header class="messages-chat-head"><div class="row"><div class="row"><span class="message-avatar">' + esc(conversation ? (title.trim().split(/\s+/).slice(0,2).map(function (part) { return part.charAt(0); }).join('').toUpperCase() || 'W') : 'W') + '</span><div><strong>' + esc(title) + '</strong><div class="mini">' + esc(subtitle) + '</div></div></div>' +
-      '<div class="actions"><button class="btn secondary" data-act="refresh-message-timeline"' + (!conversation || messagesBusy || isNotMember ? ' disabled' : '') + '>Refresh</button>' +
+      '<div class="actions"><button class="btn secondary" data-act="open-message-members"' + (!conversation || isNotMember ? ' disabled' : '') + '>Members</button><button class="btn secondary" data-act="refresh-message-timeline"' + (!conversation || messagesBusy || isNotMember ? ' disabled' : '') + '>Refresh</button>' +
       (messagesThreadRootId ? '<button class="btn secondary" data-act="close-message-thread">Close thread</button>' : '') + '</div></div></header>' +
+      messageMembersPanelHtml(conversation) +
       (messagesThreadRootId ? '<div class="message-thread-banner">↳ Thread view · replies stay attached to the original message</div>' : '') +
       '<div class="messages-scroll" id="message-timeline">' + (isNotMember ? messageTimelineHtml() : messageTimelineHtml()) + '</div>' +
       ((isNotMember || cannotPublish) ? (cannotPublish ? '<div class="message-compose-wrap"><div class="notice">You are subscribed to this channel. Only owners and moderators can publish; replies and reactions remain available.</div></div>' : '') : '<div class="message-compose-wrap">' +
@@ -832,6 +849,56 @@
       '</section></div>' +
       '<div class="message-security-note"><span>●</span> Messages are workspace-scoped. Real-time delivery, media uploads and invitations activate after the backend is configured; do not use this preview for confidential content yet.</div>';
     return out;
+  }
+
+  async function loadMessageMembers(conversationId) {
+    if (!conversationId || !cloudAuthSession || messagesMembersLoading) return;
+    messagesMembersLoading = true;
+    messagesMembersFeedback = '';
+    try {
+      const params = new URLSearchParams({ conversationId: conversationId });
+      const data = await whiloApi('/api/messages/members?' + params.toString(), { method: 'GET' });
+      messagesMembers = Array.isArray(data.members) ? data.members : [];
+    } catch (error) {
+      messagesMembersFeedback = error && error.message ? error.message : 'Conversation members could not be loaded.';
+    } finally {
+      messagesMembersLoading = false;
+      if (active === 'messages') render();
+    }
+  }
+
+  function messageMembersPanelHtml(conversation) {
+    if (!messagesMembersOpen || !conversation) return '';
+    const myMember = conversation.my_membership || {};
+    const myRole = myMember.member_role || '';
+    const canManage = ['owner','admin'].includes(myRole);
+    const canAdd = ['owner','admin','moderator'].includes(myRole);
+    let out = '<section class="message-members-panel"><div class="row"><div><div class="sectionlabel">People in this conversation</div><h3>' + esc(messagesMembers.length) + ' active members</h3></div><div class="actions"><button class="btn secondary" data-act="refresh-message-members">Refresh</button><button class="btn secondary" data-act="close-message-members">Close</button></div></div>';
+    if (messagesMembersFeedback) out += '<div class="notice">' + esc(messagesMembersFeedback) + '</div>';
+    if (messagesMembersLoading && !messagesMembers.length) out += '<div class="mini">Loading membership and role information…</div>';
+    out += '<div class="message-members-list">' + messagesMembers.map(function (row) {
+      const person = row.profile || {};
+      const name = person.display_name || person.username || 'Whilo member';
+      const username = person.username ? '@' + person.username : '';
+      const initials = String(name).split(/\s+/).slice(0,2).map(function (part) { return part.charAt(0); }).join('').toUpperCase();
+      let actions = '';
+      if (canManage && row.user_id !== cloudAuthSession.id && row.member_role !== 'owner') {
+        if (row.member_role === 'admin' || row.member_role === 'moderator') {
+          actions += '<button class="message-action" data-act="demote-message-member" data-id="' + esc(row.user_id) + '">Demote</button>';
+        } else {
+          actions += '<button class="message-action" data-act="promote-message-member" data-id="' + esc(row.user_id) + '" data-role="moderator">Make moderator</button>';
+          if (myRole === 'owner') actions += '<button class="message-action" data-act="promote-message-member" data-id="' + esc(row.user_id) + '" data-role="admin">Make admin</button>';
+        }
+        actions += '<button class="message-action danger-text" data-act="remove-message-member" data-id="' + esc(row.user_id) + '">Remove</button>';
+      }
+      return '<div class="message-member-row"><span class="message-avatar tiny">' + esc(initials || '?') + '</span><div class="message-member-copy"><strong>' + esc(name) + (row.is_self ? ' (you)' : '') + '</strong><span class="mini">' + esc(username) + ' · ' + esc(String(row.member_role || 'member').replace(/_/g,' ')) + '</span></div><div class="message-member-actions">' + actions + '</div></div>';
+    }).join('') + '</div>';
+
+    if (canAdd) {
+      out += '<form id="message-add-members-form" class="message-add-members"><label class="label" for="message-add-members-input">Add workspace people</label><div class="row"><input id="message-add-members-input" name="participants" class="field" required maxlength="800" placeholder="@alex, @maria"><button type="submit" class="btn"' + (messagesBusy ? ' disabled' : '') + '>Add people</button></div><div class="mini">All new members must already be members of this Whilo workspace. Channel additions start as subscribers.</div></form>';
+    }
+    if (myRole && myRole !== 'owner') out += '<div class="actions"><button class="btn danger" data-act="leave-message-conversation">Leave conversation</button></div>';
+    return out + '</section>';
   }
 
   async function searchMessagePeople(query) {
@@ -1055,6 +1122,45 @@
         .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
       return;
     }
+    if (act === 'open-message-members') {
+      messagesMembersOpen = true;
+      const convo = currentConversation();
+      render();
+      if (convo) loadMessageMembers(convo.id);
+      return;
+    }
+    if (act === 'close-message-members') { messagesMembersOpen = false; render(); return; }
+    if (act === 'refresh-message-members') { const convo = currentConversation(); if (convo) loadMessageMembers(convo.id); return; }
+    if (act === 'remove-message-member' || act === 'promote-message-member' || act === 'demote-message-member') {
+      const convo = currentConversation();
+      if (!convo) return;
+      if (act === 'remove-message-member' && !window.confirm('Remove this person from the conversation?')) return;
+      const payload = {
+        conversationId: convo.id,
+        action: act === 'remove-message-member' ? 'remove' : act === 'promote-message-member' ? 'promote' : 'demote',
+        userId: id,
+        role: action.getAttribute('data-role') || 'moderator'
+      };
+      messagesBusy = true; messagesMembersFeedback = 'Updating membership…'; render();
+      whiloApi('/api/messages/members', { method: 'POST', body: JSON.stringify(payload) })
+        .then(function () { return loadMessageMembers(convo.id); })
+        .catch(function (error) { messagesMembersFeedback = error && error.message ? error.message : 'Membership could not be changed.'; })
+        .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
+      return;
+    }
+    if (act === 'leave-message-conversation') {
+      const convo = currentConversation();
+      if (!convo || !window.confirm('Leave this conversation? You can only return if a member re-adds you or the channel is public.')) return;
+      messagesBusy = true;
+      whiloApi('/api/messages/members', { method: 'POST', body: JSON.stringify({ action: 'leave', conversationId: convo.id }) })
+        .then(function () {
+          messagesSelectedId = ''; messagesRows = []; messagesMembers = []; messagesMembersOpen = false;
+          return loadMessageConversations('inbox', true);
+        })
+        .catch(function (error) { messagesMembersFeedback = error && error.message ? error.message : 'Could not leave this conversation.'; })
+        .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
+      return;
+    }
     if (act === 'refresh-message-timeline') {
       const convo = currentConversation(); if (convo) loadMessageTimeline(convo.id, messagesThreadRootId, false); return;
     }
@@ -1232,6 +1338,18 @@
           if (data.emailed) messagesInviteStatus += ' Email request accepted by Supabase Auth.';
         })
         .catch(function (error) { messagesInviteStatus = error && error.message ? error.message : 'Invitation could not be created.'; })
+        .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
+      return;
+    }
+    if (form.id === 'message-add-members-form') {
+      const fd = new FormData(form);
+      const convo = currentConversation();
+      const participants = String(fd.get('participants') || '').split(',').map(function (value) { return value.trim(); }).filter(Boolean);
+      if (!convo || !participants.length) return;
+      messagesBusy = true; messagesMembersFeedback = 'Adding people to the conversation…'; render();
+      whiloApi('/api/messages/members', { method: 'POST', body: JSON.stringify({ action: 'add', conversationId: convo.id, participants: participants }) })
+        .then(function () { messagesMembersFeedback = 'Members added.'; return loadMessageMembers(convo.id); })
+        .catch(function (error) { messagesMembersFeedback = error && error.message ? error.message : 'Could not add members.'; })
         .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
       return;
     }
