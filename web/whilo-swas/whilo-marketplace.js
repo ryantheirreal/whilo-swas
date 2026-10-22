@@ -26,7 +26,7 @@
   const portuguese = /pt/i.test(document.documentElement.lang || '');
   let live = false, loading = false, saving = false, listings = [];
   let page = 'discover', filter = 'all', query = '', billingInterval = 'monthly', feedback = '';
-  let creator = {session:false,dashboard:null}, library = {session:false,installations:[],error:''}, authMode = 'signin';
+  let creator = {session:false,dashboard:null}, library = {session:false,installations:[],error:''}, moderation = {items:[],error:''}, authMode = 'signin';
 
   const host = document.createElement('div');
   host.id = 'whilo-marketplace-root';
@@ -48,7 +48,7 @@
   veil.setAttribute('role','dialog');
   veil.setAttribute('aria-modal','true');
   veil.setAttribute('aria-label','Whilo Marketplace');
-  veil.innerHTML = '<section class="panel"><header class="head"><div class="mark">W</div><div class="brand"><div class="eyebrow">WHILO / CREATOR ECONOMY</div><h1>Marketplace</h1><div class="sub">Discover agents. Package expertise. Earn from every verified sale.</div></div><button class="close" data-action="close" aria-label="Close">×</button></header><nav class="nav" aria-label="Marketplace"><button class="active" data-page="discover">Discover</button><button data-page="library">My Library</button><button data-page="creator">Creator Studio</button><button data-page="plans">Plans</button></nav><main class="content" id="content"></main><footer class="footer"><span>20% platform commission on completed paid sales</span><span>Preview assets are not real listings.</span></footer></section>';
+  veil.innerHTML = '<section class="panel"><header class="head"><div class="mark">W</div><div class="brand"><div class="eyebrow">WHILO / CREATOR ECONOMY</div><h1>Marketplace</h1><div class="sub">Discover agents. Package expertise. Earn from every verified sale.</div></div><button class="close" data-action="close" aria-label="Close">×</button></header><nav class="nav" aria-label="Marketplace"><button class="active" data-page="discover">Discover</button><button data-page="library">My Library</button><button data-page="creator">Creator Studio</button><button data-page="review">Review Queue</button><button data-page="plans">Plans</button></nav><main class="content" id="content"></main><footer class="footer"><span>20% platform commission on completed paid sales</span><span>Preview assets are not real listings.</span></footer></section>';
   root.appendChild(veil);
   document.documentElement.appendChild(host);
   const content = veil.querySelector('#content');
@@ -79,7 +79,7 @@
     let out='<div class="hero"><div><div class="eyebrow">THE AGENT ECONOMY</div><h2>Buy outcomes. Sell expertise.</h2><p>Vetted, versioned Pets, task-scoped Bots, Skills and Playbooks. Each asset declares its capabilities and runs under buyer workspace policies.</p><div class="pills"><span class="pill">Pets own outcomes</span><span class="pill">Bots do bounded work</span><span class="pill">20% transparent commission</span></div></div><button class="btn secondary" data-action="refresh"' + (loading?' disabled':'') + '>↻ Refresh</button></div>'+notice();
     out+='<div class="toolbar"><input class="field search" id="market-search" type="search" maxlength="100" value="'+esc(query)+'" placeholder="Search agents, skills and playbooks…"><div style="display:flex;gap:5px;flex-wrap:wrap">'+[['all','All'],['pet','Pets'],['bot','Bots'],['skill','Skills'],['playbook','Playbooks'],['template','Templates']].map(function(x){return '<button class="filter '+(filter===x[0]?'active':'')+'" data-filter="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div></div>';
     if(!live) out+='<div class="notice">Preview mode: sample assets show the intended product direction, not real seller listings. Purchases and installations stay disabled until Supabase and Stripe are configured.</div>';
-    if(rows.length) out+='<div class="grid">'+rows.map(card).join('')+'</div>';
+    if(rows.length) out+='<div class="grid listing-grid">'+rows.map(card).join('')+'</div>';
     else out+='<div class="empty"><strong>No published listings match.</strong><p>Try another search or filter. Creator assets appear only after moderation.</p></div>';
     out+='<div class="section-title">A real agent marketplace, not a prompt dump</div><div class="grid"><article class="card"><div class="eyebrow">01 / TRUST</div><h3>Capability manifest</h3><p>Buyers see proposed tools, approval requirements, version, license and cost boundaries before installing.</p></article><article class="card"><div class="eyebrow">02 / QUALITY</div><h3>Verified outcomes</h3><p>Ratings should follow confirmed purchases and auditable results—not vanity stars or unverified claims.</p></article><article class="card"><div class="eyebrow">03 / CREATOR REVENUE</div><h3>20% platform take</h3><p>Creator proceeds are 80% of item price before their own taxes. Processor costs come from Whilo’s fee in v1.</p></article></div>';
     return out;
@@ -113,6 +113,16 @@
     }).join('')+'</div>';
     return out;
   }
+  function reviewPage() {
+    let out='<div class="hero"><div><div class="eyebrow">QUALITY CONTROL</div><h2>Marketplace review queue</h2><p>Only server-allowlisted reviewers can publish listings. Review the job outcome, requested capabilities and seller identity before approval.</p></div><button class="btn secondary" data-action="reload-review">Refresh</button></div>'+notice();
+    if(moderation.error) return out+'<div class="notice info">'+esc(moderation.error)+'</div><div class="hint">To authorize a reviewer, set WHILO_MARKETPLACE_ADMIN_USER_IDS to the reviewer user UUID in Vercel. This is enforced by the API, not by this UI.</div>';
+    const items=Array.isArray(moderation.items)?moderation.items:[];
+    if(!items.length) return out+'<div class="empty"><strong>No listings waiting for review.</strong><p>New submissions enter this queue and stay unpublished until an authorized moderator decides.</p></div>';
+    out+='<div class="grid">'+items.map(function(item){
+      return '<article class="card"><div class="eyebrow">'+esc(TYPES[item.listing_type]||item.listing_type)+' · '+esc(item.category||'General')+'</div><h3>'+esc(item.title)+'</h3><p>'+esc(item.summary)+'</p><div class="pills"><span class="pill">'+esc(item.seller&&item.seller.display_name||'Creator')+'</span><span class="pill">'+esc(item.seller&&item.seller.status||'unknown seller state')+'</span><span class="pill">'+(Number(item.price_minor||0)?money(item.price_minor):'Free')+'</span></div><div class="hint">v'+esc(item.version||'1.0.0')+' · '+esc(item.license||'Proprietary')+' · Submitted '+esc(item.created_at?new Date(item.created_at).toLocaleDateString('pt-BR'):'recently')+'</div><div class="toolbar"><button class="btn" data-action="moderate-listing" data-decision="publish" data-id="'+esc(item.id)+'">Approve & publish</button><button class="btn secondary" data-action="moderate-listing" data-decision="reject" data-id="'+esc(item.id)+'">Reject with feedback</button></div></article>';
+    }).join('')+'</div>';
+    return out;
+  }
   function plansPage() {
     let out='<div class="hero"><div><div class="eyebrow">ONE SUBSCRIPTION. YOUR WORKSPACE.</div><h2>Scale your outcomes, not just your prompts.</h2><p>Proposed Whilo launch prices anchored to the reference you shared. Usage budgets stay bounded until cost telemetry supports accurate allowances.</p><div class="pills"><span class="pill">No unlimited-compute promises</span><span class="pill">Subscription and creator commerce are separate</span></div></div></div>'+notice();
     out+='<div class="toolbar"><button class="filter '+(billingInterval==='monthly'?'active':'')+'" data-interval="monthly">Monthly</button><button class="filter '+(billingInterval==='annual'?'active':'')+'" data-interval="annual">Annual · about 2 months free</button></div>';
@@ -127,7 +137,7 @@
   }
   function render() {
     veil.querySelectorAll('[data-page]').forEach(function(button){button.classList.toggle('active',button.getAttribute('data-page')===page);});
-    content.innerHTML=page==='creator'?creatorPage():(page==='plans'?plansPage():(page==='library'?libraryPage():discoverPage()));
+    content.innerHTML=page==='creator'?creatorPage():(page==='plans'?plansPage():(page==='library'?libraryPage():(page==='review'?reviewPage():discoverPage())));
   }
   async function getToken() {
     if(!window.WhiloCloudAuth) throw new Error('Whilo cloud authentication is not loaded. Refresh the app and verify setup.');
@@ -164,6 +174,10 @@
       if(authenticated)feedback=error.message;
     }
   }
+  async function loadReviewQueue() {
+    try { const data=await api('moderation-queue'); moderation={items:Array.isArray(data.items)?data.items:[],error:''}; }
+    catch(error) { moderation={items:[],error:error&&error.message?error.message:'Review queue could not load.'}; }
+  }
   async function loadLibrary() {
     let authenticated=false;
     try{
@@ -180,11 +194,11 @@
     render();
     if(page==='discover')loadCatalog();
     if(page==='creator')loadCreator().then(render);
-    if(page==='library')loadLibrary().then(render);
+    if(page==='library')loadLibrary().then(render);if(page==='review')loadReviewQueue().then(render);
     veil.querySelector('[data-action="close"]').focus();
   }
   function close(){veil.classList.remove('open');document.body.style.overflow='';}
-  async function runAction(action,id) {
+  async function runAction(action,id,decision) {
     if(saving)return;
     saving=true;feedback='';render();
     try{
@@ -194,6 +208,8 @@
       else if(action==='buy'){const result=await api('checkout',{listingId:id});if(result.checkoutUrl&&/^https:\/\/checkout\.stripe\.com\//.test(result.checkoutUrl)){window.location.assign(result.checkoutUrl);return;}throw new Error('A valid checkout URL was not returned.');}
       else if(action==='reload-creator'){await loadCreator();feedback='Creator dashboard refreshed.';}
       else if(action==='reload-library'){await loadLibrary();feedback='Library refreshed.';}
+      else if(action==='reload-review'){await loadReviewQueue();feedback='Review queue refreshed.';}
+      else if(action==='moderate-listing'){const result=await api('moderate-listing',{listingId:id,decision:decision,note:decision==='reject'?'Please revise the listing rights, description and declared capabilities before resubmitting.':''});feedback=result.listing&&result.listing.status==='published'?'Listing approved and published.':'Listing decision saved.';await loadReviewQueue();await loadCatalog();}
       else if(action==='asset-details'){const item=(library.installations||[]).find(function(row){return row.id===id;});feedback=item?(item.pet_instance_id?'Installed Pet ID: '+item.pet_instance_id:'Asset installation ID: '+item.id):'Installation not found.';}
       else if(action==='submit-listing'){const result=await api('submit-listing',{listingId:id});feedback=result.detail||'Submitted for review.';await loadCreator();}
       else if(action==='connect-payouts'){
@@ -214,7 +230,7 @@
   content.addEventListener('input',function(event){
     if(event.target && event.target.id==='market-search'){
       query=event.target.value;
-      const grid=Array.from(content.querySelectorAll('.grid')).find(function(el){return el.querySelector('.card-foot');});
+      const grid=content.querySelector('.listing-grid');
       if(grid){
         const rows=visibleListings();
         grid.innerHTML=rows.length?rows.map(card).join(''):'<div class="empty"><strong>No matches.</strong><p>Try another keyword.</p></div>';
@@ -224,14 +240,14 @@
   veil.addEventListener('click',function(event){
     if(event.target===veil){close();return;}
     const pageBtn=event.target.closest('[data-page]');
-    if(pageBtn){page=pageBtn.getAttribute('data-page');feedback='';render();if(page==='discover')loadCatalog();if(page==='creator')loadCreator().then(render);if(page==='library')loadLibrary().then(render);return;}
+    if(pageBtn){page=pageBtn.getAttribute('data-page');feedback='';render();if(page==='discover')loadCatalog();if(page==='creator')loadCreator().then(render);if(page==='library')loadLibrary().then(render);if(page==='review')loadReviewQueue().then(render);return;}
     const f=event.target.closest('[data-filter]');
     if(f){filter=f.getAttribute('data-filter');render();return;}
     const iv=event.target.closest('[data-interval]');
     if(iv){billingInterval=iv.getAttribute('data-interval');render();return;}
     const b=event.target.closest('[data-action]');
     if(!b)return;
-    const action=b.getAttribute('data-action'), id=b.getAttribute('data-id')||b.getAttribute('data-plan')||'';
+    const action=b.getAttribute('data-action'), id=b.getAttribute('data-id')||b.getAttribute('data-plan')||'', decision=b.getAttribute('data-decision')||'';
     if(action==='close'){close();return;}
     if(action==='toggle-auth'){authMode=authMode==='signin'?'signup':'signin';render();return;}
     if(['refresh','preview','install','buy','reload-creator','reload-library','asset-details','submit-listing','connect-payouts','choose-plan'].includes(action)){runAction(action,id);}
