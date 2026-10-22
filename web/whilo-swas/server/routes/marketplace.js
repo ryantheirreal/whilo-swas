@@ -64,39 +64,28 @@ function requireStripeKey() {
   return key;
 }
 function stripeClient() { return new Stripe(requireStripeKey()); }
-function formEncode(value, prefix, params) {
-  for (const [key, raw] of Object.entries(value || {})) {
-    const name = prefix ? prefix + '[' + key + ']' : key;
-    if (raw == null) continue;
-    if (Array.isArray(raw)) raw.forEach((item, index) => {
-      if (item != null && typeof item === 'object') formEncode(item, name + '[' + index + ']', params);
-      else if (item != null) params.append(name + '[' + index + ']', String(item));
-    });
-    else if (typeof raw === 'object') formEncode(raw, name, params);
-    else params.append(name, String(raw));
-  }
-}
 async function stripeRequest(path, method, body, idempotencyKey) {
-  const key = requireStripeKey();
-  const headers = { Authorization: 'Bearer ' + key, Accept: 'application/json' };
-  const opts = { method: method || 'POST', headers };
-  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
-  if (opts.method !== 'GET') {
-    const params = new URLSearchParams();
-    formEncode(body || {}, '', params);
-    headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    opts.body = params.toString();
-  }
-  const response = await fetch('https://api.stripe.com/v1/' + path.replace(/^\/+/, ''), opts);
-  let data = {};
-  try { data = await response.json(); } catch (_) {}
-  if (!response.ok) {
-    const error = new Error('Payment provider could not complete the request.');
-    error.statusCode = response.status >= 500 ? 502 : 400;
-    error.providerStatus = response.status;
+  const stripe = stripeClient();
+  const options = idempotencyKey ? { idempotencyKey } : undefined;
+  const endpoint = String(path || '').replace(/^\\/+/, '');
+  const verb = String(method || 'POST').toUpperCase();
+  try {
+    if (verb === 'GET' && endpoint.startsWith('subscriptions/')) {
+      return await stripe.subscriptions.retrieve(decodeURIComponent(endpoint.slice('subscriptions/'.length)), {}, options);
+    }
+    if (verb === 'POST' && endpoint === 'accounts') return await stripe.accounts.create(body || {}, options);
+    if (verb === 'POST' && endpoint === 'account_links') return await stripe.accountLinks.create(body || {}, options);
+    if (verb === 'POST' && endpoint === 'checkout/sessions') return await stripe.checkout.sessions.create(body || {}, options);
+    const error = new Error('Unsupported payment provider operation.');
+    error.statusCode = 501;
     throw error;
+  } catch (error) {
+    if (error.missingEnv || error.statusCode === 501) throw error;
+    const wrapped = new Error('Payment provider could not complete the request.');
+    wrapped.statusCode = Number(error.statusCode) >= 500 ? 502 : 400;
+    wrapped.providerStatus = Number(error.statusCode) || null;
+    throw wrapped;
   }
-  return data;
 }
 function baseUrl() { return appUrl().replace(/\/+$/, ''); }
 async function sellerFor(orgId, userId) {
