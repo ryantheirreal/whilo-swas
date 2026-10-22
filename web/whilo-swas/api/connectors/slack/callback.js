@@ -1,5 +1,5 @@
 'use strict';
-const { redirect, appUrl, requiredEnv, db, sha256Hex, encryptPayload, audit, safeError } = require('../../_lib/platform');
+const { redirect, appUrl, requiredEnv, db, hmacHex, encryptPayload, audit, safeError } = require('../../_lib/platform');
 
 function returnToApp(res, result) {
   const target = new URL('/', appUrl());
@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
     if (!/^[A-Za-z0-9_-]{40,60}$/.test(state)) return returnToApp(res, 'slack_error');
     const consumed = await db('rpc/consume_oauth_state', {
       method: 'POST',
-      body: JSON.stringify({ p_state_hash: sha256Hex(state), p_provider: 'slack' })
+      body: JSON.stringify({ p_state_hash: hmacHex(state, process.env.WHILO_OAUTH_STATE_SECRET), p_provider: 'slack' })
     });
     if (!Array.isArray(consumed) || consumed.length !== 1) return returnToApp(res, 'slack_expired');
 
@@ -36,12 +36,13 @@ module.exports = async function handler(req, res) {
 
     const tokenResponse = await fetch('https://slack.com/api/oauth.v2.access', {
       method: 'POST',
-      headers: {
-        Authorization: 'Basic ' + Buffer.from(process.env.SLACK_CLIENT_ID + ':' + process.env.SLACK_CLIENT_SECRET).toString('base64'),
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json'
-      },
-      body: new URLSearchParams({ code, redirect_uri: process.env.SLACK_REDIRECT_URI })
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.SLACK_CLIENT_ID,
+        client_secret: process.env.SLACK_CLIENT_SECRET,
+        redirect_uri: process.env.SLACK_REDIRECT_URI
+      })
     });
     const grant = await tokenResponse.json();
     if (!tokenResponse.ok || !grant.ok || !grant.access_token || !grant.team || !grant.team.id) {
