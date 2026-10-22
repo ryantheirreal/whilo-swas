@@ -30,12 +30,16 @@
     { id: 'procurement', name: 'Procurement', subtitle: 'Supplier research, comparison and renewal tracking', template: 'Build a supplier comparison from approved sources, identify contract renewal dates and prepare a recommendation with evidence.' }
   ];
   const INTEGRATIONS = [
-    { name: 'CRM', detail: 'HubSpot, Salesforce, Pipedrive', icon: '◉' },
-    { name: 'Email & calendar', detail: 'Gmail, Outlook, calendar booking', icon: '✉' },
-    { name: 'Messaging', detail: 'Slack, Microsoft Teams', icon: '◌' },
-    { name: 'Ads & analytics', detail: 'Meta Ads, Google Ads, analytics', icon: '↗' },
-    { name: 'Knowledge', detail: 'Notion, Google Drive, SharePoint', icon: '▤' },
-    { name: 'Engineering', detail: 'GitHub, Linear, issue trackers', icon: '⌘' }
+    { id: 'slack', name: 'Slack', detail: 'Workspace OAuth; message sends stay approval-gated', icon: '◌', action: 'connect-slack', button: 'Connect Slack' },
+    { id: 'twilio', name: 'SMS via Twilio', detail: 'Verify tenant-owned API credentials; no message is sent during setup', icon: '✉', action: 'connect-twilio', button: 'Configure SMS' },
+    { id: 'imessage-bridge', name: 'iMessage via Mac Bridge', detail: 'One-time QR device pairing; native message transport is a separate release gate', icon: '⌘', action: 'pair-imessage', button: 'Pair Mac (QR)' },
+    { id: 'github', name: 'GitHub', detail: 'Repositories, issues and pull requests', icon: '⌘', action: 'connect-setup', button: 'Plan setup' },
+    { id: 'gmail', name: 'Gmail & Calendar', detail: 'Research, drafts and calendar preparation', icon: '✉', action: 'connect-setup', button: 'Plan setup' },
+    { id: 'microsoft', name: 'Microsoft 365', detail: 'Outlook, calendar and approved files', icon: '▤', action: 'connect-setup', button: 'Plan setup' },
+    { id: 'notion', name: 'Notion', detail: 'Search and draft workspace pages', icon: '▤', action: 'connect-setup', button: 'Plan setup' },
+    { id: 'linear', name: 'Linear', detail: 'Issues, projects and status updates', icon: '◉', action: 'connect-setup', button: 'Plan setup' },
+    { id: 'hubspot', name: 'HubSpot', detail: 'Contacts, companies and CRM preparation', icon: '↗', action: 'connect-setup', button: 'Plan setup' },
+    { id: 'salesforce', name: 'Salesforce', detail: 'CRM records with least-privilege scopes', icon: '↗', action: 'connect-setup', button: 'Plan setup' }
   ];
   function readState() {
     try {
@@ -49,6 +53,73 @@
     } catch (_) { return { tasks: [], hoursPerTask: 0.5, hourlyCost: 35 }; }
   }
   let state = readState();
+  let connectorCache = null;
+  let connectorLoading = false;
+  let connectorFeedback = '';
+  let connectorBusy = false;
+  let showTwilioForm = false;
+  let bridgePairing = null;
+  let bridgePollTimer = null;
+
+  async function whiloAccessToken() {
+    try {
+      const auth = window.whiloAuth;
+      if (auth && typeof auth.getAccessToken === 'function') {
+        const found = await auth.getAccessToken();
+        if (typeof found === 'string' && found) return found;
+        if (found && typeof found.access_token === 'string') return found.access_token;
+      }
+      if (auth && auth.auth && typeof auth.auth.getSession === 'function') {
+        const result = await auth.auth.getSession();
+        const session = result && result.data && result.data.session;
+        if (session && session.access_token) return session.access_token;
+      }
+      if (window.supabase && window.supabase.auth && typeof window.supabase.auth.getSession === 'function') {
+        const result = await window.supabase.auth.getSession();
+        const session = result && result.data && result.data.session;
+        if (session && session.access_token) return session.access_token;
+      }
+      // Support the standard Supabase browser session key only; no other local storage values are read.
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !/^sb-[a-z0-9-]+-auth-token$/i.test(key)) continue;
+        try {
+          const value = JSON.parse(localStorage.getItem(key) || '{}');
+          if (value && typeof value.access_token === 'string') return value.access_token;
+          if (value && value.currentSession && typeof value.currentSession.access_token === 'string') return value.currentSession.access_token;
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  async function whiloApi(path, options) {
+    const token = await whiloAccessToken();
+    if (!token) throw new Error('Sign in to Whilo with the configured workspace account before connecting systems.');
+    const config = options || {};
+    const headers = Object.assign({ Authorization: 'Bearer ' + token, Accept: 'application/json' }, config.headers || {});
+    if (config.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+    const response = await fetch(path, Object.assign({}, config, { headers, cache: 'no-store' }));
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok) throw new Error(data && data.error ? data.error : 'Whilo connector API is not ready. Check server configuration.');
+    return data;
+  }
+
+  async function loadConnectors() {
+    if (connectorLoading) return;
+    connectorLoading = true;
+    try {
+      connectorCache = await whiloApi('/api/connectors', { method: 'GET' });
+      connectorFeedback = '';
+    } catch (error) {
+      connectorFeedback = error && error.message ? error.message : 'Connector status could not be verified.';
+    } finally {
+      connectorLoading = false;
+      if (active === 'connect') render();
+    }
+  }
+
   function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {} }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
@@ -148,9 +219,51 @@
     return out + '</div><div class="sectionlabel">Workforce architecture</div><div class="grid"><article class="card"><div class="eyebrow">Persistent agent</div><h3>Pets own outcomes</h3><p>A Pet keeps its role, user-approved memory, skills, policy and scorecard across jobs. It is the accountable lead that plans, delegates and handles exceptions.</p></article><article class="card"><div class="eyebrow">Ephemeral specialist</div><h3>Bots execute bounded tasks</h3><p>A Pet can spawn Browser Researcher, Computer Operator, Analyst, CRM Operator, Writer, Coder or QA Verifier Bots. Each gets a narrow task contract, scoped tools, a budget and an output schema.</p></article><article class="card"><div class="eyebrow">Quality control</div><h3>Verifier checks the receipt</h3><p>A separate verification step checks evidence and acceptance criteria. More agents are used only when specialization or safe parallelism improves the expected outcome.</p></article></div><div class="sectionlabel">Expansion principle</div><div class="card"><h3>Outcome before headcount replacement</h3><p>Each workflow needs a named owner, source systems, acceptance criteria, exception handling, an approval threshold and a measurable result before it is allowed to run unattended.</p></div>';
   }
   function connectPage() {
-    let out = '<div class="hero"><div><h2 class="h2">Connected systems</h2><p class="muted">A business autopilot is only useful when it can read trusted sources and safely act in the systems where work happens.</p></div></div><div class="notice">Connection status is not verified in this interface. The buttons below create setup work items; they do not authorize OAuth access or claim an integration is connected.</div><div class="grid">';
-    out += INTEGRATIONS.map(function (i) { return '<article class="card"><div class="row"><span style="font-size:22px;color:#b8f1e0">' + i.icon + '</span><span class="pill">Not connected</span></div><h3 style="margin-top:14px">' + esc(i.name) + '</h3><p>' + esc(i.detail) + '</p><div class="actions"><button class="btn secondary" data-act="connect-setup" data-id="' + esc(i.name) + '">Plan setup</button></div></article>'; }).join('');
-    return out + '</div>';
+    if (!connectorCache && !connectorLoading && !connectorFeedback) loadConnectors();
+    const apiItems = connectorCache && Array.isArray(connectorCache.integrations) ? connectorCache.integrations : [];
+    const stateLabel = function (status) {
+      if (status === 'connected') return 'Connected';
+      if (status === 'bridge_required') return 'Pairing only';
+      if (status === 'not_configured') return 'Not configured';
+      if (status === 'degraded') return 'Needs attention';
+      if (status === 'error') return 'Error';
+      return connectorLoading ? 'Checking…' : 'Not connected';
+    };
+    let out = '<div class="hero"><div><h2 class="h2">Connected systems</h2><p class="muted">Connector state is loaded from the server, not guessed from a button click. External sends remain approval-gated.</p></div></div>';
+    out += '<div class="notice">' + (connectorFeedback ? esc(connectorFeedback) : (connectorLoading ? 'Checking the authenticated connector API…' : 'Only integrations returned by the server are marked connected. A successful OAuth grant is not permission to send messages automatically.')) + '</div>';
+    out += '<div class="grid">';
+    out += INTEGRATIONS.map(function (i) {
+      const found = apiItems.find(function (item) { return item.id === i.id; });
+      const status = found ? found.state : (i.id === 'imessage-bridge' ? 'bridge_required' : 'not_connected');
+      const connected = status === 'connected';
+      const label = stateLabel(status);
+      const action = connected ? 'disconnect-connector' : i.action;
+      const button = connected ? 'Disconnect' : i.button;
+      const disabled = connectorBusy || ((i.id !== 'github' && i.id !== 'gmail' && i.id !== 'microsoft' && i.id !== 'notion' && i.id !== 'linear' && i.id !== 'hubspot' && i.id !== 'salesforce') && !connectorCache && !connectorLoading && !!connectorFeedback);
+      return '<article class="card"><div class="row"><span style="font-size:22px;color:#b8f1e0">' + i.icon + '</span><span class="pill">' + esc(label) + '</span></div><h3 style="margin-top:14px">' + esc(i.name) + '</h3><p>' + esc(i.detail) + '</p>' +
+        (found && found.accountName ? '<p class="muted" style="font-size:12px">Workspace: ' + esc(found.accountName) + '</p>' : '') +
+        '<div class="actions"><button class="btn secondary" data-act="' + esc(action) + '" data-id="' + esc(i.id) + '"' + (disabled ? ' disabled' : '') + '>' + esc(button) + '</button></div></article>';
+    }).join('');
+    out += '</div>';
+
+    if (showTwilioForm) {
+      out += '<div class="card" style="margin-top:16px"><h3>Configure SMS via Twilio</h3><p class="muted">Credentials are sent to Whilo over HTTPS, validated server-side and encrypted before persistence. This setup sends no SMS. Use a Messaging Service SID; outbound sends need separate consent and approval safeguards.</p>' +
+        '<form id="connect-twilio-form"><div class="fieldgroup"><label class="label" for="whilo-twilio-account">Account SID</label><input class="field" id="whilo-twilio-account" name="accountSid" autocomplete="off" required placeholder="AC…"></div>' +
+        '<div class="fieldgroup"><label class="label" for="whilo-twilio-key">API Key SID</label><input class="field" id="whilo-twilio-key" name="apiKeySid" autocomplete="off" required placeholder="SK…"></div>' +
+        '<div class="fieldgroup"><label class="label" for="whilo-twilio-secret">API Key Secret</label><input class="field" id="whilo-twilio-secret" name="apiKeySecret" type="password" autocomplete="new-password" required></div>' +
+        '<div class="fieldgroup"><label class="label" for="whilo-twilio-service">Messaging Service SID</label><input class="field" id="whilo-twilio-service" name="messagingServiceSid" autocomplete="off" required placeholder="MG…"></div>' +
+        '<div class="actions"><button class="btn" type="submit"' + (connectorBusy ? ' disabled' : '') + '>Verify and encrypt credentials</button><button class="btn secondary" type="button" data-act="cancel-twilio">Cancel</button></div></form></div>';
+    }
+
+    if (bridgePairing) {
+      const safeQr = typeof bridgePairing.qrDataUrl === 'string' && /^data:image\/png;base64,/.test(bridgePairing.qrDataUrl) ? bridgePairing.qrDataUrl : '';
+      out += '<div class="card" style="margin-top:16px"><h3>Mac Bridge pairing</h3><p class="muted">' + esc(bridgePairing.message || bridgePairing.caveat || 'One-time pairing token. Expires after five minutes.') + '</p>' +
+        (safeQr ? '<div style="display:flex;justify-content:center;padding:14px;background:#fff;border-radius:12px;margin:12px auto;max-width:360px"><img alt="One-time Whilo Mac Bridge pairing QR code" width="320" height="320" style="max-width:100%;height:auto" src="' + safeQr + '"></div>' : '') +
+        '<p class="muted">Status: ' + esc(bridgePairing.status || 'preparing') + (bridgePairing.deviceName ? ' · ' + esc(bridgePairing.deviceName) : '') + '</p>' +
+        '<p class="muted" style="font-size:12px">Pairing registers the device only. It does not yet give Whilo the ability to read or send iMessages. Never scan a QR from an untrusted screen.</p>' +
+        '<div class="actions"><button class="btn secondary" data-act="close-pairing">Close pairing</button></div></div>';
+    }
+    return out;
   }
   function resultsPage() {
     const done = state.tasks.filter(function (t) { return t.status === 'Done'; }).length;
@@ -272,10 +385,73 @@
       active = 'work'; render(); return;
     }
     if (act === 'connect-setup') { addTask('Plan and verify integration setup: ' + id, 'IT & systems', 'Whilo', 'High'); active = 'work'; render(); return; }
+    if (act === 'refresh-connectors') { connectorFeedback = ''; connectorCache = null; loadConnectors(); render(); return; }
+    if (act === 'connect-slack') {
+      connectorBusy = true; connectorFeedback = 'Preparing a short-lived Slack authorization request…'; render();
+      whiloApi('/api/connectors/slack/start', { method: 'POST', body: JSON.stringify({}) })
+        .then(function (data) { if (data && data.authorizeUrl && /^https:\/\/slack\.com\//.test(data.authorizeUrl)) window.location.assign(data.authorizeUrl); else throw new Error('The Slack authorization URL was not valid.'); })
+        .catch(function (error) { connectorFeedback = error && error.message ? error.message : 'Slack connection could not start.'; connectorBusy = false; render(); });
+      return;
+    }
+    if (act === 'connect-twilio') { showTwilioForm = true; render(); return; }
+    if (act === 'cancel-twilio') { showTwilioForm = false; render(); return; }
+    if (act === 'disconnect-connector') {
+      connectorBusy = true; connectorFeedback = 'Revoking and removing the encrypted connection…'; render();
+      whiloApi('/api/connectors', { method: 'POST', body: JSON.stringify({ action: 'disconnect', provider: id }) })
+        .then(function (data) { connectorFeedback = data.detail || 'Connection removed.'; connectorCache = null; showTwilioForm = false; return loadConnectors(); })
+        .catch(function (error) { connectorFeedback = error && error.message ? error.message : 'Disconnect failed.'; })
+        .finally(function () { connectorBusy = false; render(); });
+      return;
+    }
+    if (act === 'pair-imessage') {
+      if (bridgePollTimer) { window.clearInterval(bridgePollTimer); bridgePollTimer = null; }
+      bridgePairing = { status: 'creating', message: 'Creating a five-minute pairing QR…' }; connectorFeedback = ''; render();
+      whiloApi('/api/bridges/pair/start', { method: 'POST', body: JSON.stringify({}) })
+        .then(function (data) {
+          bridgePairing = { id: data.pairingSessionId, qrDataUrl: data.qrDataUrl, deepLink: data.deepLink, expiresAt: data.expiresAt, status: 'pending', caveat: data.caveat };
+          render();
+          bridgePollTimer = window.setInterval(async function () {
+            try {
+              const status = await whiloApi('/api/bridges/pair/status?id=' + encodeURIComponent(bridgePairing.id), { method: 'GET' });
+              bridgePairing.status = status.status; bridgePairing.deviceName = status.deviceName || '';
+              if (status.status === 'paired' || status.status === 'expired' || status.status === 'revoked') {
+                window.clearInterval(bridgePollTimer); bridgePollTimer = null;
+                bridgePairing.message = status.status === 'paired'
+                  ? 'Device identity paired. The native bridge and iMessage transport still require implementation.'
+                  : 'This pairing request expired or was revoked. Start a new one to try again.';
+              }
+              render();
+            } catch (error) {
+              window.clearInterval(bridgePollTimer); bridgePollTimer = null;
+              bridgePairing.message = error && error.message ? error.message : 'Pairing status could not be checked.';
+              render();
+            }
+          }, 3000);
+        })
+        .catch(function (error) { bridgePairing = null; connectorFeedback = error && error.message ? error.message : 'QR pairing could not start.'; render(); });
+      return;
+    }
+    if (act === 'close-pairing') { if (bridgePollTimer) window.clearInterval(bridgePollTimer); bridgePollTimer = null; bridgePairing = null; render(); return; }
   });
   shadow.addEventListener('submit', function (event) {
     event.preventDefault();
     const form = event.target;
+    if (form.id === 'connect-twilio-form') {
+      const fd = new FormData(form);
+      connectorBusy = true; connectorFeedback = 'Verifying credentials and storing an encrypted connection…'; render();
+      const payload = {
+        action: 'connect_twilio',
+        accountSid: String(fd.get('accountSid') || ''),
+        apiKeySid: String(fd.get('apiKeySid') || ''),
+        apiKeySecret: String(fd.get('apiKeySecret') || ''),
+        messagingServiceSid: String(fd.get('messagingServiceSid') || '')
+      };
+      whiloApi('/api/connectors', { method: 'POST', body: JSON.stringify(payload) })
+        .then(function (data) { connectorFeedback = data.detail || 'Twilio credentials verified.'; connectorCache = null; showTwilioForm = false; return loadConnectors(); })
+        .catch(function (error) { connectorFeedback = error && error.message ? error.message : 'Twilio credentials could not be verified.'; })
+        .finally(function () { connectorBusy = false; render(); });
+      return;
+    }
     if (form.id === 'new-task') {
       const fd = new FormData(form);
       const title = String(fd.get('title') || '').trim();
@@ -293,6 +469,19 @@
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && veil.classList.contains('open')) closePanel(); });
 
   function boot() {
+    const oauthResult = new URLSearchParams(window.location.search).get('whilo_connect');
+    if (oauthResult && /^slack_(success|error|cancelled|expired)$/.test(oauthResult)) {
+      active = 'connect';
+      connectorCache = null;
+      connectorFeedback = oauthResult === 'slack_success'
+        ? 'Slack OAuth completed. The server will confirm the workspace connection.'
+        : oauthResult === 'slack_cancelled' ? 'Slack authorization was cancelled.'
+        : oauthResult === 'slack_expired' ? 'That Slack authorization expired. Start again.'
+        : 'Slack authorization failed. Check the OAuth app settings and server logs.';
+      const cleanUrl = new URL(window.location.href); cleanUrl.searchParams.delete('whilo_connect');
+      window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+      setTimeout(function () { openPanel('connect'); }, 0);
+    }
     injectTopbar();
     // The existing React shell may replace the navigation after a route change.
     // Keep the observer, but only rescan when a top-level navigation label is likely affected.
