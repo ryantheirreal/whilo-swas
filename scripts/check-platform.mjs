@@ -41,6 +41,7 @@ const jsFiles = [
   ...walk(path.join(root, 'web', 'whilo-swas', 'server', 'routes')).filter(file => file.endsWith('.js')),
   ...walk(path.join(root, 'scripts')).filter(file => (file.endsWith('.mjs') || file.endsWith('.js')) && !file.endsWith('check-platform.mjs')),
   path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'),
+  path.join(root, 'web', 'whilo-swas', 'whilo-marketplace.js'),
   path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'),
   path.join(root, 'shared', 'whilo-agent-core', 'index.cjs'),
   path.join(root, 'shared', 'whilo-agent-core', 'index.js'),
@@ -51,8 +52,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 8) {
-  failures.push('Expected all eight versioned Supabase migrations to be present.');
+if (migrations.length < 9) {
+  failures.push('Expected all nine versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
@@ -67,7 +68,11 @@ for (const [label, pattern] of [
   ['human messaging entities', /create table if not exists public\.message_conversations/i],
   ['message membership roles', /create table if not exists public\.message_conversation_members/i],
   ['single-use workspace invitations', /function public\.accept_workspace_invitation/i],
-  ['pinned message storage', /create table if not exists public\.message_pins/i]
+  ['pinned message storage', /create table if not exists public\.message_pins/i],
+  ['marketplace listings and creator moderation', /create table if not exists public\.marketplace_listings/i],
+  ['20 percent marketplace commission snapshot', /platform_fee_bps integer not null default 2000/i],
+  ['idempotent Stripe webhook events', /create table if not exists public\.marketplace_webhook_events/i],
+  ['subscription entitlement ledger', /create table if not exists public\.marketplace_entitlements/i]
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
@@ -93,5 +98,5 @@ if (failures.length) {
   for (const failure of failures) console.error('FAIL: ' + failure);
   process.exitCode = 1;
 } else {
-  console.log('PASS: migration ordering, tenant-isolation primitives, encrypted connector storage, OAuth state, queue/approval hooks, QR pairing, and secret hygiene.');
+  console.log('PASS: migration ordering, tenant isolation, encrypted connectors, OAuth state, mission queue/approvals, QR pairing, marketplace fee ledger/webhook tables, and secret hygiene.');
 }
