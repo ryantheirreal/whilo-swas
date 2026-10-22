@@ -45,8 +45,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 4) {
-  failures.push('Expected the four versioned Supabase migrations to be present.');
+if (migrations.length < 8) {
+  failures.push('Expected all eight versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
@@ -57,7 +57,10 @@ for (const [label, pattern] of [
   ['durable mission queue', /create table if not exists public\.mission_jobs/i],
   ['approval-gated enqueue', /function public\.decide_mission_bundle/i],
   ['QR bridge identity', /function public\.claim_bridge_pair_session/i],
-  ['owner provisioning without password column', /function public\.ensure_owner_workspace/i]
+  ['owner provisioning without password column', /function public\.ensure_owner_workspace/i],
+  ['human messaging entities', /create table if not exists public\.message_conversations/i],
+  ['message membership roles', /create table if not exists public\.message_conversation_members/i],
+  ['single-use workspace invitations', /function public\.accept_workspace_invitation/i]
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
