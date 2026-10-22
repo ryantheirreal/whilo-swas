@@ -70,7 +70,7 @@
   let cloudAuthLoading = false;
   let cloudAuthBusy = false;
   let cloudAuthFeedback = '';
-  let cloudAuthMode = new URLSearchParams(window.location.search).has('whilo_invite') ? 'signup' : 'signin';
+  let cloudAuthMode = new URLSearchParams(window.location.search).has('whilo_invite') ? 'signup' : (new URLSearchParams(window.location.search).has('whilo_recovery') ? 'recovery' : 'signin');
 
   let messagesInbox = [];
   let messagesDiscover = [];
@@ -188,39 +188,59 @@
 
   function cloudAuthCard() {
     if (!cloudAuthChecked && !cloudAuthLoading) loadCloudAuth();
-    if (cloudAuthLoading) return '<div class="notice">Checking cloud identity configuration…</div>';
-    if (cloudAuthSession) {
-      return '<div class="card" style="margin:12px 0"><div class="row"><div><div class="sectionlabel">Cloud identity</div><strong>' + esc(cloudAuthSession.email || 'Whilo workspace member') + '</strong><div class="mini">Authenticated session · server-side workspace access is checked on every request.</div></div><button class="btn secondary" data-act="cloud-signout"' + (cloudAuthBusy ? ' disabled' : '') + '>Sign out</button></div>' +
-        (cloudAuthFeedback ? '<p class="muted">' + esc(cloudAuthFeedback) + '</p>' : '') + '</div>';
+    if (cloudAuthLoading) return '<div class="notice">Checking Whilo identity configuration…</div>';
+    const params = new URLSearchParams(window.location.search);
+    const invitationPending = params.has('whilo_invite');
+    const creating = cloudAuthMode === 'signup';
+    const recovering = cloudAuthMode === 'recovery';
+    const resetting = cloudAuthMode === 'reset-request';
+    if (cloudAuthSession && !recovering && !resetting) {
+      return '<div class="whilo-auth-shell" style="display:grid;grid-template-columns:1fr;gap:0;margin:14px 0;border:1px solid #292929;border-radius:24px;overflow:hidden;background:linear-gradient(145deg,#141414,#080808);color:#f7f7f7">' +
+        '<div style="padding:clamp(22px,5vw,38px);background:radial-gradient(ellipse at 12% 0%,rgba(255,255,255,.09),transparent 55%),#0a0a0a">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:28px"><span style="display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#fff;color:#080808;font-weight:900;font-size:22px;letter-spacing:-2px">w.</span><div><div style="font-size:16px;font-weight:750;letter-spacing:-.4px">whilo</div><div style="font-size:11px;color:#9b9b9b;letter-spacing:1.2px;text-transform:uppercase">Your work, in motion</div></div><span style="margin-left:auto;border:1px solid #343434;border-radius:99px;padding:6px 10px;font-size:11px;color:#bdbdbd">SIGNED IN</span></div>' +
+        '<div style="font-size:11px;font-weight:800;letter-spacing:1.8px;color:#a5a5a5;text-transform:uppercase;margin-bottom:12px">Your Whilo identity</div>' +
+        '<h2 style="font-size:clamp(28px,5vw,40px);line-height:1.06;letter-spacing:-1.6px;margin:0 0 12px">You’re in.</h2>' +
+        '<p style="font-size:14px;line-height:1.65;color:#b5b5b5;max-width:470px;margin:0 0 22px">' + esc(cloudAuthSession.email || 'Whilo workspace member') + '</p>' +
+        (cloudAuthFeedback ? '<div class="notice" role="status">' + esc(cloudAuthFeedback) + '</div>' : '') +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-act="open-account-work" style="min-height:46px;border-radius:999px;background:#f7f7f7;color:#080808;font-weight:800;border:0">Open my workspace →</button><button class="btn secondary" data-act="cloud-signout" style="min-height:46px;border-radius:999px"'+(cloudAuthBusy?' disabled':'')+'>Sign out</button></div>' +
+        '<p style="font-size:11px;line-height:1.55;color:#858585;margin:18px 0 0">Your session is validated by Supabase. Whilo checks workspace membership on server requests.</p></div>' +
+        '<div style="padding:18px 24px;border-top:1px solid #292929;background:#101010;display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:15px">' +
+        '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">One workspace</div><div style="font-size:12px;color:#929292;line-height:1.5">Tasks, people and assets stay organized.</div></div>' +
+        '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">Human approval</div><div style="font-size:12px;color:#929292;line-height:1.5">Sensitive actions remain gated.</div></div>' +
+        '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">Your control</div><div style="font-size:12px;color:#929292;line-height:1.5">Sign out to end this browser session.</div></div></div></section>';
     }
     const unavailable = !cloudAuthConfigured;
-    const invitationPending = new URLSearchParams(window.location.search).has('whilo_invite');
-    const creating = invitationPending && cloudAuthMode === 'signup';
-    const heading = creating ? 'Create your invited account' : 'Sign in to sync your workspace';
-    const description = creating
-      ? 'Create an account using the email address this invitation was sent to. Use a strong, unique password. Whilo will check the invitation against the authenticated email before granting workspace access.'
-      : 'Use the account provisioned in Supabase Auth. Your password is sent only to Supabase over HTTPS for verification; Whilo does not store the password. The session token is kept in this browser and may be signed out below.';
-    return '<section class="whilo-auth-shell" style="display:grid;grid-template-columns:1fr;gap:0;margin:14px 0;border:1px solid var(--line,#2b2b2b);border-radius:24px;overflow:hidden;background:linear-gradient(145deg,#141414,#080808);color:#f7f7f7">' +
+    const heading = recovering ? 'Choose a new password' : resetting ? 'Reset your password' : creating ? (invitationPending ? 'Create your invited account' : 'Create your Whilo account') : 'Sign in to Whilo';
+    const description = recovering
+      ? 'Choose a new, unique password for your Whilo account. This form works only from a valid password-reset link opened from your email.'
+      : resetting
+        ? 'Enter your account email and we’ll ask Supabase to send a password-reset link if the account is eligible. For privacy, the page does not confirm whether an account exists.'
+        : creating
+          ? (invitationPending
+            ? 'Create an account with the invited email. Whilo checks the invitation against your authenticated email before granting workspace access.'
+            : 'Create your Whilo identity with your email. Confirm the email if prompted, then sign in to provision your private workspace.')
+          : 'Sign in with your email and password. Whilo sends credentials only to Supabase over HTTPS and never stores your password.';
+    return '<section class="whilo-auth-shell" style="display:grid;grid-template-columns:1fr;gap:0;margin:14px 0;border:1px solid #292929;border-radius:24px;overflow:hidden;background:linear-gradient(145deg,#141414,#080808);color:#f7f7f7">' +
       '<div style="padding:clamp(22px,5vw,38px);background:radial-gradient(ellipse at 12% 0%,rgba(255,255,255,.09),transparent 55%),#0a0a0a">' +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:28px"><span style="display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#fff;color:#080808;font-weight:900;font-size:22px;letter-spacing:-2px">w.</span><div><div style="font-size:16px;font-weight:750;letter-spacing:-.4px">whilo</div><div style="font-size:11px;color:#9b9b9b;letter-spacing:1.2px;text-transform:uppercase">Your work, in motion</div></div><span style="margin-left:auto;border:1px solid #343434;border-radius:99px;padding:6px 10px;font-size:11px;color:#bdbdbd">PRIVATE WORKSPACE</span></div>' +
-      '<div style="font-size:11px;font-weight:800;letter-spacing:1.8px;color:#a5a5a5;text-transform:uppercase;margin-bottom:12px">' + (creating ? 'Invitation access' : 'Whilo account') + '</div>' +
-      '<h2 style="font-size:clamp(28px,5vw,40px);line-height:1.06;letter-spacing:-1.6px;margin:0 0 12px;max-width:460px">' + heading + '</h2>' +
-      '<p style="font-size:14px;line-height:1.65;color:#b5b5b5;max-width:470px;margin:0 0 22px">' + description + '</p>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:28px"><span style="display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#fff;color:#080808;font-weight:900;font-size:22px;letter-spacing:-2px">w.</span><div><div style="font-size:16px;font-weight:750;letter-spacing:-.4px">whilo</div><div style="font-size:11px;color:#9b9b9b;letter-spacing:1.2px;text-transform:uppercase">Your work, in motion</div></div><span style="margin-left:auto;border:1px solid #343434;border-radius:99px;padding:6px 10px;font-size:11px;color:#bdbdbd">'+(recovering?'SECURE RESET':resetting?'ACCOUNT RECOVERY':creating?'CREATE ACCOUNT':'PRIVATE WORKSPACE')+'</span></div>' +
+      '<div style="font-size:11px;font-weight:800;letter-spacing:1.8px;color:#a5a5a5;text-transform:uppercase;margin-bottom:12px">'+(invitationPending?'Invitation access':'Whilo account')+'</div>' +
+      '<h2 style="font-size:clamp(28px,5vw,40px);line-height:1.06;letter-spacing:-1.6px;margin:0 0 12px;max-width:460px">'+heading+'</h2>' +
+      '<p style="font-size:14px;line-height:1.65;color:#b5b5b5;max-width:470px;margin:0 0 22px">'+description+'</p>' +
       '<div style="display:grid;gap:11px;max-width:520px">' +
       (cloudAuthFeedback ? '<div class="notice" role="status">' + esc(cloudAuthFeedback) + '</div>' : '') +
-      '<form id="cloud-signin-form" style="display:grid;gap:13px"><input type="hidden" name="mode" value="' + (creating ? 'signup' : 'signin') + '">' +
-      '<div class="fieldgroup"><label class="label" for="whilo-cloud-email" style="color:#e3e3e3">Email address</label><input id="whilo-cloud-email" class="field" name="email" type="email" autocomplete="username" required maxlength="320" placeholder="you@company.com" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
-      '<div class="fieldgroup"><label class="label" for="whilo-cloud-password" style="color:#e3e3e3">Password</label><input id="whilo-cloud-password" class="field" name="password" type="password" autocomplete="' + (creating ? 'new-password' : 'current-password') + '" required minlength="' + (creating ? '14' : '1') + '" maxlength="256" placeholder="' + (creating ? 'At least 14 characters' : 'Your password') + '" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
-      '<button class="btn" style="min-height:50px;border-radius:999px;background:#f7f7f7;color:#080808;font-weight:800;border:0" type="submit"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '>' + (cloudAuthBusy ? 'Working…' : creating ? 'Create account & accept invite →' : 'Continue to Whilo →') + '</button></form>' +
-      (invitationPending ? '<button type="button" class="btn secondary" style="margin-top:2px;border-radius:999px" data-act="toggle-cloud-auth-mode">' + (creating ? 'Already have an account? Sign in' : 'New to Whilo? Create invited account') + '</button>' : '') +
-      (unavailable ? '<p class="mini" style="color:#f0c47b;margin:3px 0 0">Cloud sign-in is disabled until SUPABASE_URL and SUPABASE_ANON_KEY are configured in Vercel.</p>' : '') +
-      '<p style="font-size:11px;line-height:1.55;color:#858585;margin:4px 0 0">Protected by workspace access checks. Your password is verified by Supabase over HTTPS and is not stored by Whilo.</p></div></div>' +
+      '<form id="cloud-signin-form" style="display:grid;gap:13px"><input type="hidden" name="mode" value="'+(recovering?'recovery':resetting?'reset-request':creating?'signup':'signin')+'">' +
+      (recovering ? '' : '<div class="fieldgroup"><label class="label" for="whilo-cloud-email" style="color:#e3e3e3">Email address</label><input id="whilo-cloud-email" class="field" name="email" type="email" autocomplete="username" required maxlength="320" placeholder="you@company.com" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"'+(unavailable||cloudAuthBusy?' disabled':'')+'></div>') +
+      (resetting ? '' : '<div class="fieldgroup"><label class="label" for="whilo-cloud-password" style="color:#e3e3e3">'+(recovering?'New password':'Password')+'</label><input id="whilo-cloud-password" class="field" name="password" type="password" autocomplete="'+(creating||recovering?'new-password':'current-password')+'" required minlength="'+(creating||recovering?'14':'1')+'" maxlength="256" placeholder="'+(creating||recovering?'At least 14 characters':'Your password')+'" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"'+(unavailable||cloudAuthBusy?' disabled':'')+'></div>') +
+      (recovering ? '<div class="fieldgroup"><label class="label" for="whilo-cloud-password-confirm" style="color:#e3e3e3">Confirm new password</label><input id="whilo-cloud-password-confirm" class="field" name="passwordConfirmation" type="password" autocomplete="new-password" required minlength="14" maxlength="256" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"'+(unavailable||cloudAuthBusy?' disabled':'')+'></div>' : '') +
+      '<button class="btn" style="min-height:50px;border-radius:999px;background:#f7f7f7;color:#080808;font-weight:800;border:0" type="submit"'+(unavailable||cloudAuthBusy?' disabled':'')+'>'+(cloudAuthBusy?'Working…':recovering?'Update password →':resetting?'Send reset link →':creating?(invitationPending?'Create account & accept invite →':'Create account →'):'Continue to Whilo →')+'</button></form>' +
+      (recovering || resetting ? '<button type="button" class="btn secondary" style="margin-top:2px;border-radius:999px" data-act="toggle-cloud-auth-mode" data-mode="signin">Back to sign in</button>' : creating ? '<button type="button" class="btn secondary" style="margin-top:2px;border-radius:999px" data-act="toggle-cloud-auth-mode" data-mode="signin">Already have an account? Sign in</button>' : '<div style="display:flex;gap:9px;flex-wrap:wrap"><button type="button" class="btn secondary" style="margin-top:2px;border-radius:999px" data-act="toggle-cloud-auth-mode" data-mode="signup">Create account</button><button type="button" class="btn secondary" style="margin-top:2px;border-radius:999px" data-act="toggle-cloud-auth-mode" data-mode="reset-request">Forgot password?</button></div>') +
+      (unavailable ? '<p class="mini" style="color:#f0c47b;margin:3px 0 0">Cloud sign-in is not configured. The workspace owner must connect the correct Supabase project and set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel.</p>' : '') +
+      '<p style="font-size:11px;line-height:1.55;color:#858585;margin:4px 0 0">Account access is checked server-side. Never share your password or reset link with anyone.</p></div></div>' +
       '<div style="padding:20px 24px;border-top:1px solid #292929;background:#101010;display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:15px">' +
       '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">One workspace</div><div style="font-size:12px;color:#929292;line-height:1.5">Tasks, people and assets stay organized.</div></div>' +
       '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">Human approval</div><div style="font-size:12px;color:#929292;line-height:1.5">Sensitive actions remain gated.</div></div>' +
       '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">Your control</div><div style="font-size:12px;color:#929292;line-height:1.5">Sign out to end this browser session.</div></div></div></section>';
   }
-
   async function loadConnectors() {
     if (connectorLoading) return;
     connectorLoading = true;
@@ -500,7 +520,7 @@
 `;
   const style = document.createElement('style'); style.textContent = css + messageCss; shadow.appendChild(style);
   const veil = document.createElement('div'); veil.className = 'veil'; veil.setAttribute('role','dialog'); veil.setAttribute('aria-modal','true'); veil.setAttribute('aria-label','Whilo Enterprise workspace');
-  veil.innerHTML = '<section class="panel"><header class="top"><div class="brand"><div class="mark">W</div><div><div class="eyebrow">Whilo / Operations</div><div class="title">Company workspace</div><div class="sub">Turn repeatable work into measurable outcomes.</div></div></div><button class="close" data-act="close" aria-label="Close workspace">×</button></header><nav class="tabs" aria-label="Enterprise workspace"><button class="tab" data-tab="work">▤ Work</button><button class="tab" data-tab="company">▦ Company</button><button class="tab" data-tab="connect">↗ Connect</button><button class="tab" data-tab="results">◷ Results</button><button class="tab" data-tab="pricing">✳ Plans</button></nav><main class="body" id="view"></main><footer class="footer"><span>Local workspace data · stored in this browser</span><span>Outcome-first operations · approvals before consequential actions</span></footer></section>';
+  veil.innerHTML = '<section class="panel"><header class="top"><div class="brand"><div class="mark">W</div><div><div class="eyebrow">Whilo / Operations</div><div class="title">Company workspace</div><div class="sub">Turn repeatable work into measurable outcomes.</div></div></div><button class="close" data-act="close" aria-label="Close workspace">×</button></header><nav class="tabs" aria-label="Enterprise workspace"><button class="tab" data-tab="work">▤ Work</button><button class="tab" data-tab="company">▦ Company</button><button class="tab" data-tab="connect">↗ Connect</button><button class="tab" data-tab="account">◉ Account</button><button class="tab" data-tab="results">◷ Results</button><button class="tab" data-tab="pricing">✳ Plans</button></nav><main class="body" id="view"></main><footer class="footer"><span>Local workspace data · stored in this browser</span><span>Outcome-first operations · approvals before consequential actions</span></footer></section>';
   shadow.appendChild(veil);
   const view = veil.querySelector('#view');
   let active = 'work';
@@ -549,6 +569,9 @@
     let out = '<div class="hero"><div><h2 class="h2">Company operating model</h2><p class="muted">One shared operating layer across departments. Start with work that is repeatable, already outsourced and easy to verify; expand into higher-judgement work after quality and controls are proven.</p></div></div><div class="notice">These are playbooks and task templates, not autonomous departments yet. Creating a task adds it to this browser’s Work queue. Production execution needs connected tools, a durable backend and approval policies.</div><div class="grid">';
     out += DEPARTMENTS.map(function (d) { return '<article class="card"><div class="eyebrow">' + esc(d.id) + '</div><h3>' + esc(d.name) + '</h3><p>' + esc(d.subtitle) + '</p><div class="actions"><button class="btn secondary" data-act="playbook" data-id="' + esc(d.id) + '">Start playbook</button></div></article>'; }).join('');
     return out + '</div><div class="sectionlabel">Workforce architecture</div><div class="grid"><article class="card"><div class="eyebrow">Persistent agent</div><h3>Pets own outcomes</h3><p>A Pet keeps its role, user-approved memory, skills, policy and scorecard across jobs. It is the accountable lead that plans, delegates and handles exceptions.</p></article><article class="card"><div class="eyebrow">Ephemeral specialist</div><h3>Bots execute bounded tasks</h3><p>A Pet can spawn Browser Researcher, Computer Operator, Analyst, CRM Operator, Writer, Coder or QA Verifier Bots. Each gets a narrow task contract, scoped tools, a budget and an output schema.</p></article><article class="card"><div class="eyebrow">Quality control</div><h3>Verifier checks the receipt</h3><p>A separate verification step checks evidence and acceptance criteria. More agents are used only when specialization or safe parallelism improves the expected outcome.</p></article></div><div class="sectionlabel">Expansion principle</div><div class="card"><h3>Outcome before headcount replacement</h3><p>Each workflow needs a named owner, source systems, acceptance criteria, exception handling, an approval threshold and a measurable result before it is allowed to run unattended.</p></div>';
+  }
+  function accountPage() {
+    return '<div class="hero"><div><h2 class="h2">Your Whilo account</h2><p class="muted">Sign in, create your account or recover access in one place. Workspace provisioning happens after authentication and requires Supabase setup.</p></div></div>' + cloudAuthCard();
   }
   function connectPage() {
     if (!connectorCache && !connectorLoading && !connectorFeedback) loadConnectors();
@@ -1081,6 +1104,7 @@
     if (active === 'work') view.innerHTML = workPage();
     if (active === 'company') view.innerHTML = companyPage();
     if (active === 'connect') view.innerHTML = connectPage();
+    if (active === 'account') view.innerHTML = accountPage();
     if (active === 'results') view.innerHTML = resultsPage();
     if (active === 'messages') view.innerHTML = messagesPage();
     if (active === 'pricing') view.innerHTML = pricingPage();
@@ -1382,10 +1406,12 @@
       active = 'work'; render(); return;
     }
     if (act === 'toggle-cloud-auth-mode') {
-      cloudAuthMode = cloudAuthMode === 'signup' ? 'signin' : 'signup';
+      const requestedMode = action.getAttribute('data-mode');
+      cloudAuthMode = requestedMode || (cloudAuthMode === 'signup' ? 'signin' : 'signup');
       cloudAuthFeedback = '';
       render(); return;
     }
+    if (act === 'open-account-work') { active = 'work'; render(); return; }
     if (act === 'cloud-signout') {
       cloudAuthBusy = true; cloudAuthFeedback = 'Signing out…'; render();
       window.WhiloCloudAuth.signOut()
@@ -1514,28 +1540,50 @@
       const fd = new FormData(form);
       const email = String(fd.get('email') || '');
       const password = String(fd.get('password') || '');
+      const passwordConfirmation = String(fd.get('passwordConfirmation') || '');
       const mode = String(fd.get('mode') || 'signin');
       cloudAuthBusy = true;
-      cloudAuthFeedback = mode === 'signup' ? 'Creating your account securely…' : 'Signing in securely…';
+      cloudAuthFeedback = mode === 'signup' ? 'Creating your account securely…' : mode === 'reset-request' ? 'Requesting a reset link…' : mode === 'recovery' ? 'Updating your password securely…' : 'Signing in securely…';
       render();
-      const authPromise = mode === 'signup'
-        ? window.WhiloCloudAuth.signUp(email, password)
-        : window.WhiloCloudAuth.signIn(email, password);
+      let authPromise;
+      if (mode === 'signup') authPromise = window.WhiloCloudAuth.signUp(email, password);
+      else if (mode === 'reset-request') authPromise = window.WhiloCloudAuth.resetPasswordForEmail(email);
+      else if (mode === 'recovery') {
+        if (password !== passwordConfirmation) authPromise = Promise.reject(new Error('The two passwords do not match.'));
+        else authPromise = window.WhiloCloudAuth.updatePassword(password);
+      } else authPromise = window.WhiloCloudAuth.signIn(email, password);
       authPromise
         .then(function (user) {
+          if (mode === 'reset-request') {
+            cloudAuthMode = 'signin';
+            cloudAuthFeedback = 'If an account is registered for that address, a password-reset email will arrive shortly. Check spam too.';
+            return null;
+          }
+          if (mode === 'recovery') {
+            cloudAuthMode = 'signin';
+            const cleanUrl = new URL(window.location.href); cleanUrl.searchParams.delete('whilo_recovery'); cleanUrl.hash = '';
+            window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+            cloudAuthFeedback = 'Password updated. You can now sign in with the new password.';
+            if (window.WhiloCloudAuth.signOut) return window.WhiloCloudAuth.signOut().then(function(){cloudAuthSession=null;});
+            return null;
+          }
           if (mode === 'signup' && user.confirmationRequired) {
-            cloudAuthFeedback = 'Account created. Check the email inbox for the Supabase confirmation link, then open the invitation link again if you are not returned automatically.';
+            cloudAuthMode = 'signin';
+            cloudAuthFeedback = 'Account request received. Check your email for the confirmation link. After confirming, return here and sign in to provision your workspace.';
             return null;
           }
           cloudAuthSession = user; cloudAuthConfigured = true; cloudAuthChecked = true;
           cloudAuthFeedback = mode === 'signup' ? 'Account created for ' + (user.email || email) + '.' : 'Signed in as ' + (user.email || email) + '.';
-          return acceptPendingWorkspaceInvitation().then(function (invitation) {
+          return acceptPendingWorkspaceInvitation().catch(function(){ return null; }).then(function (invitation) {
             if (invitation) cloudAuthFeedback = invitation.detail || ('Joined ' + invitation.organizationName + '.');
+            return whiloApi('/api/account/bootstrap', {method:'POST', body:JSON.stringify({})});
+          }).then(function (workspace) {
+            if (workspace && workspace.ok) cloudAuthFeedback = 'Signed in as ' + (user.email || email) + '. Workspace ready with ' + (workspace.petsSeeded || []).length + ' default Pets.';
             connectorCache = null; connectorFeedback = ''; cloudMissionsCache = null; cloudMissionsFeedback = '';
             return Promise.all([loadConnectors(), loadCloudMissions()]);
           });
         })
-        .catch(function (error) { cloudAuthFeedback = error && error.message ? error.message : (mode === 'signup' ? 'Account creation failed.' : 'Cloud sign-in failed.'); })
+        .catch(function (error) { cloudAuthFeedback = error && error.message ? error.message : (mode === 'signup' ? 'Account creation failed.' : mode === 'reset-request' ? 'Could not request password reset.' : mode === 'recovery' ? 'Password update failed.' : 'Cloud sign-in failed.'); })
         .finally(function () { cloudAuthBusy = false; render(); });
       return;
     }
