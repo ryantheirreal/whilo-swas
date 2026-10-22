@@ -203,7 +203,7 @@ async function handleMain(req, res) {
         method: 'POST', headers: { Prefer: 'return=representation' },
         body: JSON.stringify({
           organization_id: orgId, user_id: user.id, display_name: displayName || 'Whilo Creator',
-          bio: '', country_code: 'BR', status: 'pending', terms_accepted_at: new Date().toISOString()
+          bio: '', country_code: 'BR', status: 'pending'
         })
       });
       if (!Array.isArray(created) || !created[0]) fail(503, 'Creator profile could not be created.');
