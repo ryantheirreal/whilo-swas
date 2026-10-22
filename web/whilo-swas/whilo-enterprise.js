@@ -128,8 +128,13 @@
       if (!window.WhiloCloudAuth) throw new Error('Cloud authentication script is not loaded. Refresh Whilo and retry.');
       await window.WhiloCloudAuth.publicConfig();
       cloudAuthConfigured = true;
-      cloudAuthSession = await window.WhiloCloudAuth.getSession();
-      cloudAuthFeedback = '';
+      try {
+        cloudAuthSession = await window.WhiloCloudAuth.getSession();
+        cloudAuthFeedback = '';
+      } catch (sessionError) {
+        cloudAuthSession = null;
+        cloudAuthFeedback = sessionError && sessionError.message ? sessionError.message : 'The saved cloud session expired. Sign in again.';
+      }
     } catch (error) {
       cloudAuthConfigured = false;
       cloudAuthSession = null;
