@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import { fileURLToPath } from 'node:url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const failures = [];
 let checked = 0;
