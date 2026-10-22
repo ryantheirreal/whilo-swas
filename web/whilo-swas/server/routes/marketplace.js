@@ -193,6 +193,7 @@ async function handleMain(req, res) {
     if (!TYPES.has(listingType)) fail(400, 'Choose a Pet, Bot, Skill, Playbook or Template.');
     if (title.length < 3 || summary.length < 10 || category.length < 2) fail(400, 'Complete the title, summary and category.');
     if (!Number.isInteger(priceMinor) || priceMinor < 0 || priceMinor > 50000000) fail(400, 'Price must be an integer number of BRL cents.');
+    if (body.acceptedListingTerms !== true) fail(400, 'Confirm the listing rights, license accuracy and creator terms.');
     const manifest = safeManifest(body.manifest || {});
     const existing = await sellerFor(orgId, user.id);
     let seller = existing;
