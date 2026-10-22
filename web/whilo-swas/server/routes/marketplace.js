@@ -177,9 +177,22 @@ async function handleMain(req, res) {
         '&seller_id=eq.' + encodeURIComponent(seller.id) + '&select=id,listing_type,title,summary,category,tags,version,license,pricing_model,price_minor,currency,status,review_note,installs_count,created_at,updated_at&order=updated_at.desc&limit=100');
       return send(res, 200, { seller, listings: Array.isArray(listings) ? listings : [] });
     }
-    const rows = await db('marketplace_entitlements?buyer_organization_id=eq.' + encodeURIComponent(orgId) +
-      '&buyer_user_id=eq.' + encodeURIComponent(user.id) + '&status=eq.active&select=id,listing_id,order_id,granted_at&order=granted_at.desc&limit=100');
-    return send(res, 200, { entitlements: Array.isArray(rows) ? rows : [] });
+    const [rows, installationRows] = await Promise.all([
+      db('marketplace_entitlements?buyer_organization_id=eq.' + encodeURIComponent(orgId) +
+        '&buyer_user_id=eq.' + encodeURIComponent(user.id) + '&status=eq.active&select=id,listing_id,order_id,granted_at&order=granted_at.desc&limit=100'),
+      db('marketplace_installations?organization_id=eq.' + encodeURIComponent(orgId) +
+        '&buyer_user_id=eq.' + encodeURIComponent(user.id) + '&state=neq.removed&select=id,listing_id,listing_version,asset_type,pet_instance_id,state,installed_at&order=installed_at.desc&limit=100')
+    ]);
+    const installs = Array.isArray(installationRows) ? installationRows : [];
+    const listingIds = [...new Set(installs.map(row => row.listing_id).filter(Boolean))];
+    const listingRows = listingIds.length
+      ? await db('marketplace_listings?id=in.(' + listingIds.join(',') + ')&select=id,title,summary,category')
+      : [];
+    const listingMap = new Map((Array.isArray(listingRows) ? listingRows : []).map(row => [row.id, row]));
+    return send(res, 200, {
+      entitlements: Array.isArray(rows) ? rows : [],
+      installations: installs.map(row => Object.assign({}, row, { listing: listingMap.get(row.listing_id) || null }))
+    });
   }
 
   if (action === 'create-listing') {
@@ -269,20 +282,26 @@ async function handleMain(req, res) {
     if (!listing) fail(404, 'Published listing not found.');
     if (listing.price_minor !== 0 || listing.pricing_model !== 'free') fail(402, 'This listing requires checkout.');
     if (listing.organization_id === orgId) fail(400, 'You cannot install your own listing as a buyer.');
-    const existing = await db('marketplace_entitlements?listing_id=eq.' + encodeURIComponent(listingId) +
-      '&buyer_user_id=eq.' + encodeURIComponent(user.id) + '&select=id&limit=1');
-    if (!Array.isArray(existing) || !existing.length) {
-      await db('marketplace_entitlements', {
-        method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
-        body: JSON.stringify({ listing_id: listingId, buyer_organization_id: orgId, buyer_user_id: user.id, status: 'active' })
-      });
-      await db('marketplace_listings?id=eq.' + encodeURIComponent(listingId), {
-        method: 'PATCH', headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ installs_count: Number(listing.installs_count || 0) + 1 })
-      });
-    }
-    await audit(orgId, user.id, 'marketplace.entitlement_granted', 'marketplace_listing', listingId, 'success', { access: 'free' });
-    return send(res, 200, { ok: true, detail: 'Free listing added to your workspace library.' });
+    await db('marketplace_entitlements?on_conflict=listing_id,buyer_user_id', {
+      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ listing_id: listingId, buyer_organization_id: orgId, buyer_user_id: user.id, status: 'active' })
+    });
+    const installed = await db('rpc/install_marketplace_asset', {
+      method: 'POST',
+      body: JSON.stringify({ p_organization_id: orgId, p_buyer_user_id: user.id, p_listing_id: listingId })
+    });
+    const installation = Array.isArray(installed) ? installed[0] : null;
+    await audit(orgId, user.id, 'marketplace.asset_installed', 'marketplace_listing', listingId, 'success', {
+      access: 'free', installation_id: installation && installation.result_installation_id || null,
+      asset_type: installation && installation.result_asset_type || null
+    });
+    return send(res, 200, {
+      ok: true,
+      installation,
+      detail: installation && installation.result_asset_type === 'pet'
+        ? 'Pet installed in your Whilo workspace. It will still follow your workspace permissions and approval policy.'
+        : 'Asset added to your Whilo library. A Bot is available as a bounded asset; it does not execute until a task invokes it.'
+    });
   }
 
   if (action === 'start-seller-onboarding') {
@@ -512,6 +531,14 @@ async function processWebhookEvent(event) {
               listing_id: order.listing_id, order_id: order.id,
               buyer_organization_id: order.buyer_organization_id,
               buyer_user_id: order.buyer_user_id, status: 'active'
+            })
+          });
+          await db('rpc/install_marketplace_asset', {
+            method: 'POST',
+            body: JSON.stringify({
+              p_organization_id: order.buyer_organization_id,
+              p_buyer_user_id: order.buyer_user_id,
+              p_listing_id: order.listing_id
             })
           });
         }
