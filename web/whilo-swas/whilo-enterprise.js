@@ -200,15 +200,25 @@
     const description = creating
       ? 'Create an account using the email address this invitation was sent to. Use a strong, unique password. Whilo will check the invitation against the authenticated email before granting workspace access.'
       : 'Use the account provisioned in Supabase Auth. Your password is sent only to Supabase over HTTPS for verification; Whilo does not store the password. The session token is kept in this browser and may be signed out below.';
-    return '<div class="card" style="margin:12px 0"><div class="sectionlabel">Cloud identity</div><h3>' + heading + '</h3>' +
-      '<p class="muted">' + description + '</p>' +
-      (cloudAuthFeedback ? '<div class="notice">' + esc(cloudAuthFeedback) + '</div>' : '') +
-      '<form id="cloud-signin-form"><input type="hidden" name="mode" value="' + (creating ? 'signup' : 'signin') + '">' +
-      '<div class="fieldgroup"><label class="label" for="whilo-cloud-email">Workspace email</label><input id="whilo-cloud-email" class="field" name="email" type="email" autocomplete="username" required maxlength="320" placeholder="you@company.com"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
-      '<div class="fieldgroup"><label class="label" for="whilo-cloud-password">Password</label><input id="whilo-cloud-password" class="field" name="password" type="password" autocomplete="' + (creating ? 'new-password' : 'current-password') + '" required minlength="' + (creating ? '14' : '1') + '" maxlength="256"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
-      '<button class="btn" type="submit"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '>' + (cloudAuthBusy ? 'Working…' : creating ? 'Create account and accept invite' : 'Sign in to cloud') + '</button></form>' +
-      (invitationPending ? '<button type="button" class="btn secondary" style="margin-top:10px" data-act="toggle-cloud-auth-mode">' + (creating ? 'Already have an account? Sign in' : 'New to Whilo? Create invited account') + '</button>' : '') +
-      (unavailable ? '<p class="mini">Cloud sign-in remains disabled until SUPABASE_URL and SUPABASE_ANON_KEY are configured in Vercel.</p>' : '') + '</div>';
+    return '<section class="whilo-auth-shell" style="display:grid;grid-template-columns:1fr;gap:0;margin:14px 0;border:1px solid var(--line,#2b2b2b);border-radius:24px;overflow:hidden;background:linear-gradient(145deg,#141414,#080808);color:#f7f7f7">' +
+      '<div style="padding:clamp(22px,5vw,38px);background:radial-gradient(ellipse at 12% 0%,rgba(255,255,255,.09),transparent 55%),#0a0a0a">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:28px"><span style="display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#fff;color:#080808;font-weight:900;font-size:22px;letter-spacing:-2px">w.</span><div><div style="font-size:16px;font-weight:750;letter-spacing:-.4px">whilo</div><div style="font-size:11px;color:#9b9b9b;letter-spacing:1.2px;text-transform:uppercase">Your work, in motion</div></div><span style="margin-left:auto;border:1px solid #343434;border-radius:99px;padding:6px 10px;font-size:11px;color:#bdbdbd">PRIVATE WORKSPACE</span></div>' +
+      '<div style="font-size:11px;font-weight:800;letter-spacing:1.8px;color:#a5a5a5;text-transform:uppercase;margin-bottom:12px">' + (creating ? 'Invitation access' : 'Whilo account') + '</div>' +
+      '<h2 style="font-size:clamp(28px,5vw,40px);line-height:1.06;letter-spacing:-1.6px;margin:0 0 12px;max-width:460px">' + heading + '</h2>' +
+      '<p style="font-size:14px;line-height:1.65;color:#b5b5b5;max-width:470px;margin:0 0 22px">' + description + '</p>' +
+      '<div style="display:grid;gap:11px;max-width:520px">' +
+      (cloudAuthFeedback ? '<div class="notice" role="status">' + esc(cloudAuthFeedback) + '</div>' : '') +
+      '<form id="cloud-signin-form" style="display:grid;gap:13px"><input type="hidden" name="mode" value="' + (creating ? 'signup' : 'signin') + '">' +
+      '<div class="fieldgroup"><label class="label" for="whilo-cloud-email" style="color:#e3e3e3">Email address</label><input id="whilo-cloud-email" class="field" name="email" type="email" autocomplete="username" required maxlength="320" placeholder="you@company.com" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
+      '<div class="fieldgroup"><label class="label" for="whilo-cloud-password" style="color:#e3e3e3">Password</label><input id="whilo-cloud-password" class="field" name="password" type="password" autocomplete="' + (creating ? 'new-password' : 'current-password') + '" required minlength="' + (creating ? '14' : '1') + '" maxlength="256" placeholder="' + (creating ? 'At least 14 characters' : 'Your password') + '" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
+      '<button class="btn" style="min-height:50px;border-radius:999px;background:#f7f7f7;color:#080808;font-weight:800;border:0" type="submit"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '>' + (cloudAuthBusy ? 'Working…' : creating ? 'Create account & accept invite →' : 'Continue to Whilo →') + '</button></form>' +
+      (invitationPending ? '<button type="button" class="btn secondary" style="margin-top:2px;border-radius:999px" data-act="toggle-cloud-auth-mode">' + (creating ? 'Already have an account? Sign in' : 'New to Whilo? Create invited account') + '</button>' : '') +
+      (unavailable ? '<p class="mini" style="color:#f0c47b;margin:3px 0 0">Cloud sign-in is disabled until SUPABASE_URL and SUPABASE_ANON_KEY are configured in Vercel.</p>' : '') +
+      '<p style="font-size:11px;line-height:1.55;color:#858585;margin:4px 0 0">Protected by workspace access checks. Your password is verified by Supabase over HTTPS and is not stored by Whilo.</p></div></div>' +
+      '<div style="padding:20px 24px;border-top:1px solid #292929;background:#101010;display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:15px">' +
+      '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">One workspace</div><div style="font-size:12px;color:#929292;line-height:1.5">Tasks, people and assets stay organized.</div></div>' +
+      '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">Human approval</div><div style="font-size:12px;color:#929292;line-height:1.5">Sensitive actions remain gated.</div></div>' +
+      '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">Your control</div><div style="font-size:12px;color:#929292;line-height:1.5">Sign out to end this browser session.</div></div></div></section>';
   }
 
   async function loadConnectors() {
