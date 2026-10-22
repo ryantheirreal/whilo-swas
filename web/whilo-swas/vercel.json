@@ -10,7 +10,7 @@
       ]
     },
     {
-      "source": "/(index.html|whilo-auth.js|whilo-runtime.js|whilo-enterprise.js|whilo-agent-core.js)",
+      "source": "/(index.html|whilo-auth.js|whilo-runtime.js|whilo-enterprise.js|whilo-agent-core.js|whilo-marketplace.js)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -33,6 +33,14 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/marketplace/webhook",
+      "destination": "/api/messages?route=marketplace-webhook"
+    },
+    {
+      "source": "/api/marketplace",
+      "destination": "/api/messages?route=marketplace"
+    },
     {
       "source": "/api/messages/:route",
       "destination": "/api/messages?route=:route"
