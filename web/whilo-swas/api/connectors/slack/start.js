@@ -1,6 +1,6 @@
 'use strict';
 const crypto = require('node:crypto');
-const { send, authenticate, organizationFor, db, appUrl, requiredEnv, sha256Hex, safeError } = require('../../_lib/platform');
+const { send, authenticate, organizationFor, db, appUrl, requiredEnv, hmacHex, safeError } = require('../../_lib/platform');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,7 +23,7 @@ module.exports = async function handler(req, res) {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({
-        state_hash: sha256Hex(rawState),
+        state_hash: hmacHex(rawState, process.env.WHILO_OAUTH_STATE_SECRET),
         provider: 'slack',
         organization_id: member.organization_id,
         user_id: user.id,
