@@ -34,6 +34,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/account/bootstrap",
+      "destination": "/api/messages?route=account-bootstrap"
+    },
+    {
       "source": "/api/marketplace/webhook",
       "destination": "/api/messages?route=marketplace-webhook"
     },
