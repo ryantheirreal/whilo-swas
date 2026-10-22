@@ -60,6 +60,10 @@
   let showTwilioForm = false;
   let bridgePairing = null;
   let bridgePollTimer = null;
+  let cloudMissionsCache = null;
+  let cloudMissionsLoading = false;
+  let cloudMissionsFeedback = '';
+  let cloudMissionBusy = false;
 
   async function whiloAccessToken() {
     try {
@@ -118,6 +122,94 @@
       connectorLoading = false;
       if (active === 'connect') render();
     }
+  }
+
+  async function loadCloudMissions() {
+    if (cloudMissionsLoading) return;
+    cloudMissionsLoading = true;
+    try {
+      const data = await whiloApi('/api/missions', { method: 'GET' });
+      cloudMissionsCache = Array.isArray(data.missions) ? data.missions : [];
+      cloudMissionsFeedback = '';
+    } catch (error) {
+      cloudMissionsFeedback = error && error.message ? error.message : 'Cloud mission status could not be loaded.';
+    } finally {
+      cloudMissionsLoading = false;
+      if (active === 'work') render();
+    }
+  }
+
+  async function persistLocalTask(id) {
+    const task = state.tasks.find(function (item) { return item.id === id; });
+    if (!task) throw new Error('Local task was not found.');
+    if (task.serverMissionId) throw new Error('This task is already linked to a cloud mission.');
+    const mission = ensureMission(task);
+    if (!mission) throw new Error('The mission plan could not be prepared.');
+    const data = await whiloApi('/api/missions', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': 'local-task-' + task.id },
+      body: JSON.stringify({
+        goal: task.title,
+        department: task.department,
+        risk: task.priority === 'Critical' ? 'critical' : task.priority === 'High' ? 'high' : 'medium',
+        budget: 0,
+        budgetCurrency: 'USD',
+        acceptanceCriteria: Array.isArray(mission.acceptanceCriteria) && mission.acceptanceCriteria.length
+          ? mission.acceptanceCriteria
+          : ['The requested outcome is documented', 'Evidence is included', 'Exceptions are disclosed'],
+        steps: Array.isArray(mission.tasks) ? mission.tasks.map(function (step) {
+          return {
+            id: step.id, title: step.title, role: step.role,
+            dependsOn: step.dependsOn || [], toolScopes: step.toolScopes || ['read', 'draft'], maxAttempts: 2
+          };
+        }) : []
+      })
+    });
+    task.serverMissionId = data.missionId;
+    task.serverMissionState = data.state;
+    task.serverMissionExecutionStatus = data.executionStatus || 'not_started';
+    save();
+    cloudMissionsCache = null;
+    cloudMissionsFeedback = 'Mission saved to the server. No agent has started.';
+    await loadCloudMissions();
+    if (active === 'work') render();
+    return data;
+  }
+
+  async function decideCloudMission(id, decision) {
+    const data = await whiloApi('/api/missions/approve', {
+      method: 'POST',
+      body: JSON.stringify({
+        missionId: id,
+        decision: decision,
+        reason: decision === 'approved'
+          ? 'Approved by the workspace owner. Queueing is not proof of execution.'
+          : 'Rejected by the workspace owner.'
+      })
+    });
+    cloudMissionsFeedback = data.message || (decision === 'approved'
+      ? 'Approval recorded. Waiting for a configured worker; no execution is claimed.'
+      : 'Mission rejected; no job was queued.');
+    cloudMissionsCache = null;
+    await loadCloudMissions();
+    return data;
+  }
+
+  function cloudMissionCard(mission) {
+    const stateName = String(mission.state || 'unknown');
+    let action = '';
+    if (stateName === 'awaiting_approval') {
+      action = '<div class="actions"><button class="btn" data-act="approve-cloud-mission" data-id="' + esc(mission.id) + '"' + (cloudMissionBusy ? ' disabled' : '') + '>Approve & queue</button><button class="btn secondary" data-act="reject-cloud-mission" data-id="' + esc(mission.id) + '"' + (cloudMissionBusy ? ' disabled' : '') + '>Reject</button></div>';
+    } else if (stateName === 'queued') {
+      action = '<div class="mini">Approval is recorded. Execution is not complete; this job is waiting for a real worker.</div>';
+    } else if (stateName === 'running') {
+      action = '<div class="mini">A worker reports this as running. Verify provider evidence before accepting its output.</div>';
+    } else if (stateName === 'delivered') {
+      action = '<div class="mini">Delivered state recorded; inspect the evidence and acceptance receipt before using the result externally.</div>';
+    }
+    return '<article class="card" style="margin-top:10px"><div class="row"><h3 style="margin:0">' + esc(mission.goal) + '</h3><span class="pill">' + esc(stateName.replace(/_/g, ' ')) + '</span></div>' +
+      '<p class="muted">' + esc(mission.department || 'Operations') + ' · ' + esc(mission.risk || 'medium') + ' risk · created ' + esc(mission.created_at || 'date unavailable') + '</p>' +
+      '<div class="mini">Cloud mission ID: ' + esc(mission.id) + '</div>' + action + '</article>';
   }
 
   function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {} }
@@ -200,7 +292,10 @@
           return '<li><strong>' + esc(step.role) + '</strong> — ' + esc(step.title) + '<div class="mini">' + esc(step.status) + esc(deps) + '</div></li>';
         }).join('') + '</ol><p class="mini">Plan only. No Bot has run and no external system has been changed.</p></details>'
       : '<div class="mini">Pet-only plan · no specialist Bots.</div>';
-    return '<div class="task"><div><div class="taskname">' + esc(t.title) + '</div><div class="mini">' + esc(t.department) + ' · ' + esc(t.priority) + ' priority</div><div class="mini">Mission state: ' + esc(missionState) + '</div>' + plan + '</div><div class="mobilehide"><strong>Lead Pet:</strong> ' + esc(t.owner) + '<div class="mini">' + esc(workers) + '</div></div><div><span class="pill ' + status + '">' + esc(t.status) + '</span></div><div class="mini mobilehide">' + esc(t.created) + '</div><div class="actions">' + (t.status !== 'Done' ? '<button class="btn secondary" data-act="advance" data-id="' + esc(t.id) + '">' + esc(actionLabel) + '</button>' : '<button class="btn secondary" data-act="remove" data-id="' + esc(t.id) + '">Archive</button>') + '</div></div>';
+    const cloudBadge = t.serverMissionId
+      ? '<div class="mini">Cloud mission: ' + esc(t.serverMissionState || 'persisted') + ' · ' + esc(t.serverMissionId) + '</div>'
+      : '<div class="actions"><button class="btn secondary" data-act="save-cloud-mission" data-id="' + esc(t.id) + '">Save plan to cloud</button></div>';
+    return '<div class="task"><div><div class="taskname">' + esc(t.title) + '</div><div class="mini">' + esc(t.department) + ' · ' + esc(t.priority) + ' priority</div><div class="mini">Local mission state: ' + esc(missionState) + '</div>' + cloudBadge + plan + '</div><div class="mobilehide"><strong>Lead Pet:</strong> ' + esc(t.owner) + '<div class="mini">' + esc(workers) + '</div></div><div><span class="pill ' + status + '</span></div><div class="mini mobilehide">' + esc(t.created) + '</div><div class="actions">' + (t.status !== 'Done' ? '<button class="btn secondary" data-act="advance" data-id="' + esc(t.id) + '">' + esc(actionLabel) + '</button>' : '<button class="btn secondary" data-act="remove" data-id="' + esc(t.id) + '">Archive</button>') + '</div></div>';
   }
   function workPage() {
     const activeCount = state.tasks.filter(function (t) { return t.status !== 'Done'; }).length;
@@ -211,6 +306,13 @@
     out += '<form id="new-task" class="form"><input class="field wide" name="title" required maxlength="180" placeholder="Outcome to deliver (e.g. Prepare 25 qualified target accounts)" aria-label="Outcome to deliver"><select class="field" name="department" aria-label="Department">' + DEPARTMENTS.map(function (d) { return '<option>' + esc(d.name) + '</option>'; }).join('') + '</select><select class="field" name="owner" aria-label="Lead Pet">' + PETS.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join('') + '</select><select class="field" name="execution" aria-label="Agent execution pattern"><option value="pet-bots">Pet + specialist Bots</option><option value="pet-only">Pet only</option></select><select class="field" name="priority" aria-label="Priority"><option>Normal</option><option>High</option><option>Critical</option></select><button class="btn" type="submit">Create job</button></form>';
     out += '<div class="row"><div class="sectionlabel">Latest jobs</div><span class="mini">' + state.tasks.length + ' tracked in this browser</span></div>';
     out += state.tasks.length ? state.tasks.slice().reverse().map(taskCard).join('') : '<div class="empty">No work tracked yet. Create one job above or start from a department playbook.</div>';
+    if (cloudMissionsCache === null && !cloudMissionsLoading && !cloudMissionsFeedback) loadCloudMissions();
+    out += '<div class="row" style="margin-top:26px"><div class="sectionlabel">Cloud missions</div><button class="btn secondary" data-act="refresh-cloud-missions"' + (cloudMissionsLoading ? ' disabled' : '') + '>Refresh</button></div>';
+    out += '<p class="muted">Server-persisted missions are shared with the workspace. Approval puts work in the durable queue but never implies a Bot executed.</p>';
+    if (cloudMissionsFeedback) out += '<div class="notice">' + esc(cloudMissionsFeedback) + ' <button class="btn secondary" data-act="refresh-cloud-missions">Retry status</button></div>';
+    else if (cloudMissionsLoading) out += '<div class="empty">Loading authenticated cloud missions…</div>';
+    if (Array.isArray(cloudMissionsCache) && cloudMissionsCache.length) out += cloudMissionsCache.map(cloudMissionCard).join('');
+    else if (Array.isArray(cloudMissionsCache) && !cloudMissionsCache.length) out += '<div class="empty">No cloud missions yet. Use “Save plan to cloud” on a local task to persist its plan.</div>';
     return out;
   }
   function companyPage() {
@@ -377,6 +479,23 @@
       const task = state.tasks.find(function (t) { return t.id === id; });
       try { advanceTask(task); } catch (error) { window.alert(error && error.message ? error.message : 'The mission state could not be advanced.'); }
       render(); return;
+    }
+    if (act === 'save-cloud-mission') {
+      cloudMissionBusy = true; cloudMissionsFeedback = 'Validating the plan and persisting it to the workspace…'; render();
+      persistLocalTask(id).catch(function (error) {
+        cloudMissionsFeedback = error && error.message ? error.message : 'The cloud mission could not be saved.';
+      }).finally(function () { cloudMissionBusy = false; if (active === 'work') render(); });
+      return;
+    }
+    if (act === 'refresh-cloud-missions') {
+      cloudMissionsCache = null; cloudMissionsFeedback = ''; loadCloudMissions(); render(); return;
+    }
+    if (act === 'approve-cloud-mission' || act === 'reject-cloud-mission') {
+      cloudMissionBusy = true; cloudMissionsFeedback = act === 'approve-cloud-mission' ? 'Recording the explicit approval…' : 'Recording the rejection…'; render();
+      decideCloudMission(id, act === 'approve-cloud-mission' ? 'approved' : 'rejected')
+        .catch(function (error) { cloudMissionsFeedback = error && error.message ? error.message : 'The mission decision could not be recorded.'; })
+        .finally(function () { cloudMissionBusy = false; if (active === 'work') render(); });
+      return;
     }
     if (act === 'remove') { state.tasks = state.tasks.filter(function (t) { return t.id !== id; }); save(); render(); return; }
     if (act === 'playbook') {
