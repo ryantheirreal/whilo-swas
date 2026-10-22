@@ -945,13 +945,15 @@
 
   function messagePinsPanelHtml(conversation) {
     if (!messagesPinsOpen || !conversation) return '';
+    const role = conversation.my_membership && conversation.my_membership.member_role || '';
+    const canPin = conversation.conversation_type === 'direct' || ['owner','admin','moderator'].includes(role);
     let out = '<section class="message-pins-panel"><div class="row"><div><div class="sectionlabel">Pinned messages</div><strong>' + messagesPins.length + ' pins</strong></div><div class="actions"><button class="btn secondary" data-act="refresh-message-pins">Refresh</button><button class="btn secondary" data-act="close-message-pins">Close</button></div></div>';
     if (messagesPinsFeedback) out += '<div class="notice">' + esc(messagesPinsFeedback) + '</div>';
     if (messagesPinsLoading && !messagesPins.length) out += '<div class="mini">Loading pinned messages…</div>';
     if (!messagesPins.length && !messagesPinsLoading) out += '<div class="mini">Nothing pinned here yet. Pin important context so everyone can find it.</div>';
     out += messagesPins.map(function (pin) {
       const message = pin.message || {};
-      return '<div class="message-pin-row"><button class="message-pin-content" data-act="jump-to-pinned-message" data-id="' + esc(pin.message_id) + '"><strong>' + esc(message.content || 'Message unavailable') + '</strong><span class="mini">' + esc(messageDate(message.created_at, false)) + '</span></button><button class="message-action" data-act="unpin-message" data-id="' + esc(pin.message_id) + '">Unpin</button></div>';
+      return '<div class="message-pin-row"><button class="message-pin-content" data-act="jump-to-pinned-message" data-id="' + esc(pin.message_id) + '"><strong>' + esc(message.content || 'Message unavailable') + '</strong><span class="mini">' + esc(messageDate(message.created_at, false)) + '</span></button>' + (canPin ? '<button class="message-action" data-act="unpin-message" data-id="' + esc(pin.message_id) + '">Unpin</button>' : '') + '</div>';
     }).join('');
     return out + '</section>';
   }
