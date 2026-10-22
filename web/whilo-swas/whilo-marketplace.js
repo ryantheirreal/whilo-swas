@@ -186,6 +186,16 @@
     }catch(error){feedback=error&&error.message?error.message:'The action failed.';}
     finally{saving=false;render();if(page==='creator'&&creator.session)loadCreator().then(render);}
   }
+  content.addEventListener('input',function(event){
+    if(event.target && event.target.id==='market-search'){
+      query=event.target.value;
+      const grid=Array.from(content.querySelectorAll('.grid')).find(function(el){return el.querySelector('.card-foot');});
+      if(grid){
+        const rows=visibleListings();
+        grid.innerHTML=rows.length?rows.map(card).join(''):'<div class="empty"><strong>No matches.</strong><p>Try another keyword.</p></div>';
+      }
+    }
+  });
   veil.addEventListener('click',function(event){
     if(event.target===veil){close();return;}
     const pageBtn=event.target.closest('[data-page]');
@@ -223,6 +233,7 @@
       saving=true;feedback='Validating and saving listing draft…';render();
       try{
         const result=await api('create-listing',{
+          acceptedListingTerms:true,
           title:String(fd.get('title')||'').trim(),
           listingType:String(fd.get('listingType')||'bot'),
           summary:String(fd.get('summary')||'').trim(),
