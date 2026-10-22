@@ -9,7 +9,9 @@ const MESSAGE_ROUTES = Object.freeze({
   people: require('../../server/routes/messages/people'),
   invitations: require('../../server/routes/messages/invitations'),
   members: require('../../server/routes/messages/members'),
-  pins: require('../../server/routes/messages/pins')
+  pins: require('../../server/routes/messages/pins'),
+  marketplace: require('../../server/routes/marketplace'),
+  'marketplace-webhook': require('../../server/routes/marketplace').webhook
 });
 
 function inFilter(values) { return 'in.(' + values.map(String).join(',') + ')'; }
@@ -257,3 +259,6 @@ module.exports = async function handler(req, res) {
     return safeError(res, error);
   }
 };
+
+// Stripe signature verification requires exact raw request bytes; the other JSON routes use readJson().
+module.exports.config = { api: { bodyParser: false } };
