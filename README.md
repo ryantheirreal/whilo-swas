@@ -5,9 +5,9 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 ## Repository layout
 
 - `web/whilo-swas/` — browser app and Vercel build boundary, including the first server-side APIs.
-- `web/whilo-swas/api/` — cloud public config, authenticated mission endpoints, connector APIs, Slack OAuth and QR bridge pairing.
+- `web/whilo-swas/api/` — cloud public config, authenticated mission endpoints, connector APIs, Slack OAuth, QR bridge pairing and human messaging APIs.
 - `web/whilo-swas/whilo-cloud-auth.js` — browser Supabase sign-in, session refresh and logout; passwords are never stored by Whilo.
-- `supabase/migrations/` — tenant isolation, Pets, durable mission queue, approvals, encrypted integrations, audit trail and provisioning functions.
+- `supabase/migrations/` — tenant isolation, Pets, durable mission queue, approvals, encrypted integrations, audit trail, human messaging and invitations.
 - `scripts/bootstrap-owner.mjs` — secure Supabase Auth owner/workspace provisioning; reads a temporary strong password from the environment and never logs it.
 - `scripts/check-platform.mjs` — static API, migration and secret-hygiene checks.
 - `desktop/whilo-swas-desktop/` — separate Electron client and packaging workflow for macOS, Windows and Linux.
@@ -28,12 +28,13 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 - **Mission API:** validates DAGs and constraints before persisting plans. Explicit approval is required before a job enters the durable queue; API responses say whether work is still waiting for a worker.
 - **Slack OAuth:** authenticated installation start, expiring one-time state, server-side token exchange, encrypted-at-rest bot token and disconnect flow.
 - **SMS via Twilio:** server-side credential validation and encrypted storage. Setup does not send messages.
+- **Human Messages:** DMs, groups, supergroups, public channels, people search, message history, edits/deletes, reactions, threads, read receipts, and invitation links. API code is ready for configuration; Supabase is not connected yet.
 - **Mac Bridge pairing foundation:** short-lived QR, atomic single-use claim, hashed device credential and heartbeat. **This is not an iMessage transport yet.**
 - **Owner provisioning:** uses Supabase Auth to hash/verify passwords. It refuses the weak password shared in chat and does not reset an existing account.
 
 ## Configuration gate — not yet active
 
-The code is committed, but Vercel's current environment-variable inventory is empty. Before cloud operations can run, the workspace owner must connect/configure a Supabase project, apply all five migrations in ascending order, configure the missing encrypted Vercel environment variables, provision the owner account using a strong temporary password, and register the Slack app. Follow `docs/connectors-and-identity.md`.
+The code is committed, but Vercel's current environment-variable inventory is empty. Before cloud operations can run, the workspace owner must connect/configure a Supabase project, apply all eight migrations in ascending order, configure the missing encrypted Vercel environment variables, provision the owner account using a strong temporary password, and register the Slack app. Follow `docs/connectors-and-identity.md`.
 
 No production owner account was created, no migration has been applied to a live database, and no Slack or Twilio account was connected in this session. The actual autonomous worker and native iMessage bridge also remain unimplemented. Do not represent plans, queued jobs, a QR pair or connector metadata as completed execution without evidence from the provider.
 
