@@ -67,7 +67,7 @@ function stripeClient() { return new Stripe(requireStripeKey()); }
 async function stripeRequest(path, method, body, idempotencyKey) {
   const stripe = stripeClient();
   const options = idempotencyKey ? { idempotencyKey } : undefined;
-  const endpoint = String(path || '').replace(/^\\/+/, '');
+  const endpoint = String(path || '').replace(/^[/]+/, '');
   const verb = String(method || 'POST').toUpperCase();
   try {
     if (verb === 'GET' && endpoint.startsWith('subscriptions/')) {
