@@ -106,11 +106,19 @@ module.exports = async function handler(req, res) {
       const workspaceMembers = await db('organization_members?organization_id=eq.' + encodeURIComponent(orgId) +
         '&user_id=' + inFilter(ids) + '&select=user_id');
       if (!Array.isArray(workspaceMembers) || workspaceMembers.length !== ids.length) return send(res, 400, { error: 'All people must first belong to this Whilo workspace' });
+      const existingRows = await db('message_conversation_members?organization_id=eq.' + encodeURIComponent(orgId) +
+        '&conversation_id=eq.' + encodeURIComponent(conversationId) +
+        '&user_id=' + inFilter(ids) + '&select=user_id,member_role,member_status');
+      const existingMap = new Map((Array.isArray(existingRows) ? existingRows : []).map(row => [row.user_id, row]));
       const now = new Date().toISOString();
-      await db('message_conversation_members?on_conflict=conversation_id,user_id', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify(ids.map(id => ({
+      let addedCount = 0;
+      for (const id of ids) {
+        const existing = existingMap.get(id);
+        if (existing && existing.member_status === 'active') continue; // Do not silently demote an existing admin.
+        if (existing && existing.member_status === 'banned' && actor.member_role === 'moderator') {
+          return send(res, 403, { error: 'Only an owner or admin can restore a banned member.' });
+        }
+        const values = {
           organization_id: orgId,
           conversation_id: conversationId,
           user_id: id,
@@ -118,18 +126,34 @@ module.exports = async function handler(req, res) {
           member_status: 'active',
           joined_at: now,
           updated_at: now
-        })))
-      });
-      await audit(orgId, user.id, 'messages.members_added', 'message_conversation', conversationId, 'success', { member_count: ids.length });
+        };
+        if (existing) {
+          await db('message_conversation_members?organization_id=eq.' + encodeURIComponent(orgId) +
+            '&conversation_id=eq.' + encodeURIComponent(conversationId) +
+            '&user_id=eq.' + encodeURIComponent(id), {
+              method: 'PATCH',
+              headers: { Prefer: 'return=minimal' },
+              body: JSON.stringify(values)
+            });
+        } else {
+          await db('message_conversation_members', {
+            method: 'POST',
+            headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify(values)
+          });
+        }
+        addedCount += 1;
+      }
+      await audit(orgId, user.id, 'messages.members_added', 'message_conversation', conversationId, 'success', { member_count: addedCount });
       await db('message_events', {
         method: 'POST',
         headers: { Prefer: 'return=minimal' },
         body: JSON.stringify({
           organization_id: orgId, conversation_id: conversationId, actor_user_id: user.id,
-          event_type: 'members.added', details: { member_count: ids.length }
+          event_type: 'members.added', details: { member_count: addedCount }
         })
       });
-      return send(res, 200, { ok: true, addedCount: ids.length, members: await listMembers(orgId, conversationId, user.id) });
+      return send(res, 200, { ok: true, addedCount, members: await listMembers(orgId, conversationId, user.id) });
     }
 
     if (action === 'remove' || action === 'promote' || action === 'demote') {
