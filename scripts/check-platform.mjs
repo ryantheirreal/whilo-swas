@@ -52,8 +52,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 9) {
-  failures.push('Expected all nine versioned Supabase migrations to be present.');
+if (migrations.length < 10) {
+  failures.push('Expected all ten versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
