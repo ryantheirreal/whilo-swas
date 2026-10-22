@@ -102,14 +102,14 @@
     return out;
   }
   function libraryPage() {
-    let out='<div class="hero"><div><div class="eyebrow">YOUR INSTALLED ASSETS</div><h2>My Library</h2><p>Purchased and free assets are tied to your workspace. Pets are created as Pet records; Bots and Skills remain bounded manifests until invoked by a task.</p></div><button class="btn secondary" data-action="reload-library">Refresh</button></div>'+notice();
+    let out='<div class="hero"><div><div class="eyebrow">YOUR INSTALLED ASSETS</div><h2>My Library</h2><p>Purchased and free assets are tied to your workspace. Pets are created as Pet records; Bots, Skills and Playbooks are saved as declarative installs. Connecting those manifests to the mission runtime is a separate release, so they do not execute yet.</p></div><button class="btn secondary" data-action="reload-library">Refresh</button></div>'+notice();
     if(!library.session) return out+authCard();
     if(library.error) return out+'<div class="notice info">'+esc(library.error)+'</div>';
     const items=Array.isArray(library.installations)?library.installations:[];
     if(!items.length) return out+'<div class="empty"><strong>Your library is empty.</strong><p>Install a free asset or buy a published listing. Paid access appears only after the payment webhook confirms it.</p></div>';
     out+='<div class="grid">'+items.map(function(item){
       const listing=item.listing||{};
-      return '<article class="card"><div class="card-head"><div class="asset">'+esc(ICONS[item.asset_type]||'◇')+'</div><div><div class="eyebrow">'+esc(TYPES[item.asset_type]||item.asset_type)+'</div><h3>'+esc(listing.title||'Marketplace asset')+'</h3><div class="meta">Version '+esc(item.listing_version||'1.0.0')+'</div></div></div><p>'+esc(listing.summary||'Installed marketplace configuration.')+'</p><div class="pills"><span class="pill live">'+esc(item.state||'active')+'</span><span class="pill">Installed '+esc(item.installed_at?new Date(item.installed_at).toLocaleDateString('pt-BR'):'recently')+'</span></div><div class="card-foot"><div class="meta">'+(item.pet_instance_id?'Pet linked to workspace':'Bounded asset ready for task use')+'</div><button class="btn secondary" data-action="asset-details" data-id="'+esc(item.id)+'">Details</button></div></article>';
+      return '<article class="card"><div class="card-head"><div class="asset">'+esc(ICONS[item.asset_type]||'◇')+'</div><div><div class="eyebrow">'+esc(TYPES[item.asset_type]||item.asset_type)+'</div><h3>'+esc(listing.title||'Marketplace asset')+'</h3><div class="meta">Version '+esc(item.listing_version||'1.0.0')+'</div></div></div><p>'+esc(listing.summary||'Installed marketplace configuration.')+'</p><div class="pills"><span class="pill live">'+esc(item.state||'active')+'</span><span class="pill">Installed '+esc(item.installed_at?new Date(item.installed_at).toLocaleDateString('pt-BR'):'recently')+'</span></div><div class="card-foot"><div class="meta">'+(item.pet_instance_id?'Pet linked to workspace':'Manifest saved; mission-runtime connection not enabled yet')+'</div><button class="btn secondary" data-action="asset-details" data-id="'+esc(item.id)+'">Details</button></div></article>';
     }).join('')+'</div>';
     return out;
   }
