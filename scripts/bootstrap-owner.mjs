@@ -36,26 +36,46 @@ if (password.length < 14 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) |
     })
   });
 
-  if (!response.ok) {
-    const status = response.status;
-    // Never print the request body, password or full provider response.
-    if (status === 422 || status === 409) {
-      console.error('Supabase rejected the new user; this often means the account already exists. No password reset was attempted.');
-    } else {
-      console.error('Supabase Auth could not create the owner account (HTTP ' + status + '). Check project configuration and Auth logs.');
-    }
+  let created = false;
+  if (response.ok) {
+    await response.json();
+    created = true;
+  } else if (response.status !== 409 && response.status !== 422) {
+    console.error('Supabase Auth could not create the owner account (HTTP ' + response.status + '). Check project configuration and Auth logs.');
     process.exit(1);
   }
-
-  const result = await response.json();
+  // On conflict, do not change the existing password. The RPC verifies the exact email
+  // against auth.users and idempotently ensures a workspace plus the six default Pets.
+  const provision = await fetch(base + '/rest/v1/rpc/ensure_owner_workspace', {
+    method: 'POST',
+    headers: {
+      apikey: serviceKey,
+      Authorization: 'Bearer ' + serviceKey,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ p_email: email })
+  });
+  if (!provision.ok) {
+    console.error('The owner identity could not be verified or its workspace could not be provisioned. Confirm all four migrations were applied.');
+    process.exit(1);
+  }
+  const rows = await provision.json();
+  const owner = Array.isArray(rows) ? rows[0] : rows;
+  if (!owner || !owner.user_id || !owner.organization_id) {
+    console.error('Supabase did not return an owner workspace. Check migration status.');
+    process.exit(1);
+  }
   console.log(JSON.stringify({
-    created: true,
-    userId: result.id,
-    email: result.email,
-    emailConfirmed: Boolean(result.email_confirmed_at),
-    workspaceProvisioning: 'The database trigger creates the initial Whilo workspace and owner membership after the migration is installed.'
+    createdUser: created,
+    passwordChanged: created,
+    userId: owner.user_id,
+    email,
+    organizationId: owner.organization_id,
+    role: owner.role,
+    workspaceCreated: Boolean(owner.created_workspace),
+    defaultPetsSeeded: ['Whilo', 'Fynn', 'Nori', 'Capuccino', 'Ollie', 'Pico']
   }, null, 2));
 })().catch(() => {
-  console.error('Owner provisioning failed. Check SUPABASE_URL, the service-role key and network access.');
+  console.error('Owner provisioning failed. Check Supabase configuration and network access.');
   process.exit(1);
 });
