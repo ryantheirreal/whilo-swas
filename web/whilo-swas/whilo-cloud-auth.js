@@ -148,6 +148,44 @@
     };
   }
 
+  function validateStrongPassword(password) {
+    return typeof password === 'string' && password.length >= 14 &&
+      /[A-Z]/.test(password) && /[a-z]/.test(password) &&
+      /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+  }
+
+  async function resetPasswordForEmail(email) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!/^\\S+@\\S+\\.\\S+$/.test(normalizedEmail)) throw new Error('Enter a valid email address.');
+    const redirect = new URL('/', window.location.origin);
+    redirect.searchParams.set('whilo_recovery', '1');
+    await authRequest('/auth/v1/recover?redirect_to=' + encodeURIComponent(redirect.toString()), { email: normalizedEmail });
+    return { sent: true };
+  }
+
+  async function updatePassword(password) {
+    if (!validateStrongPassword(password)) {
+      throw new Error('Use at least 14 characters with uppercase, lowercase, a number and a symbol.');
+    }
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error('Open the password-reset link from your email again before choosing a new password.');
+    const config = await publicConfig(false);
+    const response = await fetch(config.url + '/auth/v1/user', {
+      method: 'PUT',
+      headers: { apikey: config.anonKey, Authorization: 'Bearer ' + accessToken, Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+      cache: 'no-store'
+    });
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok) {
+      const message = String(data.msg || data.message || data.error_description || data.error || 'Password could not be updated.');
+      if (response.status === 429) throw new Error('Too many attempts. Wait a little and retry.');
+      throw new Error(message.slice(0, 320));
+    }
+    return { id: data.id || '', email: data.email || '' };
+  }
+
   async function signOut() {
     const session = readStoredSession();
     try {
@@ -186,6 +224,8 @@
     getSession: getSession,
     signIn: signIn,
     signUp: signUp,
+    resetPasswordForEmail: resetPasswordForEmail,
+    updatePassword: updatePassword,
     signOut: signOut
   });
 })();
