@@ -31,8 +31,14 @@ function checkJs(file) {
   }
 }
 
+const apiRoot = path.join(root, 'web', 'whilo-swas', 'api');
+const apiFiles = walk(apiRoot).filter(file => file.endsWith('.js'));
+const apiEntrypoints = apiFiles.filter(file => !path.relative(apiRoot, file).split(path.sep)[0].startsWith('_'));
+if (apiEntrypoints.length > 12) failures.push('Vercel Hobby supports at most 12 API function entrypoints; currently found ' + apiEntrypoints.length + '. Consolidate routes before deploying.');
+
 const jsFiles = [
-  ...walk(path.join(root, 'web', 'whilo-swas', 'api')).filter(file => file.endsWith('.js')),
+  ...apiFiles,
+  ...walk(path.join(root, 'web', 'whilo-swas', 'server', 'routes')).filter(file => file.endsWith('.js')),
   ...walk(path.join(root, 'scripts')).filter(file => (file.endsWith('.mjs') || file.endsWith('.js')) && !file.endsWith('check-platform.mjs')),
   path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'),
   path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'),
