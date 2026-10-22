@@ -70,6 +70,7 @@
   let cloudAuthLoading = false;
   let cloudAuthBusy = false;
   let cloudAuthFeedback = '';
+  let cloudAuthMode = new URLSearchParams(window.location.search).has('whilo_invite') ? 'signup' : 'signin';
 
   let messagesInbox = [];
   let messagesDiscover = [];
@@ -189,12 +190,20 @@
         (cloudAuthFeedback ? '<p class="muted">' + esc(cloudAuthFeedback) + '</p>' : '') + '</div>';
     }
     const unavailable = !cloudAuthConfigured;
-    return '<div class="card" style="margin:12px 0"><div class="sectionlabel">Cloud identity</div><h3>Sign in to sync your workspace</h3>' +
-      '<p class="muted">Use the account provisioned in Supabase Auth. Your password is sent only to Supabase over HTTPS for verification; Whilo does not store the password. The session token is kept in this browser and may be signed out below.</p>' +
+    const invitationPending = new URLSearchParams(window.location.search).has('whilo_invite');
+    const creating = invitationPending && cloudAuthMode === 'signup';
+    const heading = creating ? 'Create your invited account' : 'Sign in to sync your workspace';
+    const description = creating
+      ? 'Create an account using the email address this invitation was sent to. Use a strong, unique password. Whilo will check the invitation against the authenticated email before granting workspace access.'
+      : 'Use the account provisioned in Supabase Auth. Your password is sent only to Supabase over HTTPS for verification; Whilo does not store the password. The session token is kept in this browser and may be signed out below.';
+    return '<div class="card" style="margin:12px 0"><div class="sectionlabel">Cloud identity</div><h3>' + heading + '</h3>' +
+      '<p class="muted">' + description + '</p>' +
       (cloudAuthFeedback ? '<div class="notice">' + esc(cloudAuthFeedback) + '</div>' : '') +
-      '<form id="cloud-signin-form"><div class="fieldgroup"><label class="label" for="whilo-cloud-email">Workspace email</label><input id="whilo-cloud-email" class="field" name="email" type="email" autocomplete="username" required maxlength="320" placeholder="you@company.com"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
-      '<div class="fieldgroup"><label class="label" for="whilo-cloud-password">Password</label><input id="whilo-cloud-password" class="field" name="password" type="password" autocomplete="current-password" required maxlength="256"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
-      '<button class="btn" type="submit"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '>' + (cloudAuthBusy ? 'Signing in…' : 'Sign in to cloud') + '</button></form>' +
+      '<form id="cloud-signin-form"><input type="hidden" name="mode" value="' + (creating ? 'signup' : 'signin') + '">' +
+      '<div class="fieldgroup"><label class="label" for="whilo-cloud-email">Workspace email</label><input id="whilo-cloud-email" class="field" name="email" type="email" autocomplete="username" required maxlength="320" placeholder="you@company.com"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
+      '<div class="fieldgroup"><label class="label" for="whilo-cloud-password">Password</label><input id="whilo-cloud-password" class="field" name="password" type="password" autocomplete="' + (creating ? 'new-password' : 'current-password') + '" required minlength="' + (creating ? '14' : '1') + '" maxlength="256"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '></div>' +
+      '<button class="btn" type="submit"' + (unavailable || cloudAuthBusy ? ' disabled' : '') + '>' + (cloudAuthBusy ? 'Working…' : creating ? 'Create account and accept invite' : 'Sign in to cloud') + '</button></form>' +
+      (invitationPending ? '<button type="button" class="btn secondary" style="margin-top:10px" data-act="toggle-cloud-auth-mode">' + (creating ? 'Already have an account? Sign in' : 'New to Whilo? Create invited account') + '</button>' : '') +
       (unavailable ? '<p class="mini">Cloud sign-in remains disabled until SUPABASE_URL and SUPABASE_ANON_KEY are configured in Vercel.</p>' : '') + '</div>';
   }
 
@@ -1259,6 +1268,11 @@
       if (dept) addTask(dept.template, dept.name, 'Whilo', 'High');
       active = 'work'; render(); return;
     }
+    if (act === 'toggle-cloud-auth-mode') {
+      cloudAuthMode = cloudAuthMode === 'signup' ? 'signin' : 'signup';
+      cloudAuthFeedback = '';
+      render(); return;
+    }
     if (act === 'cloud-signout') {
       cloudAuthBusy = true; cloudAuthFeedback = 'Signing out…'; render();
       window.WhiloCloudAuth.signOut()
@@ -1387,18 +1401,28 @@
       const fd = new FormData(form);
       const email = String(fd.get('email') || '');
       const password = String(fd.get('password') || '');
-      cloudAuthBusy = true; cloudAuthFeedback = 'Signing in securely…'; render();
-      window.WhiloCloudAuth.signIn(email, password)
+      const mode = String(fd.get('mode') || 'signin');
+      cloudAuthBusy = true;
+      cloudAuthFeedback = mode === 'signup' ? 'Creating your account securely…' : 'Signing in securely…';
+      render();
+      const authPromise = mode === 'signup'
+        ? window.WhiloCloudAuth.signUp(email, password)
+        : window.WhiloCloudAuth.signIn(email, password);
+      authPromise
         .then(function (user) {
+          if (mode === 'signup' && user.confirmationRequired) {
+            cloudAuthFeedback = 'Account created. Check the email inbox for the Supabase confirmation link, then open the invitation link again if you are not returned automatically.';
+            return null;
+          }
           cloudAuthSession = user; cloudAuthConfigured = true; cloudAuthChecked = true;
-          cloudAuthFeedback = 'Signed in as ' + (user.email || email) + '.';
+          cloudAuthFeedback = mode === 'signup' ? 'Account created for ' + (user.email || email) + '.' : 'Signed in as ' + (user.email || email) + '.';
           return acceptPendingWorkspaceInvitation().then(function (invitation) {
             if (invitation) cloudAuthFeedback = invitation.detail || ('Joined ' + invitation.organizationName + '.');
             connectorCache = null; connectorFeedback = ''; cloudMissionsCache = null; cloudMissionsFeedback = '';
             return Promise.all([loadConnectors(), loadCloudMissions()]);
           });
         })
-        .catch(function (error) { cloudAuthFeedback = error && error.message ? error.message : 'Cloud sign-in failed.'; })
+        .catch(function (error) { cloudAuthFeedback = error && error.message ? error.message : (mode === 'signup' ? 'Account creation failed.' : 'Cloud sign-in failed.'); })
         .finally(function () { cloudAuthBusy = false; render(); });
       return;
     }
