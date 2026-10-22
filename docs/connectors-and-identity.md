@@ -10,7 +10,7 @@ The password shared in chat is short and should be replaced before production us
 
 Prerequisites:
 1. Create/select the intended Supabase project and set `SUPABASE_URL`, `SUPABASE_ANON_KEY` and the server-only `SUPABASE_SERVICE_ROLE_KEY`.
-2. Apply all eight files under `supabase/migrations/` in ascending filename order (001 through 008), including the mission transaction, owner/Pet bootstrap and explicit server-role grants.
+2. Apply all nine files under `supabase/migrations/` in ascending filename order (001 through 009), including mission transactions, owner/Pet bootstrap, explicit server-role grants, human Messages, invitations, marketplace listings, payment-order ledger and subscription state. Use a separate staging project before production.
 3. Set the temporary owner password in a local secret manager or hidden terminal prompt, then run `node scripts/bootstrap-owner.mjs`.
 4. The Whilo extension now provides a cloud sign-in card in **Work** and **Connect**, using `whilo-cloud-auth.js` and `/api/public-config`. Sign in with the owner account created by Supabase Auth. The script stores only a Supabase session/refresh token in this browser, never the password. Do not expose the service-role key to browser code.
 5. Verify the owner row and workspace membership through Supabase, then remove the temporary password from the process environment.
@@ -62,3 +62,17 @@ Copy names from `web/whilo-swas/.env.example` into Vercel's encrypted Environmen
 Implemented in code: database migrations, Supabase owner provisioning script, authenticated connector API, Slack OAuth start/callback, encrypted integration storage, Twilio credential verification, QR pairing token issuance/claiming, and bridge heartbeat identity.
 
 Not yet activated: the actual Supabase/Vercel secrets, running migrations in a live database, owner account provisioning, Slack app credentials, tested OAuth against a real workspace, Twilio account credentials, a native macOS bridge, iMessage message transport, and autonomous worker execution. Never market these as live until verified end-to-end.
+
+
+## Marketplace and subscriptions
+
+The first marketplace release is scoped to published declarative Pets, Bots, Skills, Playbooks and Templates priced in BRL. Creator uploads are configuration manifests only; never execute a seller-provided script or binary inside the main application. Listings stay in draft/review until an allowlisted moderator publishes them.
+
+- Creator payout onboarding: Stripe Connect Express, with identity and payout eligibility verified through Stripe's hosted flow.
+- Paid checkout: authenticated API creates a pending order with immutable price/20% fee/80% seller-proceeds snapshot. Only a verified Stripe webhook grants a paid entitlement.
+- Webhook: `POST /api/marketplace/webhook` with the exact `Stripe-Signature`; test duplicate events, async failures, refunds and disputes before launch.
+- Plan checkout: create recurring Stripe Prices and set the matching `STRIPE_PRICE_WHILO_<PLAN>_<INTERVAL>` IDs as server-side Vercel environment variables.
+- Required server env keys: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `WHILO_MARKETPLACE_ADMIN_USER_IDS`, plus all eight recurring Price IDs. Keep them out of Git and browser code.
+- The current proposed launch test prices are Free, Plus R$39.90/month, Premium R$169.90/month, Super R$399.90/month and Ultra R$999.90/month; annual prices are R$399, R$1,699, R$3,999 and R$9,999. These are pricing hypotheses, not active subscriptions.
+
+The database/API/UI code does not itself activate the live marketplace. It remains in preview until Supabase is configured, migrations 001–009 are applied, Stripe test-mode onboarding/checkout/webhooks are verified, and the production terms/refund/tax and seller-verification policies are reviewed.
