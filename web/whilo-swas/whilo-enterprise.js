@@ -170,6 +170,16 @@
           } catch (inviteError) {
             cloudAuthFeedback = inviteError && inviteError.message ? inviteError.message : 'Could not accept the workspace invitation.';
           }
+          if (cloudAuthMode !== 'recovery') {
+            try {
+              const workspace = await whiloApi('/api/account/bootstrap', { method: 'POST', body: JSON.stringify({}) });
+              if (workspace && workspace.ok) cloudAuthFeedback = 'Workspace ready. ' + (workspace.petsSeeded || []).length + ' default Pets are available.';
+            } catch (bootstrapError) {
+              cloudAuthFeedback = bootstrapError && bootstrapError.message
+                ? 'Signed in, but workspace setup needs attention: ' + bootstrapError.message
+                : 'Signed in, but workspace provisioning is not ready yet.';
+            }
+          }
         }
       } catch (sessionError) {
         cloudAuthSession = null;
