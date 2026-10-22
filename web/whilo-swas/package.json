@@ -5,7 +5,7 @@
   "description": "Whilo browser application",
   "scripts": {
     "build": "bash build.sh",
-    "check": "bash -n build.sh && node --check whilo-enterprise.js",
+    "check": "bash -n build.sh && node --check whilo-enterprise.js && node ../../scripts/check-platform.mjs",
     "build:clean": "rm -rf public"
   },
   "dependencies": {
