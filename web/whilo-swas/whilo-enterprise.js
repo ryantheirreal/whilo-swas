@@ -83,6 +83,10 @@
   let messagesTimelineLoading = false;
   let messagesFeedback = '';
   let messagesCreateOpen = false;
+  let messagesInviteOpen = false;
+  let messagesInviteLink = '';
+  let messagesInviteStatus = '';
+  let messagesInviteEmail = '';
   let messagesPeopleQuery = '';
   let messagesPeopleLoading = false;
   let messagesThreadRootId = '';
@@ -150,6 +154,14 @@
       try {
         cloudAuthSession = await window.WhiloCloudAuth.getSession();
         cloudAuthFeedback = '';
+        if (cloudAuthSession) {
+          try {
+            const invitation = await acceptPendingWorkspaceInvitation();
+            if (invitation) cloudAuthFeedback = invitation.detail || ('Joined ' + invitation.organizationName + '.');
+          } catch (inviteError) {
+            cloudAuthFeedback = inviteError && inviteError.message ? inviteError.message : 'Could not accept the workspace invitation.';
+          }
+        }
       } catch (sessionError) {
         cloudAuthSession = null;
         cloudAuthFeedback = sessionError && sessionError.message ? sessionError.message : 'The saved cloud session expired. Sign in again.';
@@ -736,6 +748,36 @@
       '</form></section>';
   }
 
+  function messageInviteFormHtml() {
+    if (!messagesInviteOpen && !messagesInviteLink && !messagesInviteStatus) return '';
+    let out = '<section class="message-create-panel"><div class="row"><div><div class="sectionlabel">Bring humans into Whilo</div><h3>Invite a real person</h3></div><button class="btn secondary" type="button" data-act="close-message-invite">Close</button></div>';
+    if (messagesInviteStatus) out += '<div class="notice">' + esc(messagesInviteStatus) + '</div>';
+    if (messagesInviteLink) {
+      out += '<div class="fieldgroup"><label class="label" for="message-invite-link">Secure invitation link</label><div class="row"><input class="field" id="message-invite-link" readonly value="' + esc(messagesInviteLink) + '"><button class="btn secondary" type="button" data-act="copy-message-invite">Copy</button></div><div class="mini">Share only with the intended recipient. The link expires and can be accepted only by the invited email account.</div></div>';
+    }
+    if (messagesInviteOpen) {
+      out += '<form id="message-invite-form"><div class="fieldgroup"><label class="label" for="message-invite-email">Person’s email</label><input id="message-invite-email" class="field" name="email" type="email" required maxlength="320" autocomplete="email" placeholder="teammate@company.com" value="' + esc(messagesInviteEmail) + '"></div><p class="mini">Whilo will ask Supabase Auth to email the invitation. If the email provider does not confirm delivery, you can share the secure invite link. Workspace access is limited to the member role.</p><button class="btn" type="submit"' + (messagesBusy ? ' disabled' : '') + '>Create and send invite</button></form>';
+    }
+    return out + '</section>';
+  }
+
+  async function acceptPendingWorkspaceInvitation() {
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get('whilo_invite') || '';
+    if (!token) return null;
+    if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) throw new Error('This Whilo invitation link is not valid.');
+    const result = await whiloApi('/api/messages/invitations', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'accept', token: token })
+    });
+    url.searchParams.delete('whilo_invite');
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    messagesInbox = [];
+    messagesDiscover = [];
+    messagesSelectedId = '';
+    return result;
+  }
+
   function messagesPage() {
     if (!cloudAuthChecked && !cloudAuthLoading) loadCloudAuth();
     if (!cloudAuthSession) {
@@ -754,8 +796,11 @@
     const myRole = conversation && conversation.my_membership ? conversation.my_membership.member_role : '';
     const cannotPublish = conversation && conversation.conversation_type === 'channel' && myRole && !['owner','admin','moderator'].includes(myRole);
     let out = '<div class="hero messages-hero"><div><div class="eyebrow">WHILO / PEOPLE</div><h2 class="h2">Messages</h2><p class="muted">Real people first. DMs, groups, supergroups and channels share one communication layer; Pets and Bots can participate later with distinct identities and permissions.</p></div><div class="actions"><button class="btn" data-act="new-message-conversation">＋ New</button><button class="btn secondary" data-act="refresh-message-conversations">↻ Refresh</button></div></div>';
+    out = out.replace('data-act="new-message-conversation">＋ New', 'data-act="new-message-conversation">＋ New');
+    out = out.replace('<button class="btn" data-act="new-message-conversation">＋ New</button>', '<button class="btn secondary" data-act="open-message-invite">Invite person</button><button class="btn" data-act="new-message-conversation">＋ New</button>');
     out += cloudAuthCard();
     if (messagesFeedback) out += '<div class="notice">' + esc(messagesFeedback) + '</div>';
+    out += messageInviteFormHtml();
     out += messageCreateFormHtml();
     out += '<div class="messages-shell" data-selected="' + (conversation ? 'true' : 'false') + '"><aside class="messages-sidebar">' +
       '<div class="messages-sidebar-head"><div class="row"><strong>' + (isInDiscover ? 'Discover' : 'Inbox') + '</strong><span class="mini">' + (isInDiscover ? messagesDiscover.length + ' channels' : messagesInbox.length + ' chats') + '</span></div>' +
@@ -959,6 +1004,17 @@
     if (!action) return;
     const act = action.getAttribute('data-act'), id = action.getAttribute('data-id');
     if (act === 'close') { closePanel(); return; }
+    if (act === 'open-message-invite') { messagesInviteOpen = true; messagesInviteStatus = ''; messagesInviteLink = ''; render(); return; }
+    if (act === 'close-message-invite') { messagesInviteOpen = false; messagesInviteLink = ''; messagesInviteStatus = ''; render(); return; }
+    if (act === 'copy-message-invite') {
+      const link = shadow.querySelector('#message-invite-link');
+      if (!link || !link.value) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link.value).then(function () { messagesInviteStatus = 'Invitation link copied.'; render(); })
+          .catch(function () { window.prompt('Copy this invitation link', link.value); });
+      } else window.prompt('Copy this invitation link', link.value);
+      return;
+    }
     if (act === 'new-message-conversation') { messagesCreateOpen = !messagesCreateOpen; render(); return; }
     if (act === 'close-message-create') { messagesCreateOpen = false; render(); return; }
     if (act === 'message-scope') {
@@ -1129,6 +1185,20 @@
   shadow.addEventListener('submit', function (event) {
     event.preventDefault();
     const form = event.target;
+    if (form.id === 'message-invite-form') {
+      const fd = new FormData(form);
+      messagesInviteEmail = String(fd.get('email') || '').trim().toLowerCase();
+      messagesBusy = true; messagesInviteStatus = 'Creating a single-use workspace invitation…'; messagesInviteLink = ''; render();
+      whiloApi('/api/messages/invitations', { method: 'POST', body: JSON.stringify({ action: 'create', email: messagesInviteEmail }) })
+        .then(function (data) {
+          messagesInviteLink = data.inviteUrl || '';
+          messagesInviteStatus = data.detail || 'Invitation prepared.';
+          if (data.emailed) messagesInviteStatus += ' Email request accepted by Supabase Auth.';
+        })
+        .catch(function (error) { messagesInviteStatus = error && error.message ? error.message : 'Invitation could not be created.'; })
+        .finally(function () { messagesBusy = false; if (active === 'messages') render(); });
+      return;
+    }
     if (form.id === 'message-create-conversation') {
       const fd = new FormData(form);
       const type = String(fd.get('type') || 'direct');
@@ -1168,8 +1238,11 @@
         .then(function (user) {
           cloudAuthSession = user; cloudAuthConfigured = true; cloudAuthChecked = true;
           cloudAuthFeedback = 'Signed in as ' + (user.email || email) + '.';
-          connectorCache = null; connectorFeedback = ''; cloudMissionsCache = null; cloudMissionsFeedback = '';
-          return Promise.all([loadConnectors(), loadCloudMissions()]);
+          return acceptPendingWorkspaceInvitation().then(function (invitation) {
+            if (invitation) cloudAuthFeedback = invitation.detail || ('Joined ' + invitation.organizationName + '.');
+            connectorCache = null; connectorFeedback = ''; cloudMissionsCache = null; cloudMissionsFeedback = '';
+            return Promise.all([loadConnectors(), loadCloudMissions()]);
+          });
         })
         .catch(function (error) { cloudAuthFeedback = error && error.message ? error.message : 'Cloud sign-in failed.'; })
         .finally(function () { cloudAuthBusy = false; render(); });
