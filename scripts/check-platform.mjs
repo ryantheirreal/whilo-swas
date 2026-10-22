@@ -84,11 +84,15 @@ if (!bootstrap.includes('WHILO_OWNER_INITIAL_PASSWORD')) failures.push('Owner bo
 if (!bootstrap.includes('password.length < 14')) failures.push('Owner bootstrap must reject weak passwords.');
 if (bootstrap.includes('1223344q')) failures.push('A weak chat-shared password must never be committed to source.');
 if (/console\.(?:log|error)\(\s*password\b/i.test(bootstrap) || /console\.(?:log|error)\(\s*JSON\.stringify\(\s*\{[^}]*\bpassword\s*:/is.test(bootstrap)) failures.push('Owner bootstrap must not log passwords.');
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'package.json'), 'utf8'));
+if (!packageJson.dependencies || packageJson.dependencies.stripe !== '22.6.2') {
+  failures.push('Marketplace webhooks must use the pinned official Stripe SDK version 22.6.2.');
+}
 const envExample = fs.readFileSync(path.join(root, 'web', 'whilo-swas', '.env.example'), 'utf8');
-for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'WHILO_CONNECTOR_ENCRYPTION_KEY', 'WHILO_OAUTH_STATE_SECRET', 'SLACK_CLIENT_SECRET']) {
+for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'WHILO_CONNECTOR_ENCRYPTION_KEY', 'WHILO_OAUTH_STATE_SECRET', 'SLACK_CLIENT_SECRET', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) {
   if (!envExample.includes(key)) failures.push('Missing environment documentation: ' + key);
 }
-for (const key of ['SUPABASE_SERVICE_ROLE_KEY=', 'WHILO_CONNECTOR_ENCRYPTION_KEY=', 'WHILO_OAUTH_STATE_SECRET=', 'SLACK_CLIENT_SECRET=']) {
+for (const key of ['SUPABASE_SERVICE_ROLE_KEY=', 'WHILO_CONNECTOR_ENCRYPTION_KEY=', 'WHILO_OAUTH_STATE_SECRET=', 'SLACK_CLIENT_SECRET=', 'STRIPE_SECRET_KEY=', 'STRIPE_WEBHOOK_SECRET=']) {
   const lines = envExample.split(/\r?\n/).filter(line => line.startsWith(key));
   if (lines.some(line => line.slice(key.length).trim() && !line.trim().endsWith('='))) {
     failures.push('Real secrets must not be committed in .env.example (' + key + ').');
