@@ -122,6 +122,32 @@
     return { email: data.user && data.user.email ? data.user.email : normalizedEmail, id: data.user && data.user.id ? data.user.id : '' };
   }
 
+  async function signUp(email, password) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || typeof password !== 'string') {
+      throw new Error('Enter a valid email and a strong password.');
+    }
+    if (password.length < 14 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) ||
+        !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      throw new Error('Use at least 14 characters with uppercase, lowercase, a number and a symbol.');
+    }
+    const redirect = new URL('/', window.location.origin);
+    const invitation = new URLSearchParams(window.location.search).get('whilo_invite');
+    if (invitation) redirect.searchParams.set('whilo_invite', invitation);
+    const endpoint = '/auth/v1/signup?redirect_to=' + encodeURIComponent(redirect.toString());
+    const data = await authRequest(endpoint, {
+      email: normalizedEmail,
+      password,
+      data: { full_name: normalizedEmail.split('@')[0] }
+    });
+    if (data.access_token && data.refresh_token) saveSession(data);
+    return {
+      email: data.user && data.user.email ? data.user.email : normalizedEmail,
+      id: data.user && data.user.id ? data.user.id : '',
+      confirmationRequired: !(data.access_token && data.refresh_token)
+    };
+  }
+
   async function signOut() {
     const session = readStoredSession();
     try {
@@ -159,6 +185,7 @@
     getAccessToken: getAccessToken,
     getSession: getSession,
     signIn: signIn,
+    signUp: signUp,
     signOut: signOut
   });
 })();
