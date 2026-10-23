@@ -83,7 +83,7 @@ async function readOrgRows(table, orgId, query) {
 async function getWorkspace(user, member) {
   const orgId = member.organization_id;
   const [routines, assets, runs, onboarding, wallet, devices] = await Promise.all([
-    readOrgRows('whilo_routines', orgId, 'select=id,created_by,title,description,target_kind,asset_id,target_url,runtime_mode,schedule_kind,schedule_time,schedule_days,timezone,next_run_at,last_run_at,steps,acceptance_criteria,approval_policy,enabled,created_at,updated_at&order=updated_at.desc&limit=100'),
+    readOrgRows('whilo_routines', orgId, 'select=id,created_by,title,description,target_kind,asset_id,target_url,max_cost_wb,runtime_mode,schedule_kind,schedule_time,schedule_days,timezone,next_run_at,last_run_at,steps,acceptance_criteria,approval_policy,enabled,created_at,updated_at&order=updated_at.desc&limit=100'),
     readOrgRows('whilo_library_assets', orgId, 'select=id,created_by,name,asset_type,description,source_url,definition,status,version,created_at,updated_at&order=updated_at.desc&limit=100'),
     readOrgRows('whilo_routine_runs', orgId, 'select=id,routine_id,requested_by,mission_id,trigger_source,status,result,error_code,started_at,finished_at,created_at,updated_at&order=created_at.desc&limit=50'),
     db('whilo_onboarding_state?organization_id=eq.' + encodeURIComponent(orgId) + '&user_id=eq.' + encodeURIComponent(user.id) + '&select=current_step,completed_at,preferences,updated_at&limit=1'),
@@ -141,6 +141,8 @@ async function createRoutine(user, member, body) {
   const targetKind = String(body.targetKind || 'library_asset');
   const runtimeMode = String(body.runtimeMode || 'browser');
   const approvalPolicy = String(body.approvalPolicy || 'always');
+  const maxCostWB = Number(body.maxCostWB == null ? 1000 : body.maxCostWB);
+  if (!Number.isSafeInteger(maxCostWB) || maxCostWB < 100 || maxCostWB > 100000) fail(400, 'Set a per-run budget between 100 and 100,000 Willow Bucks.');
   if (title.length < 3 || description.length < 1) fail(400, 'Routine title and purpose are required.');
   if (!TARGET_KINDS.has(targetKind) || !RUNTIME_MODES.has(runtimeMode) || !APPROVAL_POLICIES.has(approvalPolicy)) fail(400, 'Routine target, runtime or approval policy is invalid.');
   const schedule = validateSchedule(body);
@@ -173,7 +175,7 @@ async function createRoutine(user, member, body) {
     method: 'POST', headers: { Prefer: 'return=representation' },
     body: JSON.stringify({
       organization_id: member.organization_id, created_by: user.id, title, description, target_kind: targetKind,
-      asset_id: assetId, target_url: targetUrl, runtime_mode: runtimeMode, schedule_kind: schedule.kind,
+      asset_id: assetId, target_url: targetUrl, max_cost_wb: maxCostWB, runtime_mode: runtimeMode, schedule_kind: schedule.kind,
       schedule_time: schedule.time, schedule_days: schedule.days, timezone: schedule.timezone,
       steps, acceptance_criteria: criteria, approval_policy: approvalPolicy, enabled: body.enabled === true
     })
@@ -236,7 +238,7 @@ async function runRoutine(user, member, body) {
     body: JSON.stringify({
       organization_id: member.organization_id, routine_id: routine.id, requested_by: user.id,
       trigger_source: 'manual', status: 'requested', idempotency_key: idempotencyKey,
-      result: { target_kind: routine.target_kind, asset_id: routine.asset_id, target_url: routine.target_url, execution_status: 'not_started' }
+      result: { target_kind: routine.target_kind, asset_id: routine.asset_id, target_url: routine.target_url, max_cost_wb: Number(routine.max_cost_wb || 1000), execution_status: 'not_started' }
     })
   });
   const run = Array.isArray(inserted) ? inserted[0] : null;
@@ -269,6 +271,7 @@ async function runRoutine(user, member, body) {
       'Target kind: ' + routine.target_kind,
       asset ? 'Workspace library asset: ' + asset.name + ' (' + asset.asset_type + ', ID ' + asset.id + ')' : '',
       routine.target_url ? 'HTTPS target: ' + routine.target_url : '',
+      'Maximum budget for this run: ' + Number(routine.max_cost_wb || 1000) + ' Willow Bucks (100 WB = BRL 1.00).',
       routine.runtime_mode === 'desktop' || routine.runtime_mode === 'hybrid'
         ? 'Computer access request: use only a paired, authorized computer bridge. If no bridge is configured, stop safely and report it.'
         : '',
@@ -282,7 +285,7 @@ async function runRoutine(user, member, body) {
         p_mission: {
           goal, department: 'Operations',
           risk: routine.target_kind === 'computer' ? 'high' : ['website','api','web_app'].includes(routine.target_kind) ? 'medium' : 'low',
-          budget: 0, budgetCurrency: 'BRL', acceptanceCriteria: criteria
+          budget: Number(routine.max_cost_wb || 1000) / 100, budgetCurrency: 'BRL', acceptanceCriteria: criteria
         },
         p_tasks: tasks,
         p_idempotency_key: 'routine-run-' + run.id
@@ -296,7 +299,7 @@ async function runRoutine(user, member, body) {
         body: JSON.stringify({
           mission_id: missionId, status: 'awaiting_approval',
           result: { target_kind: routine.target_kind, asset_id: routine.asset_id, asset_name: asset && asset.name || null,
-            target_url: routine.target_url, execution_status: 'not_started', mission_state: 'awaiting_approval' }
+            target_url: routine.target_url, max_cost_wb: Number(routine.max_cost_wb || 1000), execution_status: 'not_started', mission_state: 'awaiting_approval' }
         })
       });
     await db('whilo_routines?id=eq.' + encodeURIComponent(routine.id) +
