@@ -1525,6 +1525,71 @@
     if (!action) return;
     const act = action.getAttribute('data-act'), id = action.getAttribute('data-id');
     if (act === 'close') { closePanel(); return; }
+    if (act === 'routine-refresh') { routineData=null; routineFeedback=''; routineLoad(true); render(); return; }
+    if (act === 'credits-refresh') { creditsData=null; creditsFeedback=''; creditLoad(true); render(); return; }
+    if (act === 'routine-chat') {
+      const d=routineData||{};
+      const routine=(Array.isArray(d.routines)?d.routines:[]).find(function(x){return x.id===id;});
+      const asset=(Array.isArray(d.assets)?d.assets:[]).find(function(x){return x.id===id;});
+      let prompt;
+      if(routine)prompt='Help me design or improve the routine "'+routine.title+'". Target: '+routine.target_kind+(routine.target_url?' at '+routine.target_url:'')+'. Ask what is missing and return a safe plan with trigger, bounded steps, evidence, permissions and approval rules.';
+      else if(asset)prompt='Create a Whilo routine for my library asset "'+asset.name+'" (type '+asset.asset_type+', ID '+asset.id+'). Define trigger, steps, evidence and approvals. Do not claim any action has run.';
+      else prompt='Help me build a Whilo routine. Ask for the outcome, trigger, target (library dashboard, web app, website, API or paired computer), steps, evidence criteria, schedule and approvals. Start with read/draft-only permissions.';
+      openRoutineInChat(prompt); return;
+    }
+    if (act === 'routine-tour-reopen') {
+      routineTourStep=0;
+      if(routineData)routineData.onboarding=Object.assign({},routineData.onboarding||{},{current_step:0,completed_at:null,preferences:Object.assign({},routineData.onboarding&&routineData.onboarding.preferences||{},{show_tour:true})});
+      render();
+      whiloApi('/api/routines',{method:'POST',body:JSON.stringify({action:'save_onboarding',currentStep:0,completed:false,preferences:Object.assign({},routineData&&routineData.onboarding&&routineData.onboarding.preferences||{},{show_tour:true})})})
+        .then(function(result){if(routineData)routineData.onboarding=result.onboarding||routineData.onboarding;}).catch(function(){});
+      return;
+    }
+    if (act === 'routine-tour-next' || act === 'routine-tour-back' || act === 'routine-tour-skip') {
+      const current=Math.max(0,Math.min(3,routineTourStep));
+      routineTourStep=act==='routine-tour-back'?Math.max(0,current-1):(act==='routine-tour-skip'||current===3?4:current+1);
+      const done=routineTourStep>=4;
+      const notify=!!(shadow.querySelector('#routine-notify-opt-in')&&shadow.querySelector('#routine-notify-opt-in').checked);
+      const reduced=!!(shadow.querySelector('#routine-reduced-motion')&&shadow.querySelector('#routine-reduced-motion').checked);
+      const preferences=Object.assign({},routineData&&routineData.onboarding&&routineData.onboarding.preferences||{},{show_tour:!done,notifications_opt_in:notify,reduced_motion:reduced});
+      routineData=Object.assign({},routineData||{},{onboarding:Object.assign({},routineData&&routineData.onboarding||{},{current_step:done?4:routineTourStep,completed_at:done?new Date().toISOString():null,preferences:preferences})});
+      render();
+      whiloApi('/api/routines',{method:'POST',body:JSON.stringify({action:'save_onboarding',currentStep:done?4:routineTourStep,completed:done,preferences:preferences})})
+        .then(function(result){if(routineData)routineData.onboarding=result.onboarding||routineData.onboarding;})
+        .catch(function(error){routineFeedback='Tour progress is visible in this session but did not sync: '+(error.message||'sync failed');if(active==='routines')render();});
+      return;
+    }
+    if (act === 'routine-toggle') {
+      if(routineBusy)return;
+      routineBusy=true;routineFeedback='Updating schedule…';render();
+      whiloApi('/api/routines',{method:'POST',body:JSON.stringify({action:'toggle_routine',routineId:id,enabled:action.getAttribute('data-enabled')==='true'})})
+        .then(function(){routineData=null;routineFeedback='Schedule saved. A scheduled run still waits for approval before execution.';})
+        .catch(function(error){routineFeedback=error&&error.message?error.message:'Routine schedule could not be updated.';})
+        .finally(function(){routineBusy=false;routineLoad(true);if(active==='routines')render();});
+      return;
+    }
+    if (act === 'routine-run') {
+      if(routineBusy)return;
+      const key='manual:'+id+':'+(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
+      routineBusy=true;routineFeedback='Preparing an approval-gated mission…';render();
+      whiloApi('/api/routines',{method:'POST',body:JSON.stringify({action:'run_routine',routineId:id,idempotencyKey:key})})
+        .then(function(result){routineFeedback=(result.detail||'Routine plan created.')+(result.missionId?' Mission: '+result.missionId:'');routineData=null;})
+        .catch(function(error){routineFeedback=error&&error.message?error.message:'Routine could not be prepared.';})
+        .finally(function(){routineBusy=false;routineLoad(true);if(active==='routines')render();});
+      return;
+    }
+    if (act === 'credits-buy') {
+      if(creditsBusy)return;
+      creditsBusy=true;creditsFeedback='Opening secure Stripe Checkout…';render();
+      whiloApi('/api/credits',{method:'POST',body:JSON.stringify({action:'create-checkout',packId:id})})
+        .then(function(result){
+          if(!result.checkoutUrl||!/^https:\/\/checkout\.stripe\.com\//.test(result.checkoutUrl))throw new Error('A valid Stripe Checkout URL was not returned.');
+          window.location.assign(result.checkoutUrl);
+        })
+        .catch(function(error){creditsFeedback=error&&error.message?error.message:'Checkout could not be created. Check Stripe configuration.';})
+        .finally(function(){creditsBusy=false;if(active==='credits')render();});
+      return;
+    }
     if (act === 'affiliate-refresh') {
       affiliateDashboard = null; affiliateError = ''; affiliateFeedback = '';
       loadAffiliateDashboard(true); render(); return;
@@ -1844,6 +1909,44 @@
   shadow.addEventListener('submit', function (event) {
     event.preventDefault();
     const form = event.target;
+    if (form.id === 'routine-asset-form') {
+      if(routineBusy)return;
+      const fd=new FormData(form);
+      const name=String(fd.get('assetName')||'').trim(), type=String(fd.get('assetType')||'dashboard');
+      const widgetLines=String(fd.get('assetWidgets')||'').split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean).slice(0,12);
+      const definition={version:1,widgets:type==='dashboard'?widgetLines.map(function(title){return {type:'metric',title:title.slice(0,100),source:{kind:'unconnected'},value:null};}):[]};
+      if(type==='dashboard'&&!definition.widgets.length)definition.widgets=[{type:'metric',title:'Connect a data source',source:{kind:'unconnected'},value:null}];
+      routineBusy=true;routineFeedback='Saving library asset…';render();
+      whiloApi('/api/routines',{method:'POST',body:JSON.stringify({action:'create_asset',name:name,assetType:type,description:String(fd.get('assetDescription')||'').trim(),sourceUrl:String(fd.get('assetUrl')||'').trim()||null,definition:definition})})
+        .then(function(result){routineFeedback='Saved "'+((result.asset&&result.asset.name)||name)+'" to the library. Connect real data before relying on dashboard values.';routineData=null;form.reset();})
+        .catch(function(error){routineFeedback=error&&error.message?error.message:'Asset could not be saved.';})
+        .finally(function(){routineBusy=false;routineLoad(true);if(active==='routines')render();});
+      return;
+    }
+    if (form.id === 'routine-create-form') {
+      if(routineBusy)return;
+      const fd=new FormData(form);
+      const lines=function(name,max){return String(fd.get(name)||'').split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean).slice(0,max);};
+      const days=fd.getAll('scheduleDays').map(Number);
+      const stepLines=lines('routineSteps',16);
+      const steps=stepLines.map(function(label){return {label:label,kind:'inspect'};});
+      if(steps.length)steps[steps.length-1].kind='verify';
+      const criteria=lines('routineCriteria',8);
+      routineBusy=true;routineFeedback='Saving routine and validating its target…';render();
+      whiloApi('/api/routines',{method:'POST',body:JSON.stringify({
+        action:'create_routine',title:String(fd.get('routineTitle')||'').trim(),description:String(fd.get('routineDescription')||'').trim(),
+        targetKind:String(fd.get('targetKind')||'library_asset'),assetId:String(fd.get('assetId')||'')||null,
+        targetUrl:String(fd.get('targetUrl')||'').trim()||null,runtimeMode:String(fd.get('runtimeMode')||'browser'),
+        scheduleKind:String(fd.get('scheduleKind')||'manual'),scheduleTime:String(fd.get('scheduleTime')||'09:00'),
+        scheduleDays:days,timezone:String(fd.get('timezone')||'America/Sao_Paulo').trim(),steps:steps,
+        acceptanceCriteria:criteria.length?criteria:['Outcome is recorded','Evidence and exceptions are included'],
+        approvalPolicy:String(fd.get('approvalPolicy')||'always'),enabled:false
+      })})
+        .then(function(){routineFeedback='Routine saved in paused mode. Test it manually, inspect its mission, then enable the schedule.';routineData=null;form.reset();})
+        .catch(function(error){routineFeedback=error&&error.message?error.message:'Routine could not be saved.';})
+        .finally(function(){routineBusy=false;routineLoad(true);if(active==='routines')render();});
+      return;
+    }
     if (form.id === 'affiliate-enroll-form') {
       const fd = new FormData(form);
       const acceptedTerms = fd.get('acceptedTerms') === 'on';
