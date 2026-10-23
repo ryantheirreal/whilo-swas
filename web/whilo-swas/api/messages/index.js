@@ -12,7 +12,8 @@ const MESSAGE_ROUTES = Object.freeze({
   pins: require('../../server/routes/messages/pins'),
   marketplace: require('../../server/routes/marketplace'),
   'marketplace-webhook': require('../../server/routes/marketplace').webhook,
-  'account-bootstrap': require('../../server/routes/account-bootstrap')
+  'account-bootstrap': require('../../server/routes/account-bootstrap'),
+  affiliates: require('../../server/routes/affiliates')
 });
 
 function inFilter(values) { return 'in.(' + values.map(String).join(',') + ')'; }
