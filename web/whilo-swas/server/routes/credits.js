@@ -64,7 +64,7 @@ async function walletSnapshot(user, member) {
     packs:Object.values(PACKS).map(pack=>({id:pack.id,name:pack.name,amountMinor:pack.amountMinor,creditsWB:pack.credits,label:pack.label,currency:'BRL'})),
     policy:{
       currencyLike:false,transferable:false,redeemable:false,nominalValueBRLCentsPerWB:1,
-      costCapPercent:60,profitTargetBeforeVariableTaxAndOtherUnmeasuredCostsPercent:25,
+      costCapPercent:40,contributionBeforeOtherCostsPercent:60,profitTargetBeforeVariableTaxAndOtherUnmeasuredCostsPercent:25,
       disclosure:'Willow Bucks are non-transferable Whilo usage credits, not cash, crypto, or a bank balance. Credit purchase price is fixed by Whilo. Usage costs must be metered server-side; actual margin depends on provider usage, payment fees, taxes and infrastructure.'
     }
   };
