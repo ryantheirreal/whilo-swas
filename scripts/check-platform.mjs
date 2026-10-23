@@ -52,8 +52,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 12) {
-  failures.push('Expected all twelve versioned Supabase migrations to be present.');
+if (migrations.length < 13) {
+  failures.push('Expected all thirteen versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
@@ -79,7 +79,8 @@ for (const [label, pattern] of [
   ['first-touch customer attribution', /function public\.claim_whilo_affiliate_referral/i],
   ['idempotent affiliate commission ledger', /create table if not exists public\.affiliate_commissions/i],
   ['refund and dispute commission reversal', /function public\.reverse_whilo_affiliate_source/i],
-  ['net affiliate payout adjustments', /create table if not exists public\.affiliate_adjustments/i]
+  ['net affiliate payout adjustments', /create table if not exists public\.affiliate_adjustments/i],
+  ['exact full-ledger affiliate summary', /function public\.whilo_affiliate_summary/i]
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
@@ -127,5 +128,5 @@ if (failures.length) {
   for (const failure of failures) console.error('FAIL: ' + failure);
   process.exitCode = 1;
 } else {
-  console.log('PASS: migration ordering, tenant isolation, encrypted connectors, OAuth state, mission queue/approvals, QR pairing, marketplace fee ledger/webhook tables, and secret hygiene.');
+  console.log('PASS: migration ordering, tenant isolation, encrypted connectors, OAuth state, mission approvals, marketplace fee ledger/webhooks, affiliate attribution, refunds, payout netting and secret hygiene.');
 }
