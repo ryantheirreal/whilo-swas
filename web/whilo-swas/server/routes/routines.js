@@ -140,18 +140,20 @@ async function createRoutine(user, member, body) {
   if (!TARGET_KINDS.has(targetKind) || !RUNTIME_MODES.has(runtimeMode) || !APPROVAL_POLICIES.has(approvalPolicy)) fail(400, 'Routine target, runtime or approval policy is invalid.');
   const schedule = validateSchedule(body);
   let assetId = null;
+  let selectedAsset = null;
   let targetUrl = safeHttpsUrl(body.targetUrl);
   if (targetKind === 'library_asset' || targetKind === 'dashboard' || targetKind === 'web_app') {
     if (body.assetId) {
       assetId = ensureUuid(body.assetId, 'assetId');
-      const assets = await db('whilo_library_assets?id=eq.' + encodeURIComponent(assetId) + '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=id,asset_type,source_url&limit=1');
-      if (!Array.isArray(assets) || !assets[0]) fail(404, 'The selected library asset does not belong to this workspace.');
-      if (!targetUrl && assets[0].source_url) targetUrl = safeHttpsUrl(assets[0].source_url);
+      const assets = await db('whilo_library_assets?id=eq.' + encodeURIComponent(assetId) + '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=id,asset_type,source_url,status&limit=1');
+      selectedAsset = Array.isArray(assets) ? assets[0] : null;
+      if (!selectedAsset || selectedAsset.status === 'archived') fail(404, 'The selected library asset is unavailable in this workspace.');
+      if (!targetUrl && selectedAsset.source_url) targetUrl = safeHttpsUrl(selectedAsset.source_url);
     } else {
       fail(400, 'Select a library asset before saving a library, dashboard or web-app routine.');
     }
-    if (assetId && targetKind === 'dashboard' && assets[0].asset_type !== 'dashboard') fail(400, 'Choose a dashboard asset for this target type.');
-    if (assetId && targetKind === 'web_app' && assets[0].asset_type !== 'web_app') fail(400, 'Choose a web-app asset for this target type.');
+    if (targetKind === 'dashboard' && selectedAsset.asset_type !== 'dashboard') fail(400, 'Choose a dashboard asset for this target type.');
+    if (targetKind === 'web_app' && selectedAsset.asset_type !== 'web_app') fail(400, 'Choose a web-app asset for this target type.');
   }
   if ((targetKind === 'website' || targetKind === 'api') && !targetUrl) fail(400, 'Website and API routines require an HTTPS target URL.');
   if (targetKind === 'computer' && runtimeMode !== 'desktop' && runtimeMode !== 'hybrid') fail(400, 'Choose Desktop or Hybrid runtime for computer routines.');
@@ -181,16 +183,23 @@ async function runRoutine(user, member, body) {
   const suppliedKey = text(body.idempotencyKey || '', 100);
   const idempotencyKey = suppliedKey || crypto.randomUUID();
   if (!/^[A-Za-z0-9:_-]{8,100}$/.test(idempotencyKey)) fail(400, 'The idempotency key must be 8–100 letters, numbers, colons, underscores or hyphens.');
-  const prior = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
-    '&idempotency_key=eq.' + encodeURIComponent(idempotencyKey) + '&select=id,routine_id,mission_id,status,result&limit=1');
-  if (Array.isArray(prior) && prior[0]) return { run: prior[0], duplicate: true };
 
+  // Authorize the target routine before looking up a prior run; idempotency is not an access-control bypass.
   const routines = await db('whilo_routines?id=eq.' + encodeURIComponent(routineId) +
     '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=*&limit=1');
   const routine = Array.isArray(routines) ? routines[0] : null;
   if (!routine) fail(404, 'Routine not found in this workspace.');
   const canRun = routine.created_by === user.id || ['owner','admin'].includes(member.role);
   if (!canRun) fail(403, 'Only the routine creator or a workspace administrator can run it.');
+
+  const prior = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
+    '&idempotency_key=eq.' + encodeURIComponent(idempotencyKey) +
+    '&select=id,routine_id,requested_by,mission_id,status,result&limit=1');
+  if (Array.isArray(prior) && prior[0]) {
+    if (prior[0].routine_id !== routineId) fail(409, 'This idempotency key was already used for another routine.');
+    if (prior[0].requested_by !== user.id && !['owner','admin'].includes(member.role)) fail(403, 'You cannot inspect another member’s routine run.');
+    return { run: prior[0], duplicate: true };
+  }
   const assetRows = routine.asset_id
     ? await db('whilo_library_assets?id=eq.' + encodeURIComponent(routine.asset_id) + '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=id,name,asset_type,source_url&limit=1')
     : [];
