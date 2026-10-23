@@ -42,6 +42,11 @@ async function stripeOperation(name, body, idempotencyKey) {
     if (name === 'account.create') return await stripe.accounts.create(body,opts);
     if (name === 'account.link') return await stripe.accountLinks.create(body,opts);
     if (name === 'transfer.create') return await stripe.transfers.create(body,opts);
+    if (name === 'transfer.find') {
+      const result = await stripe.transfers.list({transfer_group:String(body.transfer_group||''),limit:10});
+      const match = (result.data||[]).find(item => item.metadata && item.metadata.whilo_affiliate_payout_id === String(body.payout_id||''));
+      return match || null;
+    }
     const error = new Error('Unsupported Stripe operation.');
     error.statusCode = 501;
     throw error;
@@ -229,9 +234,10 @@ async function handle(req,res) {
 
   if(action==='process-payout') {
     if(!admins.includes(user.id)) fail(403,'This account is not authorized to execute affiliate payouts.');
+    if(String(process.env.WHILO_AFFILIATE_PAYOUTS_ENABLED||'').toLowerCase()!=='true') fail(503,'Affiliate money transfers are disabled until sandbox payout tests and live-account approval are complete.');
     const payoutId=String(body.payoutId||'');
     if(!UUID_RE.test(payoutId)) fail(400,'A valid payout ID is required.');
-    const rows=await db('affiliate_payouts?id=eq.'+encodeURIComponent(payoutId)+'&status=in.(requested,failed)&select=*&limit=1');
+    const rows=await db('affiliate_payouts?id=eq.'+encodeURIComponent(payoutId)+'&status=in.(requested,failed,processing)&select=*&limit=1');
     const payout=Array.isArray(rows)?rows[0]:null;
     if(!payout) fail(404,'An eligible payout request was not found.');
     const afRows=await db('affiliate_profiles?user_id=eq.'+encodeURIComponent(payout.affiliate_user_id)+'&select=user_id,stripe_account_id,stripe_details_submitted,stripe_transfers_enabled,stripe_payouts_enabled,status&limit=1');
@@ -272,13 +278,14 @@ async function handle(req,res) {
       });
       fail(409,'The commission ledger changed after this payout was requested. The request was cancelled safely; ask the partner to refresh the balance and request a new payout.');
     }
-    const claimed=await db('affiliate_payouts?id=eq.'+encodeURIComponent(payoutId)+'&status=in.(requested,failed)',{
+    const claimed=await db('affiliate_payouts?id=eq.'+encodeURIComponent(payoutId)+'&status=in.(requested,failed,processing)',{
       method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({status:'processing',failure_code:null})
     });
     if(!Array.isArray(claimed)||!claimed[0]) fail(409,'Payout could not be claimed for processing.');
     let transfer;
     try {
-      transfer=await stripeOperation('transfer.create',{
+      transfer=await stripeOperation('transfer.find',{transfer_group:'whilo_affiliate_'+payout.id,payout_id:payout.id});
+      if (!transfer) transfer=await stripeOperation('transfer.create',{
         amount:Number(payout.amount_minor),currency:'brl',destination:af.stripe_account_id,
         metadata:{whilo_affiliate_payout_id:payout.id,whilo_affiliate_user_id:payout.affiliate_user_id},
         transfer_group:'whilo_affiliate_'+payout.id
