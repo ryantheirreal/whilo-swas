@@ -1288,6 +1288,36 @@
     {title:'Set the guardrails',copy:'Define a schedule, evidence criteria and explicit approvals. Every run gets a traceable record.',icon:'⌘'},
     {title:'Review before launch',copy:'Save the routine, start with a manual run, inspect its plan and approve only when it makes sense.',icon:'✦'}
   ];
+  const ROUTINE_TEMPLATES = [
+    {
+      id:'dashboard-brief', title:'Daily dashboard brief', icon:'▦', targetKind:'dashboard', runtimeMode:'browser', scheduleKind:'daily', scheduleTime:'09:00',
+      detail:'Summarize your own dashboard with evidence and explicit gaps.',
+      description:'Review the selected Whilo library dashboard, summarize visible metrics, compare only available prior values, draft a concise performance brief and list unknowns without inventing numbers.',
+      steps:['Open the selected library dashboard','Read available widget values and source labels','Compare with prior evidence only when available','Draft an executive summary and exception list','Verify that every figure has a source'],
+      criteria:['Every numeric claim maps to available source evidence','Missing or unconnected data is explicitly disclosed','Output is a draft awaiting human review']
+    },
+    {
+      id:'app-release', title:'App readiness review', icon:'⌘', targetKind:'web_app', runtimeMode:'browser', scheduleKind:'manual', scheduleTime:'09:00',
+      detail:'Review a library web app before a release or handoff.',
+      description:'Review the selected Whilo library web app against its intended user outcome, key flows, accessibility basics and release checklist. Record evidence and uncertainties; do not modify production data.',
+      steps:['Open the selected library web app','Review critical user flows and visible error states','Check navigation, responsiveness and accessibility basics','Draft defects with steps to reproduce and evidence','Verify that findings distinguish observed facts from hypotheses'],
+      criteria:['Each finding contains observable evidence or is labelled unverified','No production write is made','Release recommendation includes limitations and next steps']
+    },
+    {
+      id:'weekly-asset-review', title:'Weekly library review', icon:'◇', targetKind:'library_asset', runtimeMode:'browser', scheduleKind:'weekly', scheduleTime:'09:00', scheduleDays:[1],
+      detail:'Review reusable reports, workflows and datasets.',
+      description:'Review the selected library asset and its available evidence, summarize changes or missing configuration, and propose the next maintenance action.',
+      steps:['Open the selected library asset','Inspect its definition and connected sources','Summarize what changed and what is missing','Draft a prioritized maintenance checklist','Verify every recommendation against available evidence'],
+      criteria:['No unconnected value is treated as a live metric','The summary contains actionable prioritized items','Any destructive action remains approval-gated']
+    },
+    {
+      id:'computer-audit', title:'Authorized computer session', icon:'▣', targetKind:'computer', runtimeMode:'desktop', scheduleKind:'manual', scheduleTime:'09:00',
+      detail:'Prepare a review on your paired computer; control stays locked until explicitly authorized.',
+      description:'Prepare a safe desktop review plan on the account owner’s authorized paired computer. Identify the target, read-only observations, expected evidence and approval checkpoints before any action.',
+      steps:['Confirm the device is paired and recently online','Verify computer:read and computer:control scopes','Inspect the requested target only after authorization','Record observations and screenshots or logs as evidence','Ask before any external write or destructive action'],
+      criteria:['A recent scoped device heartbeat is verified','No action occurs when device authorization is missing','External writes require explicit approval']
+    }
+  ];
   function routineLoad(force) {
     if (!cloudAuthSession || routineLoading || (routineData && !force)) return;
     routineLoading=true; routineFeedback='';
@@ -1349,8 +1379,8 @@
       return '<option value="'+esc(a.id)+'">'+esc(a.name)+' · '+esc(a.asset_type)+'</option>';
     }).join('');
   }
-  function routineScene() {
-    return '<div class="routine-scene" aria-label="Interactive 3D map of Chat, library, browser and computer"><div class="routine-grid3d"></div><div class="routine-orbit orb1"></div><div class="routine-orbit orb2"></div>'+
+  function routineScene(reducedMotion) {
+    return '<div class="routine-scene'+(reducedMotion?' reduced-motion':'')+'" aria-label="Interactive 3D map of Chat, library, browser and computer"><div class="routine-grid3d"></div><div class="routine-orbit orb1"></div><div class="routine-orbit orb2"></div>'+
       '<button type="button" class="routine-node nchat" data-act="routine-chat" aria-label="Design a routine in Chat">✳<span>Chat</span></button>'+
       '<button type="button" class="routine-node nlib" data-act="routine-target-shortcut" data-target="library_asset" aria-label="Create a routine for a library asset">▤<span>Library</span></button>'+
       '<button type="button" class="routine-node nweb" data-act="routine-target-shortcut" data-target="website" aria-label="Create a browser routine">⌘<span>Browser</span></button>'+
@@ -1363,11 +1393,23 @@
     if(!routineData&&!routineLoading&&!routineFeedback)routineLoad(false);
     if(routineLoading&&!routineData)return '<div class="hero"><div><h2 class="h2">Loading your routine workspace…</h2><p class="muted">Loading library assets, routines and history.</p></div></div>'+routineScene();
     const d=routineData||{}, assets=Array.isArray(d.assets)?d.assets:[], routines=Array.isArray(d.routines)?d.routines:[], runs=Array.isArray(d.runs)?d.runs:[];
-    const onboarding=d.onboarding||{}, prefs=onboarding.preferences||{};
+    const onboarding=d.onboarding||{}, prefs=onboarding.preferences||{}, runtime=d.runtime||{computerReady:false};
+    const activeAssets=assets.filter(function(a){return a.status!=='archived';});
     const tourStep=Math.max(0,Math.min(3,Number(onboarding.current_step==null?routineTourStep:onboarding.current_step)||0));
     routineTourStep=tourStep;
     const showTour=!onboarding.completed_at||prefs.show_tour===true;
-    let out='<div class="hero"><div><div class="eyebrow">WHILO / ROUTINE STUDIO</div><h2 class="h2">Routines for your whole workspace.</h2><p class="muted">Turn repeatable work into auditable workflows that target apps and assets you created yourself.</p></div><button class="btn secondary" data-act="routine-refresh">↻ Refresh</button></div>'+routineScene();
+    const balanceWB=Number(d.wallet&&d.wallet.balance_wb||0);
+    const milestones=[
+      {label:'Save a library asset',done:activeAssets.length>0},
+      {label:'Create a reusable routine',done:routines.length>0},
+      {label:'Enable a schedule',done:routines.some(function(r){return r.enabled&&r.schedule_kind!=='manual';})},
+      {label:'Review a recorded run',done:runs.some(function(run){return !!run.mission_id&&['awaiting_approval','awaiting_review','delivered'].includes(run.status);})}
+    ];
+    const mastery=Math.round(milestones.filter(function(m){return m.done;}).length/milestones.length*100);
+    let out='<style>.routine-scene.reduced-motion .routine-orbit,.routine-scene.reduced-motion .routine-core3d{animation:none!important}.routine-mastery{border:1px solid #30425b;border-radius:16px;padding:15px;margin:10px 0 16px;background:linear-gradient(135deg,rgba(71,133,207,.12),rgba(255,255,255,.015))}.routine-mastery-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.routine-mastery-title{font-size:12px;font-weight:800}.routine-progress{height:6px;border-radius:99px;background:#253246;overflow:hidden;margin:12px 0}.routine-progress span{display:block;height:100%;background:linear-gradient(90deg,#74b9ff,#9be9cb);border-radius:99px;transition:width .35s ease}.routine-milestones{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.routine-milestone{font-size:10px;color:#aab8ca;display:flex;gap:7px;align-items:flex-start;line-height:1.5}.routine-milestone.done{color:#b4efd8}.routine-runtime{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:11px 13px;border:1px solid #33435a;border-radius:13px;margin:10px 0 15px;background:rgba(13,22,35,.65)}.routine-runtime small{display:block;color:#aab8c9;font-size:10px;margin-top:4px}.routine-template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0 18px}.routine-template{border:1px solid #304158;border-radius:15px;padding:13px;background:linear-gradient(145deg,rgba(33,54,79,.7),rgba(13,20,31,.88));min-width:0}.routine-template>div:first-child{display:flex;align-items:center;gap:8px}.routine-template .template-icon{width:31px;height:31px;border:1px solid #405a78;border-radius:10px;display:grid;place-items:center;color:#c7e6ff}.routine-template b{font-size:11px}.routine-template p{font-size:10px;line-height:1.55;color:#9eafc4;min-height:32px}.routine-template button{width:100%}.routine-template small{font-size:9px;color:#b3cae2}.routine-mastery .quiet-note{font-size:10px;color:#8d9db2;margin-top:10px}.routine-scene{transition:transform .15s ease-out;transform-style:preserve-3d}@media(prefers-reduced-motion:reduce){.routine-progress span{transition:none}.routine-scene,.routine-orbit,.routine-core3d{animation:none!important;transition:none!important}}@media(max-width:700px){.routine-template-grid{grid-template-columns:1fr}.routine-milestones{grid-template-columns:repeat(2,minmax(0,1fr))}.routine-scene{height:230px}}</style><div class="hero"><div><div class="eyebrow">WHILO / ROUTINE STUDIO</div><h2 class="h2">Routines for your whole workspace.</h2><p class="muted">Go beyond app reviews: orchestrate your own dashboards, library assets, web apps, browser work and explicitly authorized computers.</p></div><div class="tour-actions"><button class="btn" data-act="routine-chat">✳ Build in Chat @Routines</button><button class="btn secondary" data-act="routine-refresh">↻ Refresh</button></div></div>'+routineScene(!!prefs.reduced_motion);
+    out+='<div class="routine-runtime"><div><b>'+(runtime.computerReady?'Computer runtime authorized':'Computer runtime locked')+'</b><small>'+(runtime.computerReady?'A recent device heartbeat with computer:read and computer:control was detected. Each run still follows approval policy.':'Pairing alone is not enough. A device needs an owner-scoped recent heartbeat and explicit computer:read + computer:control scopes.')+'</small></div><button class="btn secondary" data-tab="credits">Willow Bucks · '+balanceWB.toLocaleString()+' WB</button></div>';
+    out+='<section class="routine-mastery" aria-label="Routine mastery progress"><div class="routine-mastery-head"><span class="routine-mastery-title">Workspace mastery · '+mastery+'%</span><span class="mini">'+milestones.filter(function(m){return m.done;}).length+' / '+milestones.length+' milestones</span></div><div class="routine-progress" role="progressbar" aria-label="Workspace mastery" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+mastery+'"><span style="width:'+mastery+'%"></span></div><div class="routine-milestones">'+milestones.map(function(m){return '<div class="routine-milestone '+(m.done?'done':'')+'"><span>'+(m.done?'✓':'○')+'</span><span>'+esc(m.label)+'</span></div>';}).join('')+'</div><div class="quiet-note">Progress reflects real setup and review events—not time spent, streak pressure or artificial urgency. You can pause any schedule at any time.</div></section>';
+    out+='<div class="eyebrow">START WITH A PLAYBOOK</div><div class="routine-template-grid">'+ROUTINE_TEMPLATES.map(function(t){return '<article class="routine-template"><div><span class="template-icon">'+esc(t.icon)+'</span><b>'+esc(t.title)+'</b></div><p>'+esc(t.detail)+'</p><small>'+esc(t.targetKind.replace(/_/g,' '))+' · '+esc(t.scheduleKind)+'</small><button class="btn secondary" data-act="routine-template" data-id="'+esc(t.id)+'">Use playbook →</button></article>';}).join('')+'</div>';
     out+='<div class="routine-stats"><div><span>Saved routines</span><strong>'+routines.length+'</strong><small>Reusable workflows</small></div><div><span>Enabled schedules</span><strong>'+routines.filter(function(r){return r.enabled;}).length+'</strong><small>Scheduled dispatch</small></div><div><span>Awaiting review</span><strong>'+runs.filter(function(r){return r.status==='awaiting_approval';}).length+'</strong><small>Human approval needed</small></div><div><span>Library assets</span><strong>'+assets.filter(function(a){return a.status!=='archived';}).length+'</strong><small>Dashboards, apps, templates</small></div></div>';
     if(showTour){
       const t=ROUTINE_TOUR[tourStep];
@@ -1393,10 +1435,9 @@
       '<label>Approval policy<select class="field" name="approvalPolicy"><option value="always">Always ask (recommended)</option><option value="first_run">First run and sensitive writes</option><option value="for_writes">Ask before writes</option></select><small>Until fine-grained policies are supported by a trusted worker, every run still waits for approval.</small></label>'+
       '<button class="btn" type="submit"'+(routineBusy?' disabled':'')+'>＋ Save routine</button></form></article></section>';
     out+='<section class="routine-panel"><div class="eyebrow">03 / YOUR LIBRARY</div><h3>Assets available to routines</h3><p class="muted">Routines reference library assets by tenant-scoped ID, not just source-code repositories.</p>';
-    const visibleAssets=assets.filter(function(a){return a.status!=='archived';});
-    out+=visibleAssets.length?'<div class="routine-assets">'+visibleAssets.map(function(a){
+    out+=activeAssets.length?'<div class="routine-assets">'+activeAssets.map(function(a){
       const widgets=a.definition&&Array.isArray(a.definition.widgets)?a.definition.widgets.slice(0,4):[];
-      return '<article><div class="asset-preview"><div class="asset-dots"><i></i><i></i><i></i></div><strong>'+esc(a.name)+'</strong><div class="asset-widgets">'+(widgets.length?widgets.map(function(w){return '<div><span>'+esc(w.title||'Metric')+'</span><b>Not connected</b></div>';}).join(''):'<div><span>'+esc(a.asset_type)+'</span><b>Configure target</b></div>')+'</div></div><div class="asset-card-body"><span>'+esc(a.asset_type)+'</span><p>'+esc(a.description||'No description yet.')+'</p>'+(a.source_url?'<a href="'+esc(a.source_url)+'" target="_blank" rel="noopener noreferrer">Open target ↗</a>':'<small>Library data asset</small>')+'<button class="btn secondary" data-act="routine-chat" data-id="'+esc(a.id)+'">Create routine in Chat</button></div></article>';
+      return '<article><div class="asset-preview"><div class="asset-dots"><i></i><i></i><i></i></div><strong>'+esc(a.name)+'</strong><div class="asset-widgets">'+(widgets.length?widgets.map(function(w){return '<div><span>'+esc(w.title||'Metric')+'</span><b>Not connected</b></div>';}).join(''):'<div><span>'+esc(a.asset_type)+'</span><b>Configure target</b></div>')+'</div></div><div class="asset-card-body"><span>'+esc(a.asset_type)+'</span><p>'+esc(a.description||'No description yet.')+'</p>'+(a.source_url?'<a href="'+esc(a.source_url)+'" target="_blank" rel="noopener noreferrer">Open on this computer ↗</a>':'<small>Library data asset · data-only preview</small>')+'<div class="tour-actions"><button class="btn secondary" data-act="routine-use-asset" data-id="'+esc(a.id)+'">Use in a routine</button><button class="btn secondary" data-act="routine-chat" data-id="'+esc(a.id)+'">Create in Chat @Routines</button></div></div></article>';
     }).join('')+'</div>':'<div class="routine-empty"><b>Your library is ready.</b><p>Save a dashboard or app above, then choose it as a routine target.</p></div>';
     out+='</section>';
     out+='<section class="routine-panel"><div class="routine-head"><div><div class="eyebrow">04 / AUTOMATIONS</div><h3>Your routines</h3><p class="muted">Scheduled dispatch checks every five minutes. A run creates a reviewable mission; it has not executed just because it was queued.</p></div><button class="btn secondary" data-act="routine-refresh">Refresh</button></div>';
@@ -1534,6 +1575,21 @@
     task.mission = mission;
     save();
   }
+  shadow.addEventListener('pointermove', function (event) {
+    const scene=event.target.closest('.routine-scene');
+    if(!scene)return;
+    if(scene.classList.contains('reduced-motion') || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+      scene.style.transform='';return;
+    }
+    const rect=scene.getBoundingClientRect();
+    if(!rect.width||!rect.height)return;
+    const nx=(event.clientX-rect.left)/rect.width-.5;
+    const ny=(event.clientY-rect.top)/rect.height-.5;
+    scene.style.transform='perspective(900px) rotateX('+(-ny*3.5).toFixed(2)+'deg) rotateY('+(nx*4.5).toFixed(2)+'deg)';
+  });
+  shadow.addEventListener('pointerleave', function () {
+    shadow.querySelectorAll('.routine-scene').forEach(function(scene){scene.style.transform='';});
+  });
   shadow.addEventListener('click', function (event) {
     const tab = event.target.closest('[data-tab]');
     if (tab) { active = tab.getAttribute('data-tab'); render(); return; }
@@ -1573,6 +1629,56 @@
     }
     if (act === 'routine-refresh') { routineData=null; routineFeedback=''; routineLoad(true); render(); return; }
     if (act === 'credits-refresh') { creditsData=null; creditsFeedback=''; creditLoad(true); render(); return; }
+    if (act === 'routine-template') {
+      const template=ROUTINE_TEMPLATES.find(function(t){return t.id===id;});
+      if(!template)return;
+      const matching=activeAssets.filter(function(a){
+        if(template.targetKind==='dashboard')return a.asset_type==='dashboard';
+        if(template.targetKind==='web_app')return a.asset_type==='web_app';
+        if(template.targetKind==='library_asset')return true;
+        return false;
+      });
+      if(['dashboard','web_app','library_asset'].includes(template.targetKind)&&!matching.length){
+        routineFeedback='Create a matching library asset first. The playbook will then attach to your own asset rather than an unrelated public target.';
+        render();return;
+      }
+      const form=shadow.querySelector('#routine-create-form');
+      if(!form){routineFeedback='Open Routine Studio and sign in before using a playbook.';render();return;}
+      form.elements.routineTitle.value=template.title;
+      form.elements.routineDescription.value=template.description;
+      form.elements.targetKind.value=template.targetKind;
+      form.elements.runtimeMode.value=template.runtimeMode;
+      form.elements.scheduleKind.value=template.scheduleKind;
+      form.elements.scheduleTime.value=template.scheduleTime||'09:00';
+      if(form.elements.assetId)form.elements.assetId.value=matching[0] ? matching[0].id : '';
+      const dayInputs=Array.from(form.querySelectorAll('input[name="scheduleDays"]'));
+      dayInputs.forEach(function(input){input.checked=(template.scheduleDays||[]).includes(Number(input.value));});
+      form.elements.routineSteps.value=template.steps.join('\n');
+      form.elements.routineCriteria.value=template.criteria.join('\n');
+      routineFeedback='Playbook loaded. Review the target, authorization and acceptance criteria before saving.';
+      form.scrollIntoView({behavior:prefs.reduced_motion?'auto':'smooth',block:'center'});
+      render();
+      return;
+    }
+    if (act === 'routine-use-asset') {
+      const asset=(Array.isArray(routineData&&routineData.assets)?routineData.assets:[]).find(function(a){return a.id===id;});
+      const form=shadow.querySelector('#routine-create-form');
+      if(!asset||!form){routineFeedback='This asset is not available in the current workspace view.';render();return;}
+      const target=asset.asset_type==='dashboard'?'dashboard':asset.asset_type==='web_app'?'web_app':'library_asset';
+      form.elements.routineTitle.value='Review: '+asset.name;
+      form.elements.routineDescription.value='Open the selected library asset, inspect its available data and source connections, prepare an evidence-based summary, and list missing configuration without inventing values.';
+      form.elements.targetKind.value=target;
+      form.elements.assetId.value=asset.id;
+      form.elements.targetUrl.value=asset.source_url||'';
+      form.elements.runtimeMode.value='browser';
+      form.elements.scheduleKind.value='manual';
+      form.elements.routineSteps.value='Open the selected library asset\nInspect available widgets and source links\nPrepare an evidence-backed summary\nVerify missing data and exceptions';
+      form.elements.routineCriteria.value='Each claim is supported by available evidence\nMissing data is disclosed\nNo external write occurs without approval';
+      routineFeedback='Asset attached. A saved HTTPS target can be opened in a new browser tab; library-only dashboards remain honest data previews until a source is connected.';
+      form.scrollIntoView({behavior:prefs.reduced_motion?'auto':'smooth',block:'center'});
+      render();
+      return;
+    }
     if (act === 'routine-chat') {
       const d=routineData||{};
       const routine=(Array.isArray(d.routines)?d.routines:[]).find(function(x){return x.id===id;});
