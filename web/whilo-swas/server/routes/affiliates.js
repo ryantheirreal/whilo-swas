@@ -106,6 +106,23 @@ async function getDashboard(user) {
   const available=commissionRows.filter(r=>r.status==='available'&&!r.payout_id);
   const paid=commissionRows.filter(r=>r.status==='paid');
   const inPayout=payoutRows.filter(r=>['requested','processing'].includes(r.status));
+  const payoutAdmins=String(process.env.WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS||process.env.WHILO_MARKETPLACE_ADMIN_USER_IDS||'')
+    .split(',').map(x=>x.trim()).filter(Boolean);
+  const canReviewPayouts=payoutAdmins.includes(user.id);
+  let adminPayouts=[];
+  if(canReviewPayouts) {
+    const queue=await db('affiliate_payouts?status=in.(requested,failed,processing)&select=id,affiliate_user_id,amount_minor,currency,status,requested_at,failure_code&order=requested_at.asc&limit=100');
+    const queueRows=Array.isArray(queue)?queue:[];
+    const queueAffiliateIds=[...new Set(queueRows.map(row=>row.affiliate_user_id).filter(Boolean))];
+    const partnerRows=queueAffiliateIds.length
+      ?await db('affiliate_profiles?user_id='+inFilter(queueAffiliateIds)+'&select=user_id,display_name,affiliate_code,tier,status,stripe_details_submitted,stripe_transfers_enabled,stripe_payouts_enabled')
+      :[];
+    const partnerMap=new Map((Array.isArray(partnerRows)?partnerRows:[]).map(row=>[row.user_id,row]));
+    adminPayouts=queueRows.map(row=>Object.assign({},row,{
+      amount_minor:Number(row.amount_minor),
+      affiliate:partnerMap.get(row.affiliate_user_id)||null
+    }));
+  }
   return {
     enrolled:true,
     profile:{
@@ -124,6 +141,9 @@ async function getDashboard(user) {
     },
     nextRank:next,
     ranks:RANKS,
+    canReviewPayouts,
+    affiliatePayoutsEnabled:String(process.env.WHILO_AFFILIATE_PAYOUTS_ENABLED||'').toLowerCase()==='true',
+    adminPayouts,
     referralLink:publicBase()+'/?ref='+encodeURIComponent(refreshed.affiliate_code),
     referrals:referralRows.map(r=>({
       userId:r.referred_user_id,displayName:nameMap.get(r.referred_user_id)||'Whilo member',
