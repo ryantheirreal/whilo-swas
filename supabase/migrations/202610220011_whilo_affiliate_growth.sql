@@ -276,8 +276,7 @@ begin
   select coalesce(sum(c.commission_minor),0)::bigint into total_amount
   from public.affiliate_commissions c
   where c.affiliate_user_id=p_user_id and c.status='available' and c.available_at <= now()
-    and not exists(select 1 from public.affiliate_payout_items i where i.commission_id=c.id)
-  for update;
+    and not exists(select 1 from public.affiliate_payout_items i where i.commission_id=c.id);
   if total_amount < 10000 then raise exception 'minimum_payout_is_R$100' using errcode='22023'; end if;
 
   idempotency_value := 'whilo-affiliate-payout-' || replace(gen_random_uuid()::text,'-','');
@@ -296,8 +295,11 @@ begin
     values(new_payout_id,commission_row.id,commission_row.commission_minor);
   end loop;
 
-  select sum(i.amount_minor)::bigint into total_amount from public.affiliate_payout_items i where i.payout_id=new_payout_id;
+  select coalesce(sum(i.amount_minor),0)::bigint into total_amount from public.affiliate_payout_items i where i.payout_id=new_payout_id;
+  if total_amount < 10000 then raise exception 'minimum_payout_is_R$100' using errcode='22023'; end if;
   update public.affiliate_payouts set amount_minor=total_amount where id=new_payout_id;
+  update public.affiliate_commissions c set payout_id=new_payout_id
+  from public.affiliate_payout_items i where i.payout_id=new_payout_id and i.commission_id=c.id;
   return query select new_payout_id,total_amount,'requested'::text;
 end;
 $$;
