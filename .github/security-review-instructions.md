@@ -1,0 +1,10 @@
+Whilo-specific requirements for this AI security review:
+
+1. Prioritize critical/high findings: broken tenant isolation, IDOR/BOLA, auth/session flaws, insecure grants/RLS, exposed SECURITY DEFINER RPCs, secret exposure, SSRF, XSS, command injection, unsafe deserialization, webhook replay/forgery, payment/credit manipulation, duplicate payouts, TOCTOU/race conditions, and unbounded computer/routine execution.
+2. Trace data flow across the relevant frontend, shared serverless route, service-role database helper, SQL RPC/migration, and billing entry points. Confirm whether client-controlled IDs/amounts/URLs can reach privileged operations.
+3. For SSRF, inspect URL parsing, DNS answer validation, reserved IPv4/IPv6 handling, redirect behavior, rebinding, DNS pinning and actual outbound request code. A validate-at-save check alone is insufficient for a worker that fetches later.
+4. For Supabase, verify both grants and RLS. Service-role-only finance tables should not gain browser policies merely to silence advisor notices. Check SECURITY DEFINER grants and search_path.
+5. For Stripe and Willow Bucks, inspect raw-body signature verification, amount/currency/pack reconciliation, idempotency, duplicate webhook handling, refund/dispute reversals, provider-cost provenance and concurrency. Direct provider COGS target is <=40% of nominal credit value; net margin is not guaranteed.
+6. For Routines, ensure assets are data not executable code, computer control is gated by a fresh owner-scoped device heartbeat and explicit scopes, manual/scheduled runs are idempotent and rate-limited, and budget caps reach the mission payload. A queued run must not be described as executed.
+7. Include concrete file/line references, exploit preconditions, impact, confidence, and minimal remediation. Distinguish verified vulnerabilities from hypotheses. Never print secret values in comments.
+8. Do not run active testing against external hosts or production. This review is a code/diff review; Strix active tests are a separate authorized manual workflow.
