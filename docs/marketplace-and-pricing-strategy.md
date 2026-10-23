@@ -92,7 +92,7 @@ Ask Whilo can become the display name above the chat input while the navigation 
 
 ## Release gates before public sale
 
-1. Apply migrations 001–010 in a **staging** Supabase project; 009 creates the marketplace/commerce schema and 010 adds transactional buyer-side installations.
+1. Apply migrations 001–012 in a **staging** Supabase project; 009 creates the marketplace/commerce schema and 010 adds transactional buyer-side installations.
 2. Configure Stripe test-mode secret and webhook signing key; set a webhook route at /api/marketplace/webhook; use test-mode Connect accounts and verify onboarding, account.updated, checkout.completed, duplicate webhook, failure, refund and dispute flows.
 3. Set platform moderator user IDs server-side. New creator listings stay in review until a moderator approves them.
 4. Complete legal terms, prohibited-listing rules, IP takedown path, refund/dispute policy, privacy policy, Brazilian consumer/data/tax review and seller verification.
