@@ -59,7 +59,7 @@ The eight Price IDs must be created in the selected Stripe sandbox and correspon
 
 ## Release criteria
 
-Do not announce full activation until all are true: account sign-in and reset tested with the intended email; workspace bootstrap returns an organization and Pets; migration list shows versions 001–012; database security/performance advisors have been reviewed; Stripe test checkout and webhook scenarios pass; then run the production checklist and only then provision live Stripe credentials.
+Do not announce full activation until all are true: account sign-in and reset tested with the intended email; workspace bootstrap returns an organization and Pets; migration list shows versions 001–013; database security/performance advisors have been reviewed; Stripe test checkout and webhook scenarios pass; then run the production checklist and only then provision live Stripe credentials.
 
 
 ## Whilo Partners
