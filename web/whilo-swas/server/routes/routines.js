@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const net = require('node:net');
 const { send, authenticate, organizationFor, db, readJson, safeError, audit } = require('../../api/_lib/platform');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -41,8 +42,8 @@ function safeHttpsUrl(value) {
   if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.test')) {
     fail(400, 'Private or local targets cannot be configured as public HTTPS URLs.');
   }
-  if (/^(127\.|10\.|192\.168\.|169\.254\.)/.test(hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) || hostname === '::1' || hostname.includes(':')) {
-    fail(400, 'Private, link-local, and IPv6 literal targets are not allowed in a routine URL.');
+  if (net.isIP(hostname) || hostname.includes(':')) {
+    fail(400, 'IP-literal targets are not allowed; use a verified HTTPS hostname.');
   }
   return url.toString();
 }
@@ -146,16 +147,19 @@ async function createRoutine(user, member, body) {
       const assets = await db('whilo_library_assets?id=eq.' + encodeURIComponent(assetId) + '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=id,asset_type,source_url&limit=1');
       if (!Array.isArray(assets) || !assets[0]) fail(404, 'The selected library asset does not belong to this workspace.');
       if (!targetUrl && assets[0].source_url) targetUrl = safeHttpsUrl(assets[0].source_url);
-    } else if (targetKind === 'library_asset') {
-      fail(400, 'Select a library asset before saving this routine.');
+    } else {
+      fail(400, 'Select a library asset before saving a library, dashboard or web-app routine.');
     }
+    if (assetId && targetKind === 'dashboard' && assets[0].asset_type !== 'dashboard') fail(400, 'Choose a dashboard asset for this target type.');
+    if (assetId && targetKind === 'web_app' && assets[0].asset_type !== 'web_app') fail(400, 'Choose a web-app asset for this target type.');
   }
-  if (targetKind === 'website' && !targetUrl) fail(400, 'Website routines require an HTTPS target URL.');
+  if ((targetKind === 'website' || targetKind === 'api') && !targetUrl) fail(400, 'Website and API routines require an HTTPS target URL.');
   if (targetKind === 'computer' && runtimeMode !== 'desktop' && runtimeMode !== 'hybrid') fail(400, 'Choose Desktop or Hybrid runtime for computer routines.');
-  const steps = normalizedSteps(body.steps || [
+  const suppliedSteps = Array.isArray(body.steps) && body.steps.length ? body.steps : [
     { label: 'Inspect the configured target and gather evidence', kind: 'inspect' },
     { label: 'Prepare a structured summary and verification checklist', kind: 'summarize' }
-  ]);
+  ];
+  const steps = normalizedSteps(suppliedSteps);
   const criteria = boundedList(body.acceptanceCriteria || ['Outcome is recorded', 'Evidence and exceptions are included'], 8, 500, 'Acceptance criteria');
   const rows = await db('whilo_routines', {
     method: 'POST', headers: { Prefer: 'return=representation' },
