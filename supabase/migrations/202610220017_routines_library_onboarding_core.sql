@@ -57,7 +57,7 @@ create table if not exists public.whilo_routines (
   constraint whilo_routine_weekdays_valid check (
     cardinality(schedule_days) <= 7
     and array_position(schedule_days, null) is null
-    and not exists (select 1 from unnest(schedule_days) d where d < 0 or d > 6)
+    and schedule_days <@ ARRAY[0,1,2,3,4,5,6]::smallint[]
   ),
   constraint whilo_routine_target_url_https check (target_url is null or target_url ~* '^https://')
 );
