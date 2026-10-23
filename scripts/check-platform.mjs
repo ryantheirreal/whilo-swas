@@ -39,6 +39,7 @@ if (apiEntrypoints.length > 12) failures.push('Vercel Hobby supports at most 12 
 const jsFiles = [
   ...apiFiles,
   ...walk(path.join(root, 'web', 'whilo-swas', 'server', 'routes')).filter(file => file.endsWith('.js')),
+  ...walk(path.join(root, 'web', 'whilo-swas', 'server', 'security')).filter(file => file.endsWith('.js')),
   ...walk(path.join(root, 'scripts')).filter(file => (file.endsWith('.mjs') || file.endsWith('.js')) && !file.endsWith('check-platform.mjs')),
   path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'),
   path.join(root, 'web', 'whilo-swas', 'whilo-marketplace.js'),
@@ -52,8 +53,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 20) {
-  failures.push('Expected all twenty versioned Supabase migrations to be present.');
+if (migrations.length < 21) {
+  failures.push('Expected all twenty-one versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
@@ -117,6 +118,12 @@ if (!(vercelConfig.rewrites || []).some(item => item.source === '/api/affiliates
 const affiliateRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'affiliates.js'), 'utf8');
 if (!affiliateRoute.includes("action==='claim-referral'") || !affiliateRoute.includes('authenticate(req)')) failures.push('Affiliate attribution must use an authenticated server endpoint.');
 if (!affiliateRoute.includes('WHILO_AFFILIATE_PAYOUTS_ENABLED')) failures.push('Real affiliate transfers must be protected by an explicit server-side kill switch.');
+const routinesRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'routines.js'), 'utf8');
+const publicTarget = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'security', 'public-target.js'), 'utf8');
+const routineSecurityTests = fs.readFileSync(path.join(root, 'scripts', 'test-routine-security.cjs'), 'utf8');
+if (!routinesRoute.includes('resolvePublicHttpsTarget')) failures.push('Routine URL targets must pass DNS-aware public-address validation at save and run time.');
+if (!publicTarget.includes('blockedAddresses.check') || !publicTarget.includes('lookup(new URL(normalized).hostname')) failures.push('Routine target validator must block private/reserved DNS answers.');
+if (!routineSecurityTests.includes('mixedLookup') || !routineSecurityTests.includes('169.254.169.254')) failures.push('Routine SSRF tests must cover metadata IPs and mixed public/private DNS answers.');
 if (!enterpriseUi.includes('function affiliateHubPage()') || !enterpriseUi.includes('affiliate-enroll-form')) failures.push('The Account screen must expose affiliate enrollment and dashboard UI.');
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'package.json'), 'utf8'));
@@ -139,5 +146,5 @@ if (failures.length) {
   for (const failure of failures) console.error('FAIL: ' + failure);
   process.exitCode = 1;
 } else {
-  console.log('PASS: migration ordering, tenant isolation, encrypted connectors, OAuth state, mission approvals, marketplace fee ledger/webhooks, affiliate attribution, refunds, payout netting and secret hygiene.');
+  console.log('PASS: migration ordering, tenant isolation, integration view/grants, DNS-aware routine targets and SSRF tests, encrypted connectors, OAuth state, mission approvals, marketplace fee ledger/webhooks, Willow Bucks idempotency, affiliate attribution, refunds, payout netting and secret hygiene.');
 }
