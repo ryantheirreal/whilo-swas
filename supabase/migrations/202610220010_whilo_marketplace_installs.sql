@@ -6,7 +6,7 @@ create or replace function public.prevent_marketplace_order_snapshot_mutation()
 returns trigger
 language plpgsql
 set search_path = pg_catalog, public
-as $
+as $$
 begin
   if row(new.listing_id, new.seller_id, new.buyer_organization_id, new.buyer_user_id,
          new.currency, new.price_minor, new.platform_fee_bps,
@@ -19,7 +19,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 create trigger marketplace_orders_snapshot_immutable
 before update on public.marketplace_orders
@@ -70,7 +70,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-as $
+as $$
 declare
   listing_row public.marketplace_listings%rowtype;
   entitlement_row public.marketplace_entitlements%rowtype;
