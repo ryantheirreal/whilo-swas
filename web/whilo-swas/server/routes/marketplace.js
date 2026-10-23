@@ -501,6 +501,19 @@ async function processWebhookEvent(event) {
         })
       });
     }
+    const affiliateRows = await db('affiliate_profiles?stripe_account_id=eq.' + encodeURIComponent(obj.id || '') + '&select=user_id');
+    const affiliate = Array.isArray(affiliateRows) ? affiliateRows[0] : null;
+    if (affiliate) {
+      const capabilities = obj.capabilities || {};
+      await db('affiliate_profiles?user_id=eq.' + encodeURIComponent(affiliate.user_id), {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          stripe_details_submitted: Boolean(obj.details_submitted),
+          stripe_transfers_enabled: capabilities.transfers === 'active',
+          stripe_payouts_enabled: Boolean(obj.payouts_enabled)
+        })
+      });
+    }
   }
   if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     if (obj.mode === 'payment' && obj.payment_status === 'paid' || event.type === 'checkout.session.async_payment_succeeded') {
@@ -533,6 +546,16 @@ async function processWebhookEvent(event) {
               p_listing_id: order.listing_id
             })
           });
+          await db('rpc/record_whilo_affiliate_commission', {
+            method: 'POST',
+            body: JSON.stringify({
+              p_referred_user_id: order.buyer_user_id,
+              p_source_type: 'marketplace',
+              p_source_id: order.id,
+              p_amount_minor: Number(order.price_minor || 0),
+              p_currency: String(order.currency || 'brl').toLowerCase()
+            })
+          });
         }
       }
     }
@@ -550,6 +573,29 @@ async function processWebhookEvent(event) {
         await db('whilo_subscriptions?id=eq.' + encodeURIComponent(rows[0].id), {
           method: 'PATCH', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ status: 'cancelled', cancel_at_period_end: false })
+        });
+      }
+    }
+  }
+  if (event.type === 'invoice.paid') {
+    const subValue = obj.subscription || (obj.parent && obj.parent.subscription_details && obj.parent.subscription_details.subscription);
+    const subId = typeof subValue === 'string' ? subValue : subValue && subValue.id;
+    if (subId) {
+      await syncSubscription(String(subId));
+      const subscriptionRows = await db('whilo_subscriptions?stripe_subscription_id=eq.' + encodeURIComponent(String(subId)) + '&select=user_id,organization_id,status&limit=1');
+      const subscription = Array.isArray(subscriptionRows) ? subscriptionRows[0] : null;
+      const rawTaxes = Array.isArray(obj.total_taxes) ? obj.total_taxes.reduce((sum, item) => sum + Number(item.amount || 0), 0) : Number(obj.tax || 0);
+      const collectedExTax = Math.max(0, Number(obj.amount_paid || 0) - rawTaxes);
+      if (subscription && subscription.user_id && collectedExTax > 0) {
+        await db('rpc/record_whilo_affiliate_commission', {
+          method: 'POST',
+          body: JSON.stringify({
+            p_referred_user_id: subscription.user_id,
+            p_source_type: 'subscription',
+            p_source_id: String(obj.id || ''),
+            p_amount_minor: collectedExTax,
+            p_currency: String(obj.currency || 'brl').toLowerCase()
+          })
         });
       }
     }
