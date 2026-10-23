@@ -53,8 +53,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 21) {
-  failures.push('Expected all twenty-one versioned Supabase migrations to be present.');
+if (migrations.length < 22) {
+  failures.push('Expected all twenty-two versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
@@ -92,9 +92,9 @@ for (const [label, pattern] of [
   ['database-native routine scheduler', /function private\.dispatch_due_whilo_routines/i],
   ['Willow Bucks usage wallet', /create table if not exists public\.whilo_credit_wallets/i],
   ['atomic usage metering', /function public\.charge_whilo_usage/i],
-  ['idempotent Willow Bucks topups', /function public\.apply_whilo_credit_purchase/i]
+  ['idempotent Willow Bucks topups', /function public\.apply_whilo_credit_purchase/i],
   ['server-only business table grants', /revoke all privileges on all tables in schema public from public, anon, authenticated/i],
-  ['post-feature foreign-key index pass', /whilo_fk_' \\|\\| substr\\(md5\\(fk\\.oid::text\\), 1, 12\\)/i],
+  ['post-feature foreign-key index pass', /whilo_fk_/i],
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
