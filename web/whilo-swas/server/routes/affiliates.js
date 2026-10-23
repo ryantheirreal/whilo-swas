@@ -106,6 +106,9 @@ async function getDashboard(user) {
   const available=commissionRows.filter(r=>r.status==='available'&&!r.payout_id);
   const paid=commissionRows.filter(r=>r.status==='paid');
   const inPayout=payoutRows.filter(r=>['requested','processing'].includes(r.status));
+  const summaryResponse=await db('rpc/whilo_affiliate_summary',{method:'POST',body:JSON.stringify({p_user_id:user.id})});
+  const exactSummary=Array.isArray(summaryResponse)?summaryResponse[0]||{}:(summaryResponse&&typeof summaryResponse==='object'?summaryResponse:{});
+  const summaryNumber=(key,fallback)=>Number(exactSummary[key] == null ? fallback : exactSummary[key]);
   const payoutAdmins=String(process.env.WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS||process.env.WHILO_MARKETPLACE_ADMIN_USER_IDS||'')
     .split(',').map(x=>x.trim()).filter(Boolean);
   const canReviewPayouts=payoutAdmins.includes(user.id);
@@ -133,11 +136,17 @@ async function getDashboard(user) {
       payout:{connected:Boolean(refreshed.stripe_account_id),detailsSubmitted:Boolean(refreshed.stripe_details_submitted),transfersEnabled:Boolean(refreshed.stripe_transfers_enabled),payoutsEnabled:Boolean(refreshed.stripe_payouts_enabled)}
     },
     stats:{
-      totalReferrals:referralRows.length,paidReferrals,directSalesMinor:directSales,
-      totalEarnedMinor:total(commissionRows.filter(r=>r.status!=='reversed'),'commission_minor'),
-      pendingMinor:total(pending,'commission_minor'),availableMinor:total(available,'commission_minor'),
-      paidMinor:total(paid,'commission_minor'),inPayoutMinor:total(inPayout,'amount_minor'),
-      activeSubAffiliates:subAffiliateRows.length
+      totalReferrals:summaryNumber('total_referrals',referralRows.length),
+      paidReferrals:summaryNumber('paid_referrals',paidReferrals),
+      directSalesMinor:summaryNumber('direct_sales_minor',directSales),
+      totalEarnedMinor:summaryNumber('total_earned_minor',total(commissionRows.filter(r=>r.status!=='reversed'),'commission_minor')),
+      pendingMinor:summaryNumber('pending_minor',total(pending,'commission_minor')),
+      availableGrossMinor:summaryNumber('available_gross_minor',total(available,'commission_minor')),
+      outstandingAdjustmentsMinor:summaryNumber('outstanding_adjustments_minor',0),
+      availableMinor:summaryNumber('available_minor',total(available,'commission_minor')),
+      paidMinor:summaryNumber('paid_minor',total(paid,'commission_minor')),
+      inPayoutMinor:summaryNumber('in_payout_minor',total(inPayout,'amount_minor')),
+      activeSubAffiliates:summaryNumber('active_sub_affiliates',subAffiliateRows.length)
     },
     nextRank:next,
     ranks:RANKS,
