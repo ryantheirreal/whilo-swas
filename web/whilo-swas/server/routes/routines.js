@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const net = require('node:net');
+const { validateHttpsTarget, resolvePublicHttpsTarget } = require('../security/public-target');
 const { send, authenticate, organizationFor, db, readJson, safeError, audit } = require('../../api/_lib/platform');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -33,19 +33,7 @@ function ensureUuid(value, name) {
   return id;
 }
 function safeHttpsUrl(value) {
-  const raw = text(value, 2048);
-  if (!raw) return null;
-  let url;
-  try { url = new URL(raw); } catch (_) { fail(400, 'Use a valid HTTPS URL for this target.'); }
-  const hostname = String(url.hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
-  if (url.protocol !== 'https:' || url.username || url.password) fail(400, 'Routine targets must use HTTPS without embedded credentials.');
-  if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.test')) {
-    fail(400, 'Private or local targets cannot be configured as public HTTPS URLs.');
-  }
-  if (net.isIP(hostname) || hostname.includes(':')) {
-    fail(400, 'IP-literal targets are not allowed; use a verified HTTPS hostname.');
-  }
-  return url.toString();
+  return validateHttpsTarget(value);
 }
 function boundedList(value, maxItems, maxLength, label) {
   if (!Array.isArray(value)) fail(400, label + ' must be a list.');
@@ -129,6 +117,7 @@ async function createAsset(user, member, body) {
   const description = text(body.description, 1500);
   if (name.length < 2 || !ASSET_TYPES.has(type)) fail(400, 'Provide an asset name and an allowed asset type.');
   const sourceUrl = safeHttpsUrl(body.sourceUrl);
+  if (sourceUrl) await resolvePublicHttpsTarget(sourceUrl);
   const definition = jsonObject(body.definition, 12000);
   // A library artifact is data, not executable HTML or JavaScript.
   const encodedDefinition = JSON.stringify(definition);
@@ -172,6 +161,7 @@ async function createRoutine(user, member, body) {
     if (targetKind === 'web_app' && selectedAsset.asset_type !== 'web_app') fail(400, 'Choose a web-app asset for this target type.');
   }
   if ((targetKind === 'website' || targetKind === 'api') && !targetUrl) fail(400, 'Website and API routines require an HTTPS target URL.');
+  if (targetUrl) targetUrl = await resolvePublicHttpsTarget(targetUrl);
   if (targetKind === 'computer' && runtimeMode !== 'desktop' && runtimeMode !== 'hybrid') fail(400, 'Choose Desktop or Hybrid runtime for computer routines.');
   const suppliedSteps = Array.isArray(body.steps) && body.steps.length ? body.steps : [
     { label: 'Inspect the configured target and gather evidence', kind: 'inspect' },
@@ -235,6 +225,7 @@ async function runRoutine(user, member, body) {
     '&requested_by=eq.' + encodeURIComponent(user.id) + '&created_at=gte.' + encodeURIComponent(recentSince) + '&select=id&limit=10');
   if (Array.isArray(recentRuns) && recentRuns.length >= 5) fail(429, 'Routine launch limit reached: up to five manual runs per minute. Review existing runs before retrying.');
 
+  if (routine.target_url) await resolvePublicHttpsTarget(routine.target_url);
   const assetRows = routine.asset_id
     ? await db('whilo_library_assets?id=eq.' + encodeURIComponent(routine.asset_id) + '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=id,name,asset_type,source_url,status&limit=1')
     : [];
