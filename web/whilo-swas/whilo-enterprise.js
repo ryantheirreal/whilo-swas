@@ -1632,7 +1632,8 @@
     if (act === 'routine-template') {
       const template=ROUTINE_TEMPLATES.find(function(t){return t.id===id;});
       if(!template)return;
-      const matching=activeAssets.filter(function(a){
+      const currentAssets=Array.isArray(routineData&&routineData.assets)?routineData.assets.filter(function(a){return a.status!=='archived';}):[];
+      const matching=currentAssets.filter(function(a){
         if(template.targetKind==='dashboard')return a.asset_type==='dashboard';
         if(template.targetKind==='web_app')return a.asset_type==='web_app';
         if(template.targetKind==='library_asset')return true;
@@ -1656,7 +1657,7 @@
       form.elements.routineSteps.value=template.steps.join('\n');
       form.elements.routineCriteria.value=template.criteria.join('\n');
       routineFeedback='Playbook loaded. Review the target, authorization and acceptance criteria before saving.';
-      form.scrollIntoView({behavior:prefs.reduced_motion?'auto':'smooth',block:'center'});
+      form.scrollIntoView({behavior:((routineData&&routineData.onboarding&&routineData.onboarding.preferences||{}).reduced_motion?'auto':'smooth'),block:'center'});
       const notice=document.createElement('div');
       notice.className='notice';notice.setAttribute('role','status');
       notice.textContent=routineFeedback;
@@ -1678,7 +1679,7 @@
       form.elements.routineSteps.value='Open the selected library asset\nInspect available widgets and source links\nPrepare an evidence-backed summary\nVerify missing data and exceptions';
       form.elements.routineCriteria.value='Each claim is supported by available evidence\nMissing data is disclosed\nNo external write occurs without approval';
       routineFeedback='Asset attached. A saved HTTPS target can be opened in a new browser tab; library-only dashboards remain honest data previews until a source is connected.';
-      form.scrollIntoView({behavior:prefs.reduced_motion?'auto':'smooth',block:'center'});
+      form.scrollIntoView({behavior:((routineData&&routineData.onboarding&&routineData.onboarding.preferences||{}).reduced_motion?'auto':'smooth'),block:'center'});
       const notice=document.createElement('div');
       notice.className='notice';notice.setAttribute('role','status');
       notice.textContent=routineFeedback;
