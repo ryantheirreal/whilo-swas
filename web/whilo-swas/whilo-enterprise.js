@@ -1657,7 +1657,10 @@
       form.elements.routineCriteria.value=template.criteria.join('\n');
       routineFeedback='Playbook loaded. Review the target, authorization and acceptance criteria before saving.';
       form.scrollIntoView({behavior:prefs.reduced_motion?'auto':'smooth',block:'center'});
-      render();
+      const notice=document.createElement('div');
+      notice.className='notice';notice.setAttribute('role','status');
+      notice.textContent=routineFeedback;
+      form.parentNode.insertBefore(notice,form);
       return;
     }
     if (act === 'routine-use-asset') {
@@ -1676,7 +1679,10 @@
       form.elements.routineCriteria.value='Each claim is supported by available evidence\nMissing data is disclosed\nNo external write occurs without approval';
       routineFeedback='Asset attached. A saved HTTPS target can be opened in a new browser tab; library-only dashboards remain honest data previews until a source is connected.';
       form.scrollIntoView({behavior:prefs.reduced_motion?'auto':'smooth',block:'center'});
-      render();
+      const notice=document.createElement('div');
+      notice.className='notice';notice.setAttribute('role','status');
+      notice.textContent=routineFeedback;
+      form.parentNode.insertBefore(notice,form);
       return;
     }
     if (act === 'routine-chat') {
