@@ -1,0 +1,81 @@
+name: Strix Security Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_mode:
+        description: "White-box scan depth"
+        type: choice
+        required: true
+        default: quick
+        options:
+          - quick
+          - standard
+
+permissions:
+  contents: read
+
+jobs:
+  strix:
+    # Secrets are only released to an explicitly dispatched main-branch run.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout the reviewed source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check scanner configuration
+        shell: bash
+        env:
+          STRIX_LLM: ${{ secrets.STRIX_LLM }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${STRIX_LLM}" || -z "${LLM_API_KEY}" ]]; then
+            echo "::error::Set STRIX_LLM and LLM_API_KEY in GitHub Actions secrets before dispatching this scan."
+            exit 1
+          fi
+
+      - name: Install Strix
+        run: curl -fsSL https://strix.ai/install | bash
+
+      - name: Scan repository in a disposable runner
+        id: scan
+        continue-on-error: true
+        env:
+          STRIX_LLM: ${{ secrets.STRIX_LLM }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: strix -n -t ./ --scan-mode "${{ inputs.scan_mode }}" --max-budget 10 --fail-on high
+
+      - name: Require a completed scan and print status
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(find strix_runs -type f -name run.json -print 2>/dev/null | sort | tail -n 1 || true)"
+          if [[ -z "$latest" ]]; then
+            echo "::error::Strix did not produce run.json; this is a failed scan, not a pass."
+            exit 1
+          fi
+          status="$(jq -r '.status // "unknown"' "$latest")"
+          echo "Strix status: $status ($latest)"
+          if [[ "$status" != "completed" ]]; then
+            echo "::error::Scan did not complete. Status=$status. Inspect the artifact; do not treat this as clean."
+            exit 1
+          fi
+          if [[ "${{ steps.scan.outcome }}" != "success" ]]; then
+            echo "::error::Strix returned a finding or execution failure. Inspect its report."
+            exit 1
+          fi
+
+      - name: Preserve Strix report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whilo-strix-report
+          path: strix_runs/
+          if-no-files-found: warn
+          retention-days: 30
