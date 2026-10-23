@@ -93,9 +93,30 @@ for (const [label, pattern] of [
   ['Willow Bucks usage wallet', /create table if not exists public\.whilo_credit_wallets/i],
   ['atomic usage metering', /function public\.charge_whilo_usage/i],
   ['idempotent Willow Bucks topups', /function public\.apply_whilo_credit_purchase/i]
+  ['server-only business table grants', /revoke all privileges on all tables in schema public from public, anon, authenticated/i],
+  ['post-feature foreign-key index pass', /whilo_fk_' \\|\\| substr\\(md5\\(fk\\.oid::text\\), 1, 12\\)/i],
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
+
+const routinesRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'routines.js'), 'utf8');
+if (!routinesRoute.includes('let selectedAsset = null')) failures.push('Routine creation must validate the selected library asset outside its branch scope.');
+const routineAuthorizeAt = routinesRoute.indexOf('// Authorize the target routine before looking up a prior run; idempotency is not an access-control bypass.');
+const routinePriorAt = routinesRoute.indexOf("const prior = await db('whilo_routine_runs");
+if (routineAuthorizeAt < 0 || routinePriorAt < 0 || routineAuthorizeAt > routinePriorAt) failures.push('Routine idempotency lookup must follow workspace and routine authorization.');
+if (!routinesRoute.includes('This idempotency key was already used for another routine.')) failures.push('Routine idempotency keys must not be reused across unrelated routines.');
+if (!routinesRoute.includes('up to five manual runs per minute')) failures.push('Routine manual launch rate limiting is missing.');
+if (!routinesRoute.includes("scopes.includes('computer:read')") || !routinesRoute.includes("scopes.includes('computer:control')")) failures.push('Computer routines must require explicit read and control scopes.');
+if (!routinesRoute.includes('now - lastSeen <= 5 * 60 * 1000')) failures.push('Computer routines must require a recent device heartbeat.');
+const enterpriseUi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'), 'utf8');
+for (const [label, pattern] of [
+  ['library-target routine playbooks', /const ROUTINE_TEMPLATES = \\[/],
+  ['visible chat entrypoint for @Routines', /Build in Chat @Routines/],
+  ['playbook attachment to user-owned assets', /data-act="routine-use-asset"/],
+  ['transparent progress milestones', /Workspace mastery/],
+  ['reduced-motion 3D support', /routine-scene\\.reduced-motion/],
+  ['interactive 3D tilt handler', /shadow\\.addEventListener\\('pointermove'/]
+]) if (!pattern.test(enterpriseUi)) failures.push('Missing routine product invariant: ' + label);
 
 const bootstrap = fs.readFileSync(path.join(root, 'scripts', 'bootstrap-owner.mjs'), 'utf8');
 if (!bootstrap.includes('WHILO_OWNER_INITIAL_PASSWORD')) failures.push('Owner bootstrap must read a temporary password from the environment.');
