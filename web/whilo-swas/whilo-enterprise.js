@@ -244,6 +244,7 @@
       [tx('Awaiting release','A liberar'),fmt(s.pendingMinor||0),tx('Held for 30 days against refunds','Retidas por 30 dias contra reembolsos')],
       [tx('Available','Disponível'),fmt(s.availableMinor||0),tx('Eligible commission balance','Saldo elegível para comissão')],
       [tx('Paid commissions','Comissões pagas'),fmt(s.paidMinor||0),tx('Confirmed transfers','Repasses confirmados')],
+      [tx('Open adjustments','Ajustes em aberto'),fmt(s.outstandingAdjustmentsMinor||0),tx('Refund/dispute offsets applied at future payout','Compensações de reembolso/disputa abatidas de futuros repasses')],
       [tx('Partner team','Equipe parceira'),String(s.activeSubAffiliates||0),tx('Active direct sub-affiliates','Subafiliados diretos ativos')]
     ];
     out += metrics.map(m=>'<div style="'+panel+'padding:14px"><div style="font-size:10px;color:#999;font-weight:800;letter-spacing:.7px;text-transform:uppercase">'+m[0]+'</div><div style="font-size:22px;font-weight:850;letter-spacing:-.6px;margin:8px 0;overflow-wrap:anywhere">'+m[1]+'</div><div style="font-size:10px;color:#888;line-height:1.45">'+m[2]+'</div></div>').join('');
@@ -1360,6 +1361,8 @@
   shadow.addEventListener('click', function (event) {
     const tab = event.target.closest('[data-tab]');
     if (tab) { active = tab.getAttribute('data-tab'); render(); return; }
+    const affiliatePaneButton = event.target.closest('[data-affiliate-pane]');
+    if (affiliatePaneButton) { affiliatePane = affiliatePaneButton.getAttribute('data-affiliate-pane') || 'overview'; render(); return; }
     const action = event.target.closest('[data-act]');
     if (!action) return;
     const act = action.getAttribute('data-act'), id = action.getAttribute('data-id');
