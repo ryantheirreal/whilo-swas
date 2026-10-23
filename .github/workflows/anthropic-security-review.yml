@@ -1,0 +1,30 @@
+name: Anthropic Claude Security Review
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  security-review:
+    # Do not expose the model API key to fork PRs or untrusted external branches.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout reviewed commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+      - name: Review diff with Anthropic's security reviewer
+        uses: anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda # pinned commit
+        with:
+          comment-pr: true
+          upload-results: true
+          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          custom-security-scan-instructions: .github/security-review-instructions.md
+          exclude-directories: "node_modules,web/whilo-swas/public"
