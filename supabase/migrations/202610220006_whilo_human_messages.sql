@@ -193,7 +193,7 @@ begin
   select array_agg(x order by x::text) into members
   from (select distinct v as x from unnest(coalesce(p_member_ids,'{}'::uuid[]) || array[p_creator_id]) as ids(v)) s;
   if members is null or cardinality(members) < 1 then raise exception 'members_required' using errcode='22023'; end if;
-  if cardinality(members) > case when p_type='direct' then 2 when p_type='group' then 200 else 50000 end then
+  if cardinality(members) > (case when p_type='direct' then 2 when p_type='group' then 200 else 50000 end) then
     raise exception 'too_many_members' using errcode='22023';
   end if;
   if p_type='direct' and cardinality(members) <> 2 then raise exception 'direct_requires_two_people' using errcode='22023'; end if;
