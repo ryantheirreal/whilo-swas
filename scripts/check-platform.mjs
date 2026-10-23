@@ -53,9 +53,13 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 22) {
-  failures.push('Expected all twenty-two versioned Supabase migrations to be present.');
+if (migrations.length < 25) {
+  failures.push('Expected all twenty-five versioned Supabase migrations to be present.');
 }
+const migrationVersions = migrations.map(file => path.basename(file).match(/^(\d{12})_/));
+if (migrationVersions.some(match => !match)) failures.push('Every SQL migration must start with a 12-digit version and underscore.');
+const versionValues = migrationVersions.filter(Boolean).map(match => match[1]);
+if (new Set(versionValues).size !== versionValues.length) failures.push('Supabase migration version prefixes must be unique.');
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
   ['tenant isolation', /create table if not exists public\.organization_members/i],
@@ -95,6 +99,9 @@ for (const [label, pattern] of [
   ['idempotent Willow Bucks topups', /function public\.apply_whilo_credit_purchase/i],
   ['server-only business table grants', /revoke all privileges on all tables in schema public from public, anon, authenticated/i],
   ['post-feature foreign-key index pass', /whilo_fk_/i],
+  ['per-run Willow Bucks budget ceiling', /add column if not exists max_cost_wb bigint not null default 1000/i],
+  ['conservative provider cost conversion', /function public\.whilo_bucks_for_provider_cost/i],
+  ['provider cost cap metadata', /provider_cost_cap_40pct/i],
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
@@ -110,12 +117,13 @@ if (!routinesRoute.includes("scopes.includes('computer:read')") || !routinesRout
 if (!routinesRoute.includes('now - lastSeen <= 5 * 60 * 1000')) failures.push('Computer routines must require a recent device heartbeat.');
 const enterpriseUi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'), 'utf8');
 for (const [label, pattern] of [
-  ['library-target routine playbooks', /const ROUTINE_TEMPLATES = \\[/],
+  ['library-target routine playbooks', /const ROUTINE_TEMPLATES/],
   ['visible chat entrypoint for @Routines', /Build in Chat @Routines/],
   ['playbook attachment to user-owned assets', /data-act="routine-use-asset"/],
   ['transparent progress milestones', /Workspace mastery/],
   ['reduced-motion 3D support', /routine-scene\\.reduced-motion/],
-  ['interactive 3D tilt handler', /shadow\\.addEventListener\\('pointermove'/]
+  ['interactive 3D tilt handler', /shadow\\.addEventListener\\('pointermove'/],
+  ['per-run Willow Bucks budget input', /maxCostWB/]
 ]) if (!pattern.test(enterpriseUi)) failures.push('Missing routine product invariant: ' + label);
 
 const bootstrap = fs.readFileSync(path.join(root, 'scripts', 'bootstrap-owner.mjs'), 'utf8');
@@ -143,6 +151,7 @@ const routinesRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'serv
 const publicTarget = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'security', 'public-target.js'), 'utf8');
 const routineSecurityTests = fs.readFileSync(path.join(root, 'scripts', 'test-routine-security.cjs'), 'utf8');
 if (!routinesRoute.includes('resolvePublicHttpsTarget')) failures.push('Routine URL targets must pass DNS-aware public-address validation at save and run time.');
+if (!routinesRoute.includes('max_cost_wb')) failures.push('Routine execution records must carry a per-run budget ceiling.');
 if (!publicTarget.includes('blockedAddresses.check') || !publicTarget.includes('lookup(new URL(normalized).hostname')) failures.push('Routine target validator must block private/reserved DNS answers.');
 if (!routineSecurityTests.includes('mixedLookup') || !routineSecurityTests.includes('169.254.169.254')) failures.push('Routine SSRF tests must cover metadata IPs and mixed public/private DNS answers.');
 if (!enterpriseUi.includes('function affiliateHubPage()') || !enterpriseUi.includes('affiliate-enroll-form')) failures.push('The Account screen must expose affiliate enrollment and dashboard UI.');
