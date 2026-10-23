@@ -52,8 +52,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 10) {
-  failures.push('Expected all ten versioned Supabase migrations to be present.');
+if (migrations.length < 12) {
+  failures.push('Expected all twelve versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
@@ -74,7 +74,12 @@ for (const [label, pattern] of [
   ['idempotent Stripe webhook events', /create table if not exists public\.marketplace_webhook_events/i],
   ['subscription entitlement ledger', /create table if not exists public\.marketplace_entitlements/i],
   ['workspace asset installation ledger', /create table if not exists public\.marketplace_installations/i],
-  ['transactional marketplace install RPC', /function public\.install_marketplace_asset/i]
+  ['transactional marketplace install RPC', /function public\.install_marketplace_asset/i],
+  ['affiliate profile and rank ledger', /create table if not exists public\.affiliate_profiles/i],
+  ['first-touch customer attribution', /function public\.claim_whilo_affiliate_referral/i],
+  ['idempotent affiliate commission ledger', /create table if not exists public\.affiliate_commissions/i],
+  ['refund and dispute commission reversal', /function public\.reverse_whilo_affiliate_source/i],
+  ['net affiliate payout adjustments', /create table if not exists public\.affiliate_adjustments/i]
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
@@ -95,15 +100,22 @@ if (!enterpriseUi.includes('/api/account/bootstrap')) failures.push('Successful 
 if (!accountBootstrap.includes('authenticate(req)') || !accountBootstrap.includes('user.email') || accountBootstrap.includes('body.email')) failures.push('Account bootstrap must bind workspace provisioning only to the authenticated account email.');
 if (!routeMap.includes("'account-bootstrap': require('../../server/routes/account-bootstrap')")) failures.push('Account bootstrap must be routed through the shared API function.');
 if (!(vercelConfig.rewrites || []).some(item => item.source === '/api/account/bootstrap' && item.destination === '/api/messages?route=account-bootstrap')) failures.push('Account bootstrap rewrite is missing.');
+if (!routeMap.includes("affiliates: require('../../server/routes/affiliates')")) failures.push('The affiliate API must be routed through the shared Vercel function.');
+if (!(vercelConfig.rewrites || []).some(item => item.source === '/api/affiliates' && item.destination === '/api/messages?route=affiliates')) failures.push('The affiliate API rewrite is missing.');
+const affiliateRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'affiliates.js'), 'utf8');
+if (!affiliateRoute.includes("action==='claim-referral'") || !affiliateRoute.includes('authenticate(req)')) failures.push('Affiliate attribution must use an authenticated server endpoint.');
+if (!affiliateRoute.includes('WHILO_AFFILIATE_PAYOUTS_ENABLED')) failures.push('Real affiliate transfers must be protected by an explicit server-side kill switch.');
+if (!enterpriseUi.includes('function affiliateHubPage()') || !enterpriseUi.includes('affiliate-enroll-form')) failures.push('The Account screen must expose affiliate enrollment and dashboard UI.');
+
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'package.json'), 'utf8'));
 if (!packageJson.dependencies || packageJson.dependencies.stripe !== '22.6.2') {
   failures.push('Marketplace webhooks must use the pinned official Stripe SDK version 22.6.2.');
 }
 const envExample = fs.readFileSync(path.join(root, 'web', 'whilo-swas', '.env.example'), 'utf8');
-for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'WHILO_CONNECTOR_ENCRYPTION_KEY', 'WHILO_OAUTH_STATE_SECRET', 'SLACK_CLIENT_SECRET', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) {
+for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'WHILO_CONNECTOR_ENCRYPTION_KEY', 'WHILO_OAUTH_STATE_SECRET', 'SLACK_CLIENT_SECRET', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS', 'WHILO_AFFILIATE_PAYOUTS_ENABLED']) {
   if (!envExample.includes(key)) failures.push('Missing environment documentation: ' + key);
 }
-for (const key of ['SUPABASE_SERVICE_ROLE_KEY=', 'WHILO_CONNECTOR_ENCRYPTION_KEY=', 'WHILO_OAUTH_STATE_SECRET=', 'SLACK_CLIENT_SECRET=', 'STRIPE_SECRET_KEY=', 'STRIPE_WEBHOOK_SECRET=']) {
+for (const key of ['SUPABASE_SERVICE_ROLE_KEY=', 'WHILO_CONNECTOR_ENCRYPTION_KEY=', 'WHILO_OAUTH_STATE_SECRET=', 'SLACK_CLIENT_SECRET=', 'STRIPE_SECRET_KEY=', 'STRIPE_WEBHOOK_SECRET=', 'WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS=', 'WHILO_AFFILIATE_PAYOUTS_ENABLED=']) {
   const lines = envExample.split(/\r?\n/).filter(line => line.startsWith(key));
   if (lines.some(line => line.slice(key.length).trim() && !line.trim().endsWith('='))) {
     failures.push('Real secrets must not be committed in .env.example (' + key + ').');
