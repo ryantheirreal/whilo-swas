@@ -239,6 +239,39 @@ async function handle(req,res) {
     if(!af || af.status!=='active' || !af.stripe_account_id || !af.stripe_details_submitted || !af.stripe_transfers_enabled || !af.stripe_payouts_enabled) {
       fail(409,'Affiliate Connect account is not fully enabled for transfers and payouts.');
     }
+    const [itemRows,openAdjustments] = await Promise.all([
+      db('affiliate_payout_items?payout_id=eq.'+encodeURIComponent(payout.id)+'&select=commission_id,amount_minor'),
+      db('affiliate_adjustments?affiliate_user_id=eq.'+encodeURIComponent(payout.affiliate_user_id)+'&status=eq.open&select=id,amount_minor,payout_id')
+    ]);
+    const items = Array.isArray(itemRows) ? itemRows : [];
+    const commissionIds = [...new Set(items.map(item=>item.commission_id).filter(Boolean))];
+    const commissionRows = commissionIds.length
+      ? await db('affiliate_commissions?id=in.('+commissionIds.join(',')+')&select=id,status,payout_id,commission_minor')
+      : [];
+    const commissionMap = new Map((Array.isArray(commissionRows)?commissionRows:[]).map(row=>[row.id,row]));
+    const itemGross = items.reduce((sum,item)=>sum+Number(item.amount_minor||0),0);
+    const adjustmentRows = Array.isArray(openAdjustments)?openAdjustments:[];
+    const attachedDebt = adjustmentRows.filter(row=>row.payout_id===payout.id).reduce((sum,row)=>sum+Number(row.amount_minor||0),0);
+    const newDebt = adjustmentRows.filter(row=>!row.payout_id).reduce((sum,row)=>sum+Number(row.amount_minor||0),0);
+    const expectedNet = itemGross - attachedDebt - newDebt;
+    const ledgerChanged = !items.length || items.some(item=>{
+      const row=commissionMap.get(item.commission_id);
+      return !row || row.status!=='available' || row.payout_id!==payout.id;
+    }) || expectedNet !== Number(payout.amount_minor);
+    if (ledgerChanged) {
+      await db('affiliate_payouts?id=eq.'+encodeURIComponent(payout.id),{
+        method:'PATCH',headers:{Prefer:'return=minimal'},
+        body:JSON.stringify({status:'cancelled',failure_code:'ledger_changed_request_new'})
+      });
+      await db('affiliate_payout_items?payout_id=eq.'+encodeURIComponent(payout.id),{method:'DELETE',headers:{Prefer:'return=minimal'}});
+      await db('affiliate_commissions?payout_id=eq.'+encodeURIComponent(payout.id)+'&status=eq.available',{
+        method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({payout_id:null})
+      });
+      await db('affiliate_adjustments?payout_id=eq.'+encodeURIComponent(payout.id)+'&status=eq.open',{
+        method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({payout_id:null})
+      });
+      fail(409,'The commission ledger changed after this payout was requested. The request was cancelled safely; ask the partner to refresh the balance and request a new payout.');
+    }
     const claimed=await db('affiliate_payouts?id=eq.'+encodeURIComponent(payoutId)+'&status=in.(requested,failed)',{
       method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({status:'processing',failure_code:null})
     });
@@ -264,6 +297,10 @@ async function handle(req,res) {
     await db('affiliate_commissions?payout_id=eq.'+encodeURIComponent(payout.id),{
       method:'PATCH',headers:{Prefer:'return=minimal'},
       body:JSON.stringify({status:'paid',paid_at:new Date().toISOString()})
+    });
+    await db('affiliate_adjustments?payout_id=eq.'+encodeURIComponent(payout.id)+'&status=eq.open',{
+      method:'PATCH',headers:{Prefer:'return=minimal'},
+      body:JSON.stringify({status:'applied',applied_at:new Date().toISOString()})
     });
     await audit(member.organization_id,user.id,'affiliate.payout_paid','affiliate_payout',payout.id,'success',{transferId:transfer.id,amount_minor:Number(payout.amount_minor)});
     return send(res,200,{ok:true,payoutId:payout.id,transferId:transfer.id,status:'paid'});
