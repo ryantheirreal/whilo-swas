@@ -338,7 +338,7 @@
     } finally {
       cloudAuthLoading = false;
       cloudAuthChecked = true;
-      if (active === 'work' || active === 'connect' || active === 'messages' || active === 'account') render();
+      if (active === 'work' || active === 'connect' || active === 'messages' || active === 'account' || active === 'routines' || active === 'credits') render();
     }
   }
 
@@ -530,6 +530,10 @@
       });
     }
     const sample = found.routines;
+    if (!sample.hasAttribute('data-whilo-routines-bound')) {
+      sample.setAttribute('data-whilo-routines-bound', 'true');
+      sample.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopImmediatePropagation(); openPanel('routines'); }, true);
+    }
     const parent = sample.parentElement || common;
     if (!parent.querySelector('[data-whilo-message-tab]')) {
       const portugueseMessages = /pt/i.test(document.documentElement.lang || '') || norm(found.chat.innerText || found.chat.textContent).includes('convers');
@@ -675,9 +679,11 @@
 @media(max-width:850px){.messages-shell{grid-template-columns:280px minmax(0,1fr)}.messages-chat-head strong{max-width:34vw}.message-bubble{max-width:92%}}
 @media(max-width:650px){.messages-shell{height:min(72vh,760px);min-height:470px;grid-template-columns:minmax(0,1fr)}.messages-shell[data-selected="true"] .messages-sidebar{display:none}.messages-shell[data-selected="true"] .messages-chat{display:flex}.messages-shell[data-selected="false"] .messages-chat{display:none}.messages-shell[data-selected="false"] .messages-sidebar{display:flex}.messages-chat-head{padding:10px}.messages-chat-head .row>.row{gap:8px;min-width:0}.messages-chat-head strong{max-width:42vw}.messages-chat-head .actions{gap:4px}.messages-chat-head .btn{font-size:9px;padding:7px}.messages-scroll{padding:13px 9px}.message-create-form{grid-template-columns:1fr}.message-create-form .fieldgroup:nth-child(3),.message-create-form .fieldgroup:nth-child(4),.message-create-form .actions{grid-column:auto}.message-people-results,.message-intro-grid{grid-template-columns:1fr}.messages-hero .actions{margin-top:12px}.message-bubble{max-width:91%;padding:9px}.message-quick-reactions{opacity:1}.message-members-list{grid-template-columns:1fr}.message-member-actions .message-action{font-size:9px}.message-pin-content strong{max-width:58vw}}
 `;
-  const style = document.createElement('style'); style.textContent = css + messageCss; shadow.appendChild(style);
+  const routineCss = '.routine-scene{height:260px;position:relative;overflow:hidden;margin:8px 0 18px;border:1px solid #2c405c;border-radius:22px;background:radial-gradient(ellipse at 50% 50%,rgba(61,126,207,.25),transparent 55%),linear-gradient(145deg,#101a2b,#090e17);perspective:900px;isolation:isolate}.routine-grid3d{position:absolute;inset:-35%;opacity:.2;background-image:linear-gradient(rgba(90,150,216,.17) 1px,transparent 1px),linear-gradient(90deg,rgba(90,150,216,.17) 1px,transparent 1px);background-size:30px 30px;transform:rotateX(61deg) rotateZ(-16deg)}.routine-orbit{position:absolute;left:50%;top:50%;border:1px solid rgba(111,179,247,.3);border-radius:50%;pointer-events:none}.orb1{width:245px;height:110px;margin:-55px 0 0 -122px;transform:rotateX(66deg) rotateZ(-20deg);animation:routineOrbit 17s linear infinite}.orb2{width:345px;height:148px;margin:-74px 0 0 -172px;transform:rotateX(70deg) rotateZ(28deg);border-color:rgba(188,155,255,.24);animation:routineOrbit 24s linear infinite reverse}.routine-core3d{position:absolute;left:50%;top:50%;width:80px;height:80px;margin:-40px 0 0 -40px;display:flex;align-items:center;justify-content:center;flex-direction:column;border:1px solid #8bc5ff;border-radius:23px;background:linear-gradient(145deg,#223e63,#111c2b);box-shadow:0 0 42px rgba(70,156,255,.25);transform:translateZ(50px) rotateX(-6deg) rotateY(10deg);animation:routineFloat 5s ease-in-out infinite}.routine-core3d b{font-size:30px;color:#d9efff}.routine-core3d small{font-size:8px;letter-spacing:1.5px;color:#90b7dc}.routine-node{position:absolute;z-index:2;width:62px;height:62px;border-radius:17px;border:1px solid #526e91;background:linear-gradient(145deg,#243953,#0d1624);color:#e4f4ff;font-size:22px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;cursor:pointer;transition:transform .2s,border-color .2s}.routine-node span{font-size:9px;color:#b2c9e1}.routine-node:hover,.routine-node:focus-visible{transform:translateZ(35px) scale(1.08);border-color:#b5dcff;outline:2px solid #74b9ff;outline-offset:3px}.nchat{left:calc(50% - 30px);top:20px}.nlib{left:calc(50% - 145px);top:94px}.nweb{left:calc(50% + 84px);top:105px}.npc{left:calc(50% - 30px);bottom:13px}.routine-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:10px 0 18px}.routine-stats>div,.routine-panel,.routine-tour,.credit-wallet{border:1px solid #2c3646;border-radius:17px;padding:15px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));min-width:0}.routine-stats span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#9aa9bd}.routine-stats strong{display:block;font-size:24px;margin:6px 0}.routine-stats small{font-size:10px;color:#8493a8}.routine-tour{margin:12px 0 18px;background:radial-gradient(ellipse at 100% 0%,rgba(76,132,208,.16),transparent 60%),#101722}.tour-progress{height:3px;background:#273448;border-radius:99px;margin-bottom:16px;overflow:hidden}.tour-progress span{display:block;height:100%;background:linear-gradient(90deg,#76c6ff,#b0a1ff);transition:width .25s}.tour-content{display:grid;grid-template-columns:55px 1fr;gap:14px}.tour-icon{height:52px;display:grid;place-items:center;border:1px solid #52698a;background:#162a43;border-radius:16px;font-size:24px}.routine-tour h3,.routine-panel h3{font-size:18px;margin:6px 0}.routine-tour p,.routine-panel p{font-size:11px;color:#9caabd;line-height:1.65}.tour-actions,.routine-head{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tour-return{display:flex;justify-content:space-between;align-items:center;margin:12px 0;color:#a2d7bc;font-size:11px}.routine-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}.routine-panel{margin:12px 0}.routine-form{display:grid;gap:11px;margin-top:14px}.routine-form label{display:grid;gap:6px;font-size:10px;font-weight:750;color:#ced7e5}.routine-form .field{width:100%;min-width:0;background:#0b111b;border:1px solid #354359;color:#edf3fc;border-radius:10px;padding:10px;font:inherit;font-weight:450}.routine-form small{font-size:9px;color:#8292a8;line-height:1.5}.routine-form-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.routine-days{display:flex;flex-wrap:wrap;gap:6px;border:1px solid #29384b;border-radius:11px;padding:9px}.routine-days legend{font-size:9px;color:#8798ae}.routine-days label{display:flex;align-items:center;gap:4px;border:1px solid #303c50;border-radius:7px;padding:6px}.routine-assets{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px}.routine-assets>article{overflow:hidden;border:1px solid #334154;border-radius:15px;background:#0d131f}.asset-preview{padding:12px;background:linear-gradient(145deg,#16283c,#0d1624)}.asset-dots{display:flex;gap:4px;margin-bottom:10px}.asset-dots i{width:5px;height:5px;border-radius:50%;background:#7795b9}.asset-preview>strong{font-size:11px}.asset-widgets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:10px}.asset-widgets div{padding:7px;background:rgba(255,255,255,.045);border:1px solid #263750;border-radius:8px;min-width:0}.asset-widgets span,.asset-widgets b{display:block;font-size:8px;overflow-wrap:anywhere}.asset-widgets span{color:#a2b4ca}.asset-widgets b{color:#a4cef7;margin-top:4px}.asset-card-body{padding:12px;display:grid;gap:8px}.asset-card-body>span{font-size:9px;color:#a8c7ea}.asset-card-body p{font-size:10px;margin:0}.asset-card-body a,.asset-card-body small{font-size:9px;color:#a2cfff}.routine-list,.routine-run-list{display:grid;gap:8px}.routine-row{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;padding:13px;border:1px solid #2e3b4d;border-radius:14px;background:rgba(12,19,30,.8)}.routine-row-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#172943;color:#baddff;font-size:19px}.routine-row-title{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.routine-row-title b{font-size:12px}.routine-row-title span,.routine-run-list article>div span{font-size:9px;border:1px solid #39495e;border-radius:100px;padding:4px 7px;color:#a8bdd7}.routine-row-title span.enabled{border-color:#366c59;color:#94dec0}.routine-row p{font-size:10px;color:#9baabd;line-height:1.6;margin:7px 0}.routine-meta{display:flex;gap:7px 12px;flex-wrap:wrap;font-size:9px;color:#8293a9}.routine-next{display:block;color:#a7cbf6;margin-top:6px}.routine-run-list article{border:1px solid #2e3a4c;border-radius:11px;padding:11px}.routine-run-list article>div{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:10px}.routine-run-list article p,.routine-run-list article small{display:block;font-size:9px;margin:7px 0;color:#8d9bb0}.routine-error{color:#ffc39d!important}.routine-empty{padding:20px;border:1px dashed #3b4b62;border-radius:13px;color:#dce7f4}.routine-empty b{font-size:11px}.routine-empty p{font-size:10px;margin-bottom:0}.routine-note{background:#101722}.routine-note>b{font-size:11px}.routine-note label{display:flex;gap:7px;align-items:flex-start;margin-top:9px;font-size:9px;color:#a4b2c4}.credit-wallet{display:flex;justify-content:space-between;gap:18px;align-items:center;background:radial-gradient(ellipse at 0% 0%,rgba(81,171,255,.2),transparent 55%),#101a29}.credit-balance{font-size:38px;font-weight:900;letter-spacing:-1.5px;margin-top:8px}.credit-balance span{font-size:17px;color:#9dcfff}.credit-wallet p,.credit-wallet small{font-size:10px;color:#91a2b8}.credit-packs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 20px}.credit-packs article{border:1px solid #34465e;border-radius:15px;padding:14px;background:linear-gradient(145deg,#172438,#0e1420);min-width:0}.credit-packs article>strong,.credit-packs article>b{display:block;font-size:22px;margin:12px 0 6px}.credit-packs article>b{font-size:12px;color:#a7d3ff}.credit-packs article p{font-size:9px;color:#93a2b5;min-height:30px}.credit-packs article button{width:100%}.credit-ledger{display:grid}.credit-ledger article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;padding:12px 0;border-bottom:1px solid #273242}.credit-ledger article b,.credit-ledger article small{display:block;font-size:10px}.credit-ledger article small{font-size:9px;color:#8797ad;margin-top:4px}.credit-ledger .positive{color:#8fe0ba}.credit-ledger .negative{color:#ffba9a}.credit-ledger article>small:last-child{grid-column:1 / -1}.routine-note p{max-width:1000px}@keyframes routineOrbit{to{transform:rotateX(66deg) rotateZ(360deg)}}@keyframes routineFloat{0%,100%{translate:0 0}50%{translate:0 -7px}}@media(max-width:900px){.routine-stats,.credit-packs{grid-template-columns:repeat(2,minmax(0,1fr))}.routine-two{grid-template-columns:1fr}.routine-scene{height:240px}}@media(max-width:540px){.routine-form-row{grid-template-columns:1fr}.tour-content{grid-template-columns:40px 1fr}.routine-head,.tour-return{align-items:flex-start;flex-direction:column}.routine-row{grid-template-columns:30px minmax(0,1fr);padding:10px}.routine-row-icon{width:30px;height:30px}.routine-row .btn{font-size:9px;padding:8px}.credit-packs{gap:6px}.credit-packs article{padding:9px}.credit-packs article>strong{font-size:18px}.credit-balance{font-size:32px}}@media(prefers-reduced-motion:reduce){.routine-orbit,.routine-core3d{animation:none!important;transition:none!important}}';
+
+  const style = document.createElement('style'); style.textContent = css + messageCss + routineCss; shadow.appendChild(style);
   const veil = document.createElement('div'); veil.className = 'veil'; veil.setAttribute('role','dialog'); veil.setAttribute('aria-modal','true'); veil.setAttribute('aria-label','Whilo Enterprise workspace');
-  veil.innerHTML = '<section class="panel"><header class="top"><div class="brand"><div class="mark">W</div><div><div class="eyebrow">Whilo / Operations</div><div class="title">Company workspace</div><div class="sub">Turn repeatable work into measurable outcomes.</div></div></div><button class="close" data-act="close" aria-label="Close workspace">×</button></header><nav class="tabs" aria-label="Enterprise workspace"><button class="tab" data-tab="work">▤ Work</button><button class="tab" data-tab="company">▦ Company</button><button class="tab" data-tab="connect">↗ Connect</button><button class="tab" data-tab="account">◉ Account</button><button class="tab" data-tab="results">◷ Results</button><button class="tab" data-tab="pricing">✳ Plans</button></nav><main class="body" id="view"></main><footer class="footer"><span>Local workspace data · stored in this browser</span><span>Outcome-first operations · approvals before consequential actions</span></footer></section>';
+  veil.innerHTML = '<section class="panel"><header class="top"><div class="brand"><div class="mark">W</div><div><div class="eyebrow">Whilo / Operations</div><div class="title">Company workspace</div><div class="sub">Turn repeatable work into measurable outcomes.</div></div></div><button class="close" data-act="close" aria-label="Close workspace">×</button></header><nav class="tabs" aria-label="Enterprise workspace"><button class="tab" data-tab="work">▤ Work</button><button class="tab" data-tab="company">▦ Company</button><button class="tab" data-tab="connect">↗ Connect</button><button class="tab" data-tab="account">◉ Account</button><button class="tab" data-tab="results">◷ Results</button><button class="tab" data-tab="routines">⟲ Routines</button><button class="tab" data-tab="credits">◈ Credits</button><button class="tab" data-tab="pricing">✳ Plans</button></nav><main class="body" id="view"></main><footer class="footer"><span>Local workspace data · stored in this browser</span><span>Outcome-first operations · approvals before consequential actions</span></footer></section>';
   shadow.appendChild(veil);
   const view = veil.querySelector('#view');
   let active = 'work';
@@ -1256,6 +1262,156 @@
     html += '</div><div style="padding:0 clamp(16px,3vw,26px) 26px"><section style="border:1px solid #2b2b2b;border-radius:16px;padding:18px;background:#111"><div style="font-size:10px;color:#aaa;letter-spacing:1.4px;font-weight:800">YOUR SELECTION</div><div style="display:flex;gap:15px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px"><div><div style="font-size:20px;font-weight:800">'+chosen.name+(chosen.monthly===null?' · tailored':annual?' · annual':' · monthly')+'</div><div style="font-size:12px;color:#999;margin-top:4px">'+chosen.description+'</div></div><button data-pricing-continue="'+chosen.id+'" style="border:0;border-radius:999px;background:#f5f5f5;color:#111;padding:13px 18px;font-weight:850">'+(chosen.id==='enterprise'?'Discuss Enterprise →':'Continue with '+chosen.name+' →')+'</button></div><p style="font-size:11px;line-height:1.6;color:#818181;margin:16px 0 0">Pricing proposal for launch planning. Checkout and entitlements are not activated until the billing provider and plan Price IDs are configured. Usage limits and third-party model costs will be disclosed before purchase.</p></section></div></section>';
     return html;
   }
+
+  let routineData = null, routineLoading = false, routineBusy = false, routineFeedback = '', routineTourStep = 0;
+  let creditsData = null, creditsLoading = false, creditsBusy = false, creditsFeedback = '';
+  const ROUTINE_TOUR = [
+    {title:'Choose an outcome',copy:'Describe a repeatable result. Routines should reduce real work, not create busywork.',icon:'◎'},
+    {title:'Point to an asset',copy:'Use your Whilo library dashboard or web app, an approved HTTPS website, an API target, or a paired computer.',icon:'◇'},
+    {title:'Set the guardrails',copy:'Define a schedule, evidence criteria and explicit approvals. Every run gets a traceable record.',icon:'⌘'},
+    {title:'Review before launch',copy:'Save the routine, start with a manual run, inspect its plan and approve only when it makes sense.',icon:'✦'}
+  ];
+  function routineLoad(force) {
+    if (!cloudAuthSession || routineLoading || (routineData && !force)) return;
+    routineLoading=true; routineFeedback='';
+    whiloApi('/api/routines',{method:'GET'}).then(function(d){routineData=d||{};routineFeedback='';})
+      .catch(function(e){routineFeedback=e&&e.message?e.message:'Could not load routines.';})
+      .finally(function(){routineLoading=false;if(active==='routines')render();});
+  }
+  function creditLoad(force) {
+    if (!cloudAuthSession || creditsLoading || (creditsData && !force)) return;
+    creditsLoading=true; creditsFeedback='';
+    whiloApi('/api/credits',{method:'GET'}).then(function(d){creditsData=d||{};creditsFeedback='';})
+      .catch(function(e){creditsFeedback=e&&e.message?e.message:'Wallet is not available yet.';})
+      .finally(function(){creditsLoading=false;if(active==='credits')render();});
+  }
+  function routineDate(value) {
+    if(!value)return 'Not run yet'; const d=new Date(value);
+    return Number.isNaN(d.getTime())?'Not scheduled':d.toLocaleString();
+  }
+  function openRoutineInChat(promptText) {
+    const prompt='@Routines '+String(promptText||'Help me design a safe routine. Ask for its target, trigger, steps, evidence and approval rules.');
+    try{sessionStorage.setItem('whilo-routines-chat-draft',prompt);}catch(_){}
+    window.dispatchEvent(new CustomEvent('whilo:routines:open-chat',{detail:{prompt:prompt}}));
+    closePanel();
+    const chats=Array.from(document.querySelectorAll('button,a,[role="tab"],[role="button"]'))
+      .filter(function(el){return visible(el)&&category(el)==='chat';});
+    if(chats[0])chats[0].click();
+    let tries=0;
+    function fillDraft(){
+      tries++;
+      const fields=Array.from(document.querySelectorAll('textarea,input,[contenteditable="true"],[role="textbox"]')).filter(function(el){
+        if(!visible(el)||el.disabled||el.readOnly)return false;
+        const label=[el.placeholder,el.getAttribute('aria-label'),el.getAttribute('data-placeholder'),el.getAttribute('data-testid'),el.id,el.name].join(' ').toLowerCase();
+        return /chat|message|prompt|ask|send|conversa|mensagem|composer/.test(label);
+      });
+      const field=fields[fields.length-1];
+      if(field){
+        try{
+          field.focus();
+          if(field.isContentEditable||field.getAttribute('contenteditable')==='true')field.textContent=prompt;
+          else {
+            const proto=field.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
+            const setter=Object.getOwnPropertyDescriptor(proto,'value');
+            if(setter&&setter.set)setter.set.call(field,prompt);else field.value=prompt;
+          }
+          field.dispatchEvent(new Event('input',{bubbles:true}));
+          field.dispatchEvent(new Event('change',{bubbles:true}));
+          return;
+        }catch(_){}
+      }
+      if(tries<8)window.setTimeout(fillDraft,250);
+      else if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(prompt).then(function(){window.alert('The @Routines prompt was copied. Paste it into Chat and review it before sending.');}).catch(function(){window.prompt('Copy this @Routines prompt into Chat:',prompt);});
+      else window.prompt('Copy this @Routines prompt into Chat:',prompt);
+    }
+    window.setTimeout(fillDraft,180);
+  }
+  function routineAssetOptions(assets) {
+    return '<option value="">Choose a library asset</option>'+(Array.isArray(assets)?assets.filter(function(a){return a.status!=='archived';}):[]).map(function(a){
+      return '<option value="'+esc(a.id)+'">'+esc(a.name)+' · '+esc(a.asset_type)+'</option>';
+    }).join('');
+  }
+  function routineScene() {
+    return '<div class="routine-scene" aria-label="Interactive 3D map of Chat, library, browser and computer"><div class="routine-grid3d"></div><div class="routine-orbit orb1"></div><div class="routine-orbit orb2"></div>'+
+      '<button type="button" class="routine-node nchat" data-act="routine-chat" aria-label="Design a routine in Chat">✳<span>Chat</span></button>'+
+      '<button type="button" class="routine-node nlib" data-act="routine-tour-next" aria-label="Explore library routines">▤<span>Library</span></button>'+
+      '<button type="button" class="routine-node nweb" data-act="routine-tour-next" aria-label="Explore browser routines">⌘<span>Browser</span></button>'+
+      '<button type="button" class="routine-node npc" data-act="routine-tour-next" aria-label="Explore computer routines">▣<span>Computer</span></button>'+
+      '<div class="routine-core3d" aria-hidden="true"><b>W</b><small>ROUTINES</small></div></div>';
+  }
+  function routinesPage() {
+    if(!cloudAuthChecked&&!cloudAuthLoading)loadCloudAuth();
+    if(!cloudAuthSession)return '<div class="hero"><div><div class="eyebrow">WHILO / ROUTINES</div><h2 class="h2">Automate outcomes, not just code reviews.</h2><p class="muted">Create routines for your own dashboards, web apps, library assets, approved websites and paired computers.</p></div></div>'+cloudAuthCard();
+    if(!routineData&&!routineLoading&&!routineFeedback)routineLoad(false);
+    if(routineLoading&&!routineData)return '<div class="hero"><div><h2 class="h2">Loading your routine workspace…</h2><p class="muted">Loading library assets, routines and history.</p></div></div>'+routineScene();
+    const d=routineData||{}, assets=Array.isArray(d.assets)?d.assets:[], routines=Array.isArray(d.routines)?d.routines:[], runs=Array.isArray(d.runs)?d.runs:[];
+    const onboarding=d.onboarding||{}, prefs=onboarding.preferences||{};
+    const tourStep=Math.max(0,Math.min(3,Number(onboarding.current_step==null?routineTourStep:onboarding.current_step)||0));
+    routineTourStep=tourStep;
+    const showTour=!onboarding.completed_at||prefs.show_tour===true;
+    let out='<div class="hero"><div><div class="eyebrow">WHILO / ROUTINE STUDIO</div><h2 class="h2">Routines for your whole workspace.</h2><p class="muted">Turn repeatable work into auditable workflows that target apps and assets you created yourself.</p></div><button class="btn secondary" data-act="routine-refresh">↻ Refresh</button></div>'+routineScene();
+    out+='<div class="routine-stats"><div><span>Saved routines</span><strong>'+routines.length+'</strong><small>Reusable workflows</small></div><div><span>Enabled schedules</span><strong>'+routines.filter(function(r){return r.enabled;}).length+'</strong><small>Scheduled dispatch</small></div><div><span>Awaiting review</span><strong>'+runs.filter(function(r){return r.status==='awaiting_approval';}).length+'</strong><small>Human approval needed</small></div><div><span>Library assets</span><strong>'+assets.filter(function(a){return a.status!=='archived';}).length+'</strong><small>Dashboards, apps, templates</small></div></div>';
+    if(showTour){
+      const t=ROUTINE_TOUR[tourStep];
+      out+='<section class="routine-tour"><div class="tour-progress"><span style="width:'+((tourStep+1)/4*100)+'%"></span></div><div class="tour-content"><div class="tour-icon">'+t.icon+'</div><div><div class="eyebrow">INTERACTIVE ONBOARDING · '+(tourStep+1)+' / 4</div><h3>'+esc(t.title)+'</h3><p>'+esc(t.copy)+'</p><div class="tour-actions">'+(tourStep>0?'<button class="btn secondary" data-act="routine-tour-back">Back</button>':'')+'<button class="btn" data-act="routine-tour-next">'+(tourStep===3?'Finish tour':'Next step →')+'</button><button class="btn secondary" data-act="routine-tour-skip">Skip for now</button></div></div></div></section>';
+    }else out+='<div class="tour-return"><span>✓ Tour completed</span><button class="btn secondary" data-act="routine-tour-reopen">Replay interactive tour</button></div>';
+    out+='<section class="routine-two"><article class="routine-panel"><div class="eyebrow">01 / LIBRARY</div><h3>Create a library asset</h3><p class="muted">Save a dashboard or web app. Dashboard widgets are stored as data; connect a real source before using values operationally.</p><form id="routine-asset-form" class="routine-form">'+
+      '<label>Asset name<input class="field" name="assetName" required minlength="2" maxlength="100" placeholder="Revenue pulse dashboard"></label>'+
+      '<label>Asset type<select class="field" name="assetType"><option value="dashboard">Dashboard</option><option value="web_app">Web app</option><option value="report">Report</option><option value="workflow">Workflow</option><option value="template">Template</option><option value="dataset">Dataset</option><option value="document">Document</option></select></label>'+
+      '<label>HTTPS URL (optional)<input class="field" name="assetUrl" type="url" placeholder="https://…"></label>'+
+      '<label>Description<textarea class="field" name="assetDescription" rows="2" maxlength="1500" placeholder="What is this asset for?"></textarea></label>'+
+      '<label>Dashboard widget titles (one per line)<textarea class="field" name="assetWidgets" rows="3" placeholder="Revenue trend&#10;Pipeline health&#10;Open tasks"></textarea><small>Scripts and embedded HTML are not executed.</small></label><button class="btn" type="submit"'+(routineBusy?' disabled':'')+'>＋ Save to library</button></form></article>';
+    out+='<article class="routine-panel"><div class="eyebrow">02 / AUTOMATION</div><h3>Create a reusable routine</h3><p class="muted">Select target, runtime, cadence and evidence. Computer control requires a connected, authorized desktop bridge.</p><form id="routine-create-form" class="routine-form">'+
+      '<label>Routine name<input class="field" name="routineTitle" required minlength="3" maxlength="100" placeholder="Morning dashboard review"></label>'+
+      '<label>Desired outcome<textarea class="field" name="routineDescription" required rows="2" maxlength="4000" placeholder="Inspect, compare, summarize and verify…"></textarea></label>'+
+      '<label>Target<select class="field" name="targetKind"><option value="library_asset">Library asset</option><option value="dashboard">Dashboard</option><option value="web_app">Web app</option><option value="website">Website</option><option value="computer">My computer</option><option value="api">API</option></select></label>'+
+      '<label>Library asset<select class="field" name="assetId">'+routineAssetOptions(assets)+'</select></label>'+
+      '<label>HTTPS URL<input class="field" name="targetUrl" type="url" placeholder="https://…"></label>'+
+      '<div class="routine-form-row"><label>Runtime<select class="field" name="runtimeMode"><option value="browser">Browser</option><option value="desktop">Desktop / paired computer</option><option value="hybrid">Hybrid</option><option value="api">API</option><option value="chat">Chat planning</option></select></label><label>Cadence<select class="field" name="scheduleKind"><option value="manual">Manual</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label></div>'+
+      '<div class="routine-form-row"><label>Local time<input class="field" name="scheduleTime" type="time" value="09:00"></label><label>Time zone<input class="field" name="timezone" value="America/Sao_Paulo" maxlength="80" required></label></div>'+
+      '<fieldset class="routine-days"><legend>Weekly days · Sunday = 0</legend>'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(function(day,i){return '<label><input type="checkbox" name="scheduleDays" value="'+i+'"><span>'+day+'</span></label>';}).join('')+'</fieldset>'+
+      '<label>Steps (one per line)<textarea class="field" name="routineSteps" rows="3" placeholder="Inspect the dashboard&#10;Compare with the prior report&#10;Draft a summary"></textarea></label>'+
+      '<label>Acceptance criteria (one per line)<textarea class="field" name="routineCriteria" rows="2" placeholder="Evidence is included&#10;Unknown values are disclosed"></textarea></label>'+
+      '<label>Approval policy<select class="field" name="approvalPolicy"><option value="always">Always ask (recommended)</option><option value="first_run">First run and sensitive writes</option><option value="for_writes">Ask before writes</option></select><small>Until fine-grained policies are supported by a trusted worker, every run still waits for approval.</small></label>'+
+      '<button class="btn" type="submit"'+(routineBusy?' disabled':'')+'>＋ Save routine</button></form></article></section>';
+    out+='<section class="routine-panel"><div class="eyebrow">03 / YOUR LIBRARY</div><h3>Assets available to routines</h3><p class="muted">Routines reference library assets by tenant-scoped ID, not just source-code repositories.</p>';
+    const visibleAssets=assets.filter(function(a){return a.status!=='archived';});
+    out+=visibleAssets.length?'<div class="routine-assets">'+visibleAssets.map(function(a){
+      const widgets=a.definition&&Array.isArray(a.definition.widgets)?a.definition.widgets.slice(0,4):[];
+      return '<article><div class="asset-preview"><div class="asset-dots"><i></i><i></i><i></i></div><strong>'+esc(a.name)+'</strong><div class="asset-widgets">'+(widgets.length?widgets.map(function(w){return '<div><span>'+esc(w.title||'Metric')+'</span><b>Not connected</b></div>';}).join(''):'<div><span>'+esc(a.asset_type)+'</span><b>Configure target</b></div>')+'</div></div><div class="asset-card-body"><span>'+esc(a.asset_type)+'</span><p>'+esc(a.description||'No description yet.')+'</p>'+(a.source_url?'<a href="'+esc(a.source_url)+'" target="_blank" rel="noopener noreferrer">Open target ↗</a>':'<small>Library data asset</small>')+'<button class="btn secondary" data-act="routine-chat" data-id="'+esc(a.id)+'">Create routine in Chat</button></div></article>';
+    }).join('')+'</div>':'<div class="routine-empty"><b>Your library is ready.</b><p>Save a dashboard or app above, then choose it as a routine target.</p></div>';
+    out+='</section>';
+    out+='<section class="routine-panel"><div class="routine-head"><div><div class="eyebrow">04 / AUTOMATIONS</div><h3>Your routines</h3><p class="muted">Scheduled dispatch checks every five minutes. A run creates a reviewable mission; it has not executed just because it was queued.</p></div><button class="btn secondary" data-act="routine-refresh">Refresh</button></div>';
+    out+=routines.length?'<div class="routine-list">'+routines.map(function(r){
+      const a=assets.find(function(x){return x.id===r.asset_id;});
+      const schedule=r.schedule_kind==='manual'?'Manual launch':(r.schedule_kind==='daily'?'Daily':'Weekly')+' · '+(r.schedule_time||'')+' · '+(r.timezone||'UTC');
+      return '<article class="routine-row"><div class="routine-row-icon">'+(r.target_kind==='computer'?'▣':(r.target_kind==='dashboard'||(a&&a.asset_type==='dashboard'))?'▦':'◇')+'</div><div><div class="routine-row-title"><b>'+esc(r.title)+'</b><span class="'+(r.enabled?'enabled':'')+'">'+(r.enabled?'Enabled':'Paused')+'</span></div><p>'+esc(r.description)+'</p><div class="routine-meta"><span>'+esc(r.target_kind)+(a?' · '+esc(a.name):'')+'</span><span>'+esc(schedule)+'</span><span>Last: '+esc(routineDate(r.last_run_at))+'</span></div>'+(r.next_run_at?'<small class="routine-next">Next: '+esc(routineDate(r.next_run_at))+'</small>':'')+'<div class="tour-actions"><button class="btn" data-act="routine-run" data-id="'+esc(r.id)+'"'+(routineBusy?' disabled':'')+'>Run now</button><button class="btn secondary" data-act="routine-chat" data-id="'+esc(r.id)+'">Build in Chat @Routines</button><button class="btn secondary" data-act="routine-toggle" data-enabled="'+(!r.enabled)+'" data-id="'+esc(r.id)+'">'+(r.enabled?'Pause schedule':'Enable schedule')+'</button></div></div></article>';
+    }).join('')+'</div>':'<div class="routine-empty"><b>No routines saved yet.</b><p>Create one above, test a manual run and review the mission before approving it.</p></div>';
+    out+='</section><section class="routine-panel"><div class="eyebrow">05 / HISTORY</div><h3>Traceable run ledger</h3><p class="muted">A queued mission is not proof of an action. Inspect status and evidence before accepting its output.</p>';
+    out+=runs.length?'<div class="routine-run-list">'+runs.slice(0,20).map(function(run){
+      const r=routines.find(function(x){return x.id===run.routine_id;});
+      return '<article><div><b>'+esc(r?r.title:'Routine run')+'</b><span>'+esc(run.status||'unknown')+'</span></div><p>'+esc(run.trigger_source||'manual')+' · '+esc(routineDate(run.created_at))+' · '+esc(run.result&&run.result.execution_status||'not started')+'</p>'+(run.mission_id?'<small>Mission: '+esc(run.mission_id)+'</small>':'')+(run.error_code?'<small class="routine-error">Code: '+esc(run.error_code)+'</small>':'')+'</article>';
+    }).join('')+'</div>':'<div class="routine-empty"><b>Your history will appear here.</b><p>Each request is recorded before execution.</p></div>';
+    out+='</section><section class="routine-panel routine-note"><b>Honest execution boundary</b><p>Whilo can save routines and create approval-gated plans. Browser automation, desktop interaction and API writes execute only when their authorized worker and integration are configured. Nothing reports completion simply because it was queued.</p><label><input id="routine-notify-opt-in" type="checkbox"'+(prefs.notifications_opt_in?' checked':'')+'> Opt in to status notifications when available</label><label><input id="routine-reduced-motion" type="checkbox"'+(prefs.reduced_motion?' checked':'')+'> Reduce animation</label></section>';
+    if(routineFeedback)out+='<div class="notice" role="status">'+esc(routineFeedback)+'</div>';
+    return out;
+  }
+  function creditsPage() {
+    if(!cloudAuthChecked&&!cloudAuthLoading)loadCloudAuth();
+    if(!cloudAuthSession)return '<div class="hero"><div><div class="eyebrow">WHILO / WALLET</div><h2 class="h2">Willow Bucks</h2><p class="muted">Prepaid Whilo usage credits. Sign in to view your balance.</p></div></div>'+cloudAuthCard();
+    if(!creditsData&&!creditsLoading&&!creditsFeedback)creditLoad(false);
+    if(creditsLoading&&!creditsData)return '<div class="hero"><h2 class="h2">Loading your wallet…</h2></div>';
+    const d=creditsData||{},w=d.wallet||{},packs=Array.isArray(d.packs)?d.packs:[],ledger=Array.isArray(d.ledger)?d.ledger:[];
+    let out='<div class="hero"><div><div class="eyebrow">WHILO / WILLOW BUCKS</div><h2 class="h2">A transparent usage wallet.</h2><p class="muted">Buy fixed packs, review balance movements and keep a clear budget for AI and routine work.</p></div><button class="btn secondary" data-act="credits-refresh">↻ Refresh</button></div>';
+    out+='<section class="credit-wallet"><div><div class="eyebrow">WORKSPACE BALANCE</div><div class="credit-balance">'+Number(w.balanceWB||0).toLocaleString()+' <span>WB</span></div><p>Non-transferable Whilo usage credits · not cash or crypto</p></div><div><small>Purchased: '+Number(w.totalPurchasedWB||0).toLocaleString()+' WB</small><br><small>Recorded usage: '+Number(w.totalSpentWB||0).toLocaleString()+' WB</small></div></section>';
+    out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div><h3>Top up Willow Bucks</h3><p class="muted">Pack prices and credit amounts are determined by the server.</p></div></div><div class="credit-packs">'+packs.map(function(p){return '<article><div class="eyebrow">'+esc(p.name)+'</div><strong>'+esc(p.label)+'</strong><b>'+Number(p.creditsWB).toLocaleString()+' WB</b><p>Prepaid usage credits for the Whilo workspace.</p><button class="btn" data-act="credits-buy" data-id="'+esc(p.id)+'"'+(creditsBusy?' disabled':'')+'>Buy securely</button></article>';}).join('')+'</div>';
+    out+='<section class="routine-panel"><div class="eyebrow">WALLET LEDGER</div><h3>Recent activity</h3>';
+    out+=ledger.length?'<div class="credit-ledger">'+ledger.map(function(e){const positive=Number(e.amountWB)>0;return '<article><div><b>'+esc(({topup:'Top-up',usage:'Usage',refund:'Refund',adjustment:'Adjustment'})[e.kind]||e.kind)+'</b><small>'+esc(routineDate(e.createdAt))+'</small></div><strong class="'+(positive?'positive':'negative')+'">'+(positive?'+':'')+Number(e.amountWB).toLocaleString()+' WB</strong><small>Balance: '+Number(e.balanceAfterWB||0).toLocaleString()+' WB</small></article>';}).join('')+'</div>':'<div class="routine-empty"><b>No wallet activity yet.</b><p>Verified purchases will be recorded here.</p></div>';
+    out+='</section><section class="routine-panel routine-note"><b>Pricing and margin discipline</b><p>Whilo targets direct model-provider cost at or below 60% of the nominal credit value, leaving a 40% contribution before payment fees, taxes, infrastructure and support. Actual net margin must be confirmed against metered provider usage and all variable costs. Willow Bucks are non-transferable, non-redeemable usage credits, not money or cryptocurrency.</p><p>Usage debits must be produced by the trusted server runtime, based on verified provider costs—not client-supplied numbers.</p></section>';
+    if(creditsFeedback)out+='<div class="notice" role="status">'+esc(creditsFeedback)+'</div>';
+    return out;
+  }
+
   function render() {
     shadow.querySelectorAll('[data-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === active); });
     if (active === 'work') view.innerHTML = workPage();
@@ -1264,6 +1420,8 @@
     if (active === 'account') view.innerHTML = accountPage();
     if (active === 'results') view.innerHTML = resultsPage();
     if (active === 'messages') view.innerHTML = messagesPage();
+    if (active === 'routines') view.innerHTML = routinesPage();
+    if (active === 'credits') view.innerHTML = creditsPage();
     if (active === 'pricing') view.innerHTML = pricingPage();
   }
   function openPanel(tab) {
