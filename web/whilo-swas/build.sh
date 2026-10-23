@@ -4,6 +4,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 node "$ROOT/../../scripts/check-platform.mjs"
+node "$ROOT/../../scripts/test-routine-security.cjs"
 
 ASSET_URL="https://github.com/ryantheirreal/whilo-swas/releases/download/v1.0.0/whilo-site-v1.0.2.tar.gz"
 EXPECTED_SHA256="367032f5e1429ddd5e2e6e6205a6b9827749b60a689b197d36be8f5febcfc05e"
