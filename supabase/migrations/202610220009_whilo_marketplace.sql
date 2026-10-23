@@ -50,7 +50,7 @@ create table if not exists public.marketplace_listings (
   published_at timestamptz,
   unique (seller_id, slug),
   check ((pricing_model = 'free' and price_minor = 0) or (pricing_model = 'one_time' and price_minor > 0)),
-  check (jsonb_object_length(manifest) <= 16)
+  check (jsonb_typeof(manifest) = 'object')
 );
 
 create index if not exists marketplace_listings_public_idx
