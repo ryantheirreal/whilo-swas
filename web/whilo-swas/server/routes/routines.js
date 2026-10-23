@@ -94,17 +94,33 @@ async function readOrgRows(table, orgId, query) {
 }
 async function getWorkspace(user, member) {
   const orgId = member.organization_id;
-  const [routines, assets, runs, onboarding, wallet] = await Promise.all([
+  const [routines, assets, runs, onboarding, wallet, devices] = await Promise.all([
     readOrgRows('whilo_routines', orgId, 'select=id,created_by,title,description,target_kind,asset_id,target_url,runtime_mode,schedule_kind,schedule_time,schedule_days,timezone,next_run_at,last_run_at,steps,acceptance_criteria,approval_policy,enabled,created_at,updated_at&order=updated_at.desc&limit=100'),
     readOrgRows('whilo_library_assets', orgId, 'select=id,created_by,name,asset_type,description,source_url,definition,status,version,created_at,updated_at&order=updated_at.desc&limit=100'),
     readOrgRows('whilo_routine_runs', orgId, 'select=id,routine_id,requested_by,mission_id,trigger_source,status,result,error_code,started_at,finished_at,created_at,updated_at&order=created_at.desc&limit=50'),
     db('whilo_onboarding_state?organization_id=eq.' + encodeURIComponent(orgId) + '&user_id=eq.' + encodeURIComponent(user.id) + '&select=current_step,completed_at,preferences,updated_at&limit=1'),
-    db('whilo_credit_wallets?organization_id=eq.' + encodeURIComponent(orgId) + '&select=balance_wb,total_purchased_wb,total_spent_wb&limit=1')
+    db('whilo_credit_wallets?organization_id=eq.' + encodeURIComponent(orgId) + '&select=balance_wb,total_purchased_wb,total_spent_wb&limit=1'),
+    db('bridge_devices?organization_id=eq.' + encodeURIComponent(orgId) + '&owner_id=eq.' + encodeURIComponent(user.id) + '&status=eq.active&revoked_at=is.null&select=scopes,last_seen_at&limit=20')
   ]);
+  const currentTime = Date.now();
+  const deviceRows = Array.isArray(devices) ? devices : [];
+  const computerRuntimeReady = deviceRows.some(function (device) {
+    const lastSeen = Date.parse(device.last_seen_at || '');
+    const scopes = Array.isArray(device.scopes) ? device.scopes : [];
+    return Number.isFinite(lastSeen) && currentTime - lastSeen <= 5 * 60 * 1000
+      && scopes.includes('computer:read') && scopes.includes('computer:control');
+  });
   return {
     routines, assets, runs,
     onboarding: Array.isArray(onboarding) && onboarding[0] ? onboarding[0] : { current_step: 0, completed_at: null, preferences: {} },
-    wallet: Array.isArray(wallet) && wallet[0] ? wallet[0] : { balance_wb: 0, total_purchased_wb: 0, total_spent_wb: 0 }
+    wallet: Array.isArray(wallet) && wallet[0] ? wallet[0] : { balance_wb: 0, total_purchased_wb: 0, total_spent_wb: 0 },
+    runtime: {
+      computerReady: computerRuntimeReady,
+      reason: computerRuntimeReady ? 'paired_scoped_recent_heartbeat' : 'no_recent_authorized_computer',
+      lastDeviceSeenAt: deviceRows.reduce(function (latest, device) {
+        return device.last_seen_at && (!latest || Date.parse(device.last_seen_at) > Date.parse(latest)) ? device.last_seen_at : latest;
+      }, null)
+    }
   };
 }
 async function createAsset(user, member, body) {
@@ -200,10 +216,30 @@ async function runRoutine(user, member, body) {
     if (prior[0].requested_by !== user.id && !['owner','admin'].includes(member.role)) fail(403, 'You cannot inspect another member’s routine run.');
     return { run: prior[0], duplicate: true };
   }
+  const requiresComputer = routine.target_kind === 'computer' || ['desktop','hybrid'].includes(routine.runtime_mode);
+  if (requiresComputer) {
+    const devices = await db('bridge_devices?organization_id=eq.' + encodeURIComponent(member.organization_id) +
+      '&owner_id=eq.' + encodeURIComponent(user.id) + '&status=eq.active&revoked_at=is.null&select=scopes,last_seen_at&limit=20');
+    const now = Date.now();
+    const capable = (Array.isArray(devices) ? devices : []).some(function (device) {
+      const lastSeen = Date.parse(device.last_seen_at || '');
+      const scopes = Array.isArray(device.scopes) ? device.scopes : [];
+      return Number.isFinite(lastSeen) && now - lastSeen <= 5 * 60 * 1000
+        && scopes.includes('computer:read') && scopes.includes('computer:control');
+    });
+    if (!capable) fail(409, 'Computer routines require a paired device with explicit computer:read and computer:control scopes and a heartbeat from the last five minutes. Pairing/heartbeat alone is not remote-control authorization.');
+  }
+
+  const recentSince = new Date(Date.now() - 60 * 1000).toISOString();
+  const recentRuns = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
+    '&requested_by=eq.' + encodeURIComponent(user.id) + '&created_at=gte.' + encodeURIComponent(recentSince) + '&select=id&limit=10');
+  if (Array.isArray(recentRuns) && recentRuns.length >= 5) fail(429, 'Routine launch limit reached: up to five manual runs per minute. Review existing runs before retrying.');
+
   const assetRows = routine.asset_id
-    ? await db('whilo_library_assets?id=eq.' + encodeURIComponent(routine.asset_id) + '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=id,name,asset_type,source_url&limit=1')
+    ? await db('whilo_library_assets?id=eq.' + encodeURIComponent(routine.asset_id) + '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=id,name,asset_type,source_url,status&limit=1')
     : [];
   const asset = Array.isArray(assetRows) ? assetRows[0] : null;
+  if (routine.asset_id && (!asset || asset.status === 'archived')) fail(409, 'The library asset was archived or removed; update the routine before launching it.');
   const inserted = await db('whilo_routine_runs', {
     method: 'POST', headers: { Prefer: 'return=representation' },
     body: JSON.stringify({
@@ -215,8 +251,12 @@ async function runRoutine(user, member, body) {
   const run = Array.isArray(inserted) ? inserted[0] : null;
   if (!run) {
     const retry = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
-      '&idempotency_key=eq.' + encodeURIComponent(idempotencyKey) + '&select=id,routine_id,mission_id,status,result&limit=1');
-    if (Array.isArray(retry) && retry[0]) return { run: retry[0], duplicate: true };
+      '&idempotency_key=eq.' + encodeURIComponent(idempotencyKey) + '&select=id,routine_id,requested_by,mission_id,status,result&limit=1');
+    if (Array.isArray(retry) && retry[0]) {
+      if (retry[0].routine_id !== routineId) fail(409, 'This idempotency key was already used for another routine.');
+      if (retry[0].requested_by !== user.id && !['owner','admin'].includes(member.role)) fail(403, 'You cannot inspect another member’s routine run.');
+      return { run: retry[0], duplicate: true };
+    }
     fail(503, 'The routine run could not be recorded.');
   }
 
