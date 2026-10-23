@@ -34,6 +34,18 @@
   ],
   "rewrites": [
     {
+      "source": "/api/credits/webhook",
+      "destination": "/api/messages?route=credits-webhook"
+    },
+    {
+      "source": "/api/credits",
+      "destination": "/api/messages?route=credits"
+    },
+    {
+      "source": "/api/routines",
+      "destination": "/api/messages?route=routines"
+    },
+    {
       "source": "/api/affiliates",
       "destination": "/api/messages?route=affiliates"
     },
