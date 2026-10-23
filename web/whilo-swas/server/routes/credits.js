@@ -116,7 +116,7 @@ async function handle(req,res) {
 async function handleWebhook(req,res) {
   if(req.method!=='POST') { res.setHeader('Allow','POST'); return send(res,405,{error:'Method not allowed'}); }
   try {
-    const secret=String(process.env.STRIPE_WEBHOOK_SECRET||'').trim();
+    const secret=String(process.env.STRIPE_CREDITS_WEBHOOK_SECRET||process.env.STRIPE_WEBHOOK_SECRET||'').trim();
     if(!secret) { const e=new Error('Stripe webhook is not configured.');e.statusCode=503;e.missingEnv=['STRIPE_WEBHOOK_SECRET'];throw e; }
     const raw=await rawBody(req,1024*1024);
     let event;
