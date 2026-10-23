@@ -37,7 +37,7 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 
 ## Configuration gate — not yet active
 
-Cloud operations are not activated yet. The workspace owner must connect/configure Supabase, apply all ten migrations in ascending order, set server-side Vercel environment variables, and provision the owner account with a strong temporary password. Marketplace payments also require Stripe Connect, recurring Price IDs, test-mode webhooks, seller verification and end-to-end payment/refund/dispute tests before public sales. Follow `docs/connectors-and-identity.md` and `docs/marketplace-and-pricing-strategy.md`.
+Cloud operations are not activated yet. The workspace owner must connect/configure Supabase, apply all twelve migrations in ascending order, set server-side Vercel environment variables, and provision the owner account with a strong temporary password. Marketplace payments also require Stripe Connect, recurring Price IDs, test-mode webhooks, seller verification and end-to-end payment/refund/dispute tests before public sales. Follow `docs/connectors-and-identity.md` and `docs/marketplace-and-pricing-strategy.md`.
 
 No production owner account was created, no migration has been applied to a live database, and no Slack, Twilio, Stripe Connect or subscription billing account was activated in this session. The actual autonomous worker and native iMessage bridge also remain unimplemented. Do not represent plans, queued jobs, a QR pair or connector metadata as completed execution without evidence from the provider.
 
@@ -64,3 +64,6 @@ The desktop project remains a secure Electron shell which opens the hosted Whilo
 Follow the Sequoia Services-as-Software approach: sell accepted work, not seats or access to bots. Test one narrow, low-regulation, measurable outsourced Revenue Operations workflow for B2B service firms. Prove accepted outputs, retention, repeatable acquisition and unit economics before expanding function by function.
 
 A US$1B valuation in one month is an ambition, not a controllable or responsible promise. The 30-day target is investor-grade evidence: paid pilots, accepted deliverables, renewals, repeatable distribution, and measured delivery economics.
+
+
+**Whilo Partners:** free enrollment, referral links, direct and one-level partner commissions, eight evidence-based tiers, 30-day holds, payout review, and refund/dispute adjustments. See `docs/whilo-partners-program.md`. Live transfers stay disabled until sandbox validation.
