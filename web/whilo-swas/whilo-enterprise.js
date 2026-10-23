@@ -548,6 +548,23 @@
       messageButton.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); openPanel('messages'); });
       found.chat.insertAdjacentElement('afterend', messageButton);
     }
+    if (!parent.querySelector('[data-whilo-routines-chat-launcher]')) {
+      const routineButton = found.chat.cloneNode(false);
+      routineButton.removeAttribute('id'); routineButton.removeAttribute('href'); routineButton.removeAttribute('aria-current');
+      routineButton.removeAttribute('aria-pressed'); routineButton.removeAttribute('data-state');
+      routineButton.setAttribute('type', 'button');
+      routineButton.setAttribute('data-whilo-routines-chat-launcher', 'true');
+      routineButton.setAttribute('aria-label', 'Create a routine directly in Chat');
+      routineButton.title = '@Routines · Create automation in Chat';
+      routineButton.innerHTML = '<span aria-hidden="true" style="margin-right:6px;opacity:.8">✳</span><span>@Routines</span>';
+      routineButton.addEventListener('click', function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        openRoutineInChat('Design a safe Whilo routine. Ask for the desired outcome, trigger, target, bounded steps, evidence, cost ceiling, approval policy and schedule. Prefer read-only actions first; never claim execution until a connected authorized worker provides evidence.');
+      });
+      const messageTab = parent.querySelector('[data-whilo-message-tab]');
+      if (messageTab) messageTab.insertAdjacentElement('afterend', routineButton);
+      else found.chat.insertAdjacentElement('afterend', routineButton);
+    }
     const portuguese = /pt/i.test(document.documentElement.lang || '') || !!found.routines && norm(found.routines.innerText || found.routines.textContent).includes('rotina');
     const items = [
       { key: 'work', en: 'Work', pt: 'Trabalho', mark: '▤' },
@@ -1301,7 +1318,8 @@
     function fillDraft(){
       tries++;
       const fields=Array.from(document.querySelectorAll('textarea,input,[contenteditable="true"],[role="textbox"]')).filter(function(el){
-        if(!visible(el)||el.disabled||el.readOnly)return false;
+        const rect=el.getBoundingClientRect();
+        if(!(rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<window.innerHeight)||el.disabled||el.readOnly)return false;
         const label=[el.placeholder,el.getAttribute('aria-label'),el.getAttribute('data-placeholder'),el.getAttribute('data-testid'),el.id,el.name].join(' ').toLowerCase();
         return /chat|message|prompt|ask|send|conversa|mensagem|composer/.test(label);
       });
@@ -1334,9 +1352,9 @@
   function routineScene() {
     return '<div class="routine-scene" aria-label="Interactive 3D map of Chat, library, browser and computer"><div class="routine-grid3d"></div><div class="routine-orbit orb1"></div><div class="routine-orbit orb2"></div>'+
       '<button type="button" class="routine-node nchat" data-act="routine-chat" aria-label="Design a routine in Chat">✳<span>Chat</span></button>'+
-      '<button type="button" class="routine-node nlib" data-act="routine-tour-next" aria-label="Explore library routines">▤<span>Library</span></button>'+
-      '<button type="button" class="routine-node nweb" data-act="routine-tour-next" aria-label="Explore browser routines">⌘<span>Browser</span></button>'+
-      '<button type="button" class="routine-node npc" data-act="routine-tour-next" aria-label="Explore computer routines">▣<span>Computer</span></button>'+
+      '<button type="button" class="routine-node nlib" data-act="routine-target-shortcut" data-target="library_asset" aria-label="Create a routine for a library asset">▤<span>Library</span></button>'+
+      '<button type="button" class="routine-node nweb" data-act="routine-target-shortcut" data-target="website" aria-label="Create a browser routine">⌘<span>Browser</span></button>'+
+      '<button type="button" class="routine-node npc" data-act="routine-target-shortcut" data-target="computer" aria-label="Create a computer routine">▣<span>Computer</span></button>'+
       '<div class="routine-core3d" aria-hidden="true"><b>W</b><small>ROUTINES</small></div></div>';
   }
   function routinesPage() {
@@ -1525,6 +1543,34 @@
     if (!action) return;
     const act = action.getAttribute('data-act'), id = action.getAttribute('data-id');
     if (act === 'close') { closePanel(); return; }
+    if (act === 'routine-target-shortcut') {
+      const target = action.getAttribute('data-target') || 'library_asset';
+      const form = shadow.querySelector('#routine-create-form');
+      const targetField = form && form.querySelector('[name="targetKind"]');
+      const runtimeField = form && form.querySelector('[name="runtimeMode"]');
+      const assets = routineData && Array.isArray(routineData.assets) ? routineData.assets.filter(function(a){return a.status!=='archived';}) : [];
+      if (target === 'library_asset' && assets.length === 0) {
+        const assetForm = shadow.querySelector('#routine-asset-form');
+        if (assetForm) {
+          assetForm.scrollIntoView({behavior:'smooth',block:'center'});
+          const name = assetForm.querySelector('[name="assetName"]');
+          if (name) name.focus({preventScroll:true});
+        }
+        routineFeedback = 'Create a library asset first, then build a routine around it.';
+        render();
+        return;
+      }
+      if (targetField) targetField.value = target;
+      if (runtimeField && target === 'computer') runtimeField.value = 'desktop';
+      if (form) {
+        form.scrollIntoView({behavior:'smooth',block:'center'});
+        const assetField = form.querySelector('[name="assetId"]');
+        const urlField = form.querySelector('[name="targetUrl"]');
+        if (target === 'library_asset' && assetField) assetField.focus({preventScroll:true});
+        else if (target === 'website' && urlField) urlField.focus({preventScroll:true});
+      }
+      return;
+    }
     if (act === 'routine-refresh') { routineData=null; routineFeedback=''; routineLoad(true); render(); return; }
     if (act === 'credits-refresh') { creditsData=null; creditsFeedback=''; creditLoad(true); render(); return; }
     if (act === 'routine-chat') {
