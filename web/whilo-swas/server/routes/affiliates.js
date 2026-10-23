@@ -75,14 +75,16 @@ async function getDashboard(user) {
     method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'available'})
   });
   const refreshed = await profile(user.id) || current;
-  const [referrals,commissions,payouts] = await Promise.all([
+  const [referrals,commissions,payouts,subAffiliates] = await Promise.all([
     db('affiliate_referrals?affiliate_user_id=eq.'+encodeURIComponent(user.id)+'&select=referred_user_id,status,created_at,first_paid_at,first_paid_source&order=created_at.desc&limit=100'),
-    db('affiliate_commissions?affiliate_user_id=eq.'+encodeURIComponent(user.id)+'&select=id,direct_affiliate_user_id,referred_user_id,source_type,source_id,source_amount_minor,currency,rate_bps,commission_minor,status,available_at,paid_at,created_at&order=created_at.desc&limit=100'),
-    db('affiliate_payouts?affiliate_user_id=eq.'+encodeURIComponent(user.id)+'&select=id,amount_minor,currency,status,requested_at,processed_at,failure_code&order=requested_at.desc&limit=25')
+    db('affiliate_commissions?affiliate_user_id=eq.'+encodeURIComponent(user.id)+'&select=id,direct_affiliate_user_id,referred_user_id,source_type,source_id,source_amount_minor,currency,rate_bps,commission_minor,status,available_at,paid_at,payout_id,created_at&order=created_at.desc&limit=100'),
+    db('affiliate_payouts?affiliate_user_id=eq.'+encodeURIComponent(user.id)+'&select=id,amount_minor,currency,status,requested_at,processed_at,failure_code&order=requested_at.desc&limit=25'),
+    db('affiliate_profiles?parent_affiliate_user_id=eq.'+encodeURIComponent(user.id)+'&status=eq.active&select=user_id&limit=1000')
   ]);
   const referralRows = Array.isArray(referrals)?referrals:[];
   const commissionRows = Array.isArray(commissions)?commissions:[];
   const payoutRows = Array.isArray(payouts)?payouts:[];
+  const subAffiliateRows = Array.isArray(subAffiliates)?subAffiliates:[];
   const referredIds=[...new Set(referralRows.map(r=>r.referred_user_id).filter(Boolean))];
   const parentIds=[refreshed.parent_affiliate_user_id].filter(Boolean);
   const [humanNames,parentNames] = await Promise.all([
@@ -96,7 +98,7 @@ async function getDashboard(user) {
   const paidReferrals=referralRows.filter(r=>r.status==='qualified' && r.first_paid_at).length;
   const next=nextRank(refreshed.tier);
   const pending=commissionRows.filter(r=>r.status==='pending');
-  const available=commissionRows.filter(r=>r.status==='available');
+  const available=commissionRows.filter(r=>r.status==='available'&&!r.payout_id);
   const paid=commissionRows.filter(r=>r.status==='paid');
   const inPayout=payoutRows.filter(r=>['requested','processing'].includes(r.status));
   return {
@@ -113,7 +115,7 @@ async function getDashboard(user) {
       totalEarnedMinor:total(commissionRows.filter(r=>r.status!=='reversed'),'commission_minor'),
       pendingMinor:total(pending,'commission_minor'),availableMinor:total(available,'commission_minor'),
       paidMinor:total(paid,'commission_minor'),inPayoutMinor:total(inPayout,'amount_minor'),
-      activeSubAffiliates:parentIds.length?0:0
+      activeSubAffiliates:subAffiliateRows.length
     },
     nextRank:next,
     ranks:RANKS,
@@ -203,6 +205,9 @@ async function handle(req,res) {
     if(!affiliate.stripe_account_id || !affiliate.stripe_details_submitted || !affiliate.stripe_transfers_enabled || !affiliate.stripe_payouts_enabled) {
       fail(409,'Finish Stripe identity and payout onboarding before requesting a transfer.');
     }
+    await db('affiliate_commissions?affiliate_user_id=eq.'+encodeURIComponent(user.id)+'&status=eq.pending&available_at=lte.'+encodeURIComponent(new Date().toISOString()),{
+      method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'available'})
+    });
     const rows=await db('rpc/request_whilo_affiliate_payout',{method:'POST',body:JSON.stringify({p_user_id:user.id})});
     const payout=Array.isArray(rows)?rows[0]:rows;
     if(!payout || !payout.payout_id) fail(503,'A payout request could not be recorded.');
@@ -238,11 +243,20 @@ async function handle(req,res) {
       method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({status:'processing',failure_code:null})
     });
     if(!Array.isArray(claimed)||!claimed[0]) fail(409,'Payout could not be claimed for processing.');
-    const transfer=await stripeOperation('transfer.create',{
-      amount:Number(payout.amount_minor),currency:'brl',destination:af.stripe_account_id,
-      metadata:{whilo_affiliate_payout_id:payout.id,whilo_affiliate_user_id:payout.affiliate_user_id},
-      transfer_group:'whilo_affiliate_'+payout.id
-    },payout.idempotency_key);
+    let transfer;
+    try {
+      transfer=await stripeOperation('transfer.create',{
+        amount:Number(payout.amount_minor),currency:'brl',destination:af.stripe_account_id,
+        metadata:{whilo_affiliate_payout_id:payout.id,whilo_affiliate_user_id:payout.affiliate_user_id},
+        transfer_group:'whilo_affiliate_'+payout.id
+      },payout.idempotency_key);
+    } catch(error) {
+      await db('affiliate_payouts?id=eq.'+encodeURIComponent(payout.id),{
+        method:'PATCH',headers:{Prefer:'return=minimal'},
+        body:JSON.stringify({status:'failed',failure_code:'stripe_transfer_failed'})
+      }).catch(()=>{});
+      throw error;
+    }
     await db('affiliate_payouts?id=eq.'+encodeURIComponent(payout.id),{
       method:'PATCH',headers:{Prefer:'return=minimal'},
       body:JSON.stringify({status:'paid',stripe_transfer_id:transfer.id,processed_at:new Date().toISOString(),failure_code:null})
