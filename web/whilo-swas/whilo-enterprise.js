@@ -188,7 +188,9 @@
     if (!cloudAuthSession || affiliateLoading || (affiliateDashboard && !force)) return;
     affiliateLoading = true;
     affiliateError = '';
-    whiloApi('/api/affiliates',{method:'POST',body:JSON.stringify({action:'dashboard'})})
+    claimPendingAffiliateReferral().catch(function(){return null;}).then(function(){
+      return whiloApi('/api/affiliates',{method:'POST',body:JSON.stringify({action:'dashboard'})});
+    })
       .then(function (data) { affiliateDashboard = data; affiliateError = ''; })
       .catch(function (error) { affiliateError = error && error.message ? error.message : 'Could not load your partner dashboard.'; })
       .finally(function () {
@@ -1344,6 +1346,44 @@
     if (!action) return;
     const act = action.getAttribute('data-act'), id = action.getAttribute('data-id');
     if (act === 'close') { closePanel(); return; }
+    if (act === 'affiliate-refresh') {
+      affiliateDashboard = null; affiliateError = ''; affiliateFeedback = '';
+      loadAffiliateDashboard(true); render(); return;
+    }
+    if (act === 'affiliate-pane') { affiliatePane = id || 'overview'; render(); return; }
+    if (act === 'affiliate-copy-code' || act === 'affiliate-copy-link' || act === 'affiliate-share') {
+      if (!affiliateDashboard || !affiliateDashboard.profile) return;
+      const text = act === 'affiliate-copy-code' ? String(affiliateDashboard.profile.code || '') : String(affiliateDashboard.referralLink || '');
+      if (!text) return;
+      if (act === 'affiliate-share' && navigator.share) {
+        navigator.share({title:'Whilo',text:'Join me on Whilo',url:text}).then(function(){affiliateFeedback='Referral link shared.';render();}).catch(function(){});
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function(){affiliateFeedback=act==='affiliate-copy-code'?'Referral code copied.':'Referral link copied.';render();})
+          .catch(function(){window.prompt(act==='affiliate-copy-code'?'Copy your Whilo referral code':'Copy your Whilo referral link',text);});
+      } else window.prompt(act==='affiliate-copy-code'?'Copy your Whilo referral code':'Copy your Whilo referral link',text);
+      return;
+    }
+    if (act === 'affiliate-connect-payouts') {
+      if (affiliateBusy) return;
+      affiliateBusy = true; affiliateFeedback = 'Creating a secure Stripe Connect onboarding link…'; render();
+      whiloApi('/api/affiliates',{method:'POST',body:JSON.stringify({action:'start-payout-onboarding'})})
+        .then(function(result){
+          if (result.onboardingUrl && /^https:\/\/connect\.stripe\.com\//.test(result.onboardingUrl)) { window.location.assign(result.onboardingUrl); return; }
+          throw new Error('Stripe did not return a valid onboarding URL.');
+        })
+        .catch(function(error){affiliateFeedback=error&&error.message?error.message:'Payout onboarding is not ready.';})
+        .finally(function(){affiliateBusy=false;if(active==='account')render();});
+      return;
+    }
+    if (act === 'affiliate-request-payout') {
+      if (affiliateBusy || !window.confirm('Request a payout of your available Whilo Partner commissions? The request is reviewed before money is transferred.')) return;
+      affiliateBusy=true; affiliateFeedback='Submitting a payout request…'; render();
+      whiloApi('/api/affiliates',{method:'POST',body:JSON.stringify({action:'request-payout'})})
+        .then(function(result){affiliateFeedback=result.detail||'Payout request submitted.';affiliateDashboard=null;return loadAffiliateDashboard(true);})
+        .catch(function(error){affiliateFeedback=error&&error.message?error.message:'Payout request failed.';})
+        .finally(function(){affiliateBusy=false;if(active==='account')render();});
+      return;
+    }
     if (act === 'open-message-invite') { messagesInviteOpen = true; messagesInviteStatus = ''; messagesInviteLink = ''; render(); return; }
     if (act === 'close-message-invite') { messagesInviteOpen = false; messagesInviteLink = ''; messagesInviteStatus = ''; render(); return; }
     if (act === 'copy-message-invite') {
@@ -1616,6 +1656,24 @@
   shadow.addEventListener('submit', function (event) {
     event.preventDefault();
     const form = event.target;
+    if (form.id === 'affiliate-enroll-form') {
+      const fd = new FormData(form);
+      const acceptedTerms = fd.get('acceptedTerms') === 'on';
+      if (!acceptedTerms) { affiliateFeedback = 'Accept the Whilo Partners terms before joining.'; render(); return; }
+      if (affiliateBusy) return;
+      affiliateBusy = true; affiliateFeedback = 'Creating your Whilo Partner profile…'; affiliateError = ''; render();
+      whiloApi('/api/affiliates',{method:'POST',body:JSON.stringify({
+        action:'enroll',acceptedTerms:true,displayName:String(fd.get('displayName')||'').trim()
+      })})
+        .then(function(result){
+          affiliateFeedback=result.detail||'You joined Whilo Partners.';
+          affiliateDashboard=null;affiliatePane='overview';
+          return loadAffiliateDashboard(true);
+        })
+        .catch(function(error){affiliateFeedback=error&&error.message?error.message:'Could not enroll in Whilo Partners.';})
+        .finally(function(){affiliateBusy=false;if(active==='account')render();});
+      return;
+    }
     if (form.id === 'message-invite-form') {
       const fd = new FormData(form);
       messagesInviteEmail = String(fd.get('email') || '').trim().toLowerCase();
