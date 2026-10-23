@@ -71,7 +71,7 @@ This specification does not replace legal review. Before public launch, review B
 
 ## Technical model
 
-Migration 011 adds affiliate profiles, one-time attribution, commission ledger and payout requests. Migration 012 adds refund/dispute adjustments, corrections to first-paid qualification, and net payout reconciliation. The API is routed through the existing shared Vercel function to stay within the current function-count limit.
+Migration 011 adds affiliate profiles, one-time attribution, commission ledger and payout requests. Migration 012 adds refund/dispute adjustments, corrections to first-paid qualification, and net payout reconciliation. Migration 013 adds exact aggregate metrics so rank progress does not depend on paginated UI rows. The API is routed through the existing shared Vercel function to stay within the current function-count limit.
 
 - \`affiliate_profiles\`: unique code, one direct sponsor, state and tier.
 - \`affiliate_referrals\`: first attribution per user, first paid timestamp and qualification state.
