@@ -82,10 +82,10 @@ for (const [label, pattern] of [
   ['net affiliate payout adjustments', /create table if not exists public\.affiliate_adjustments/i],
   ['exact full-ledger affiliate summary', /function public\.whilo_affiliate_summary/i]
   ['membership table browser privilege lockdown', /revoke all privileges on table public\.organization_members from public, anon, authenticated/i],
-  ['integration view invoker security', /alter view public\\.integration_connections_safe set \\(security_invoker = true, security_barrier = true\\)/i],
-  ['trigger functions not executable by browser roles', /revoke all on function public\\.handle_new_user\\(\\) from public, anon, authenticated, service_role/i],
-  ['safe integration view grants authenticated read only', /grant select on table public\\.integration_connections_safe to authenticated/i],
-  ['integration table column-level allowlist', /grant select \\(id, organization_id, provider, status, external_account_id, external_account_name, scopes, metadata, connected_at, last_verified_at, revoked_at\\)\\s+on table public\\.integration_connections to authenticated/i],
+  ['integration view invoker security', /alter view public\.integration_connections_safe set \(security_invoker = true, security_barrier = true\)/i],
+  ['trigger functions not executable by browser roles', /revoke all on function public\.handle_new_user\(\) from public, anon, authenticated, service_role/i],
+  ['safe integration view grants authenticated read only', /grant select on table public\.integration_connections_safe to authenticated/i],
+  ['integration table column-level allowlist', /grant select \(id, organization_id, provider, status, external_account_id, external_account_name, scopes, metadata, connected_at, last_verified_at, revoked_at\)\s+on table public\.integration_connections to authenticated/i],
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
