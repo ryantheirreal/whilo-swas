@@ -52,8 +52,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 13) {
-  failures.push('Expected all thirteen versioned Supabase migrations to be present.');
+if (migrations.length < 14) {
+  failures.push('Expected all fourteen versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
@@ -81,6 +81,7 @@ for (const [label, pattern] of [
   ['refund and dispute commission reversal', /function public\.reverse_whilo_affiliate_source/i],
   ['net affiliate payout adjustments', /create table if not exists public\.affiliate_adjustments/i],
   ['exact full-ledger affiliate summary', /function public\.whilo_affiliate_summary/i]
+  ['membership table browser privilege lockdown', /revoke all privileges on table public\.organization_members from public, anon, authenticated/i],
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
