@@ -4,6 +4,11 @@
   window.__whiloEnterpriseNavLoaded = true;
 
   const STORAGE_KEY = 'whilo-enterprise-work-v1';
+  const AFFILIATE_REFERRAL_STORAGE_KEY = 'whilo-affiliate-referral-v1';
+  try {
+    const incomingAffiliateCode = String(new URLSearchParams(window.location.search).get('ref') || '').trim().toUpperCase();
+    if (/^[A-Z0-9-]{4,24}$/.test(incomingAffiliateCode)) localStorage.setItem(AFFILIATE_REFERRAL_STORAGE_KEY, incomingAffiliateCode);
+  } catch (_) {}
   const PETS = ['Whilo', 'Fynn', 'Nori', 'Capuccino', 'Ollie', 'Pico'];
   const BOT_ROLES = ['Browser Researcher', 'Computer Operator', 'Data Analyst', 'CRM Operator', 'Writer', 'Coder', 'QA Verifier', 'Workflow Planner'];
   function plannedBots(department) {
@@ -71,6 +76,12 @@
   let cloudAuthBusy = false;
   let cloudAuthFeedback = '';
   let cloudAuthMode = new URLSearchParams(window.location.search).has('whilo_invite') ? 'signup' : (new URLSearchParams(window.location.search).has('whilo_recovery') ? 'recovery' : 'signin');
+  let affiliateDashboard = null;
+  let affiliateLoading = false;
+  let affiliateBusy = false;
+  let affiliateFeedback = '';
+  let affiliateError = '';
+  let affiliatePane = 'overview';
 
   let messagesInbox = [];
   let messagesDiscover = [];
@@ -151,6 +162,120 @@
     try { data = await response.json(); } catch (_) {}
     if (!response.ok) throw new Error(data && data.error ? data.error : 'Whilo connector API is not ready. Check server configuration.');
     return data;
+  }
+
+  async function claimPendingAffiliateReferral() {
+    let code = '';
+    try { code = String(localStorage.getItem(AFFILIATE_REFERRAL_STORAGE_KEY) || '').trim().toUpperCase(); } catch (_) {}
+    if (!code || !/^[A-Z0-9-]{4,24}$/.test(code) || !cloudAuthSession) return null;
+    try {
+      const result = await whiloApi('/api/affiliates', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'claim-referral', referralCode: code })
+      });
+      try { localStorage.removeItem(AFFILIATE_REFERRAL_STORAGE_KEY); } catch (_) {}
+      if (result.attributed) affiliateFeedback = 'Partner referral attributed to your Whilo account.';
+      return result;
+    } catch (_) {
+      // Keep the code so a transient environment issue can be retried on the next authenticated visit.
+      return null;
+    }
+  }
+  function affiliateMoney(minor) {
+    return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((Number(minor)||0)/100);
+  }
+  function loadAffiliateDashboard(force) {
+    if (!cloudAuthSession || affiliateLoading || (affiliateDashboard && !force)) return;
+    affiliateLoading = true;
+    affiliateError = '';
+    whiloApi('/api/affiliates',{method:'POST',body:JSON.stringify({action:'dashboard'})})
+      .then(function (data) { affiliateDashboard = data; affiliateError = ''; })
+      .catch(function (error) { affiliateError = error && error.message ? error.message : 'Could not load your partner dashboard.'; })
+      .finally(function () {
+        affiliateLoading = false;
+        if (active === 'account') render();
+      });
+  }
+  function affiliateHubPage() {
+    const pt = /pt/i.test(document.documentElement.lang || '') || /pt-BR/i.test(navigator.language || '');
+    const tx = function (en,br) { return pt ? br : en; };
+    const panel = 'border:1px solid var(--line,#30343b);border-radius:18px;padding:18px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012));';
+    const button = 'border:1px solid #444;border-radius:999px;padding:10px 14px;font-size:12px;font-weight:800;background:#f4f4f4;color:#111;cursor:pointer;';
+    const secondary = 'border:1px solid #3b3b3b;border-radius:999px;padding:9px 13px;font-size:11px;font-weight:750;background:#151515;color:#eee;cursor:pointer;';
+    let out = '<section style="margin-top:22px;display:grid;gap:14px"><div class="hero"><div><div class="sectionlabel" style="letter-spacing:1.6px">WHILO PARTNERS / GROWTH NETWORK</div><h2 class="h2">'+tx('Build your partner business.','Construa seu negócio de parceiros.')+'</h2><p class="muted">'+tx('Share work that sells itself. Earn on verified customer payments, help partners grow, and unlock progress tiers from real outcomes.','Indique um produto que entrega valor. Ganhe por pagamentos confirmados, ajude parceiros a crescer e avance de nível com resultados reais.')+'</p></div><button class="btn secondary" data-act="affiliate-refresh" style="'+secondary+'">'+tx('↻ Refresh','↻ Atualizar')+'</button></div>';
+    out += '<div class="notice" style="line-height:1.65">'+tx('Integrity rule: commissions are paid for eligible, collected Whilo sales—not for recruiting people or paying to join. Disclose affiliate links and follow anti-spam, advertising and tax rules.','Regra de integridade: comissões são pagas por vendas elegíveis e recebidas do Whilo — nunca apenas por recrutar pessoas ou pagar para entrar. Identifique links de afiliado e siga regras de publicidade, spam e impostos.')+'</div>';
+    if (!cloudAuthSession) {
+      out += '<div style="'+panel+'"><div class="eyebrow">PARTNER ACCESS</div><h3>'+tx('Sign in to activate your partner profile','Entre para ativar seu perfil de parceiro')+'</h3><p class="muted">'+tx('Your personal referral code, network, rank progress and commission ledger are account-bound.','Seu código pessoal, rede, evolução de nível e extrato de comissões ficam vinculados à sua conta.')+'</p></div></section>';
+      return out;
+    }
+    if (!affiliateDashboard && !affiliateLoading && !affiliateError) loadAffiliateDashboard(false);
+    if (affiliateLoading && !affiliateDashboard) {
+      out += '<div style="'+panel+'"><div class="notice">'+tx('Loading your partner data from Whilo…','Carregando seus dados de parceiro no Whilo…')+'</div></div></section>';
+      return out;
+    }
+    if (affiliateError && !affiliateDashboard) {
+      out += '<div style="'+panel+'"><div class="notice">'+esc(affiliateError)+'</div><button data-act="affiliate-refresh" style="'+button+'">'+tx('Retry','Tentar novamente')+'</button></div></section>';
+      return out;
+    }
+    const data = affiliateDashboard || {};
+    const fmt = affiliateMoney;
+    if (!data.enrolled) {
+      const referred = data.referralAttribution;
+      out += '<div style="'+panel+'"><div class="eyebrow">'+tx('THE PARTNER PATH','A JORNADA DE PARCEIROS')+'</div><h3 style="font-size:23px;letter-spacing:-.6px;margin:8px 0">'+tx('Turn trust into recurring revenue.','Transforme confiança em receita recorrente.')+'</h3><p class="muted">'+tx('Join for free. Get a tracked referral link and see eligible sales, pending commissions, payout status and rank progress in one place.','Entre gratuitamente. Receba um link rastreável e acompanhe vendas elegíveis, comissões pendentes, repasses e evolução de nível.')+'</p>';
+      if (referred) out += '<div class="notice">'+tx('Your account has an incoming partner attribution. Enrolling will preserve it as your sponsor relationship.','Sua conta já tem uma indicação de parceiro. Ao entrar, essa relação poderá ser usada como seu patrocinador direto.')+'</div>';
+      out += '<form id="affiliate-enroll-form" style="display:grid;gap:13px;margin-top:16px"><div class="fieldgroup"><label>'+tx('Partner display name','Nome público de parceiro')+'</label><input name="displayName" maxlength="80" required value="'+esc(cloudAuthSession.email ? cloudAuthSession.email.split('@')[0] : '')+'" placeholder="Your name or brand"></div><label class="checkrow"><input type="checkbox" name="acceptedTerms" required><span>'+tx('I accept the Whilo Partners terms: commission is based on verified paid sales, attribution follows the published rules, and self-referrals, fake accounts, spam or misleading claims can void commissions. I will disclose affiliate links.','Aceito os termos Whilo Partners: comissões dependem de vendas pagas verificadas, a atribuição segue as regras publicadas e autorreferências, contas falsas, spam ou alegações enganosas podem invalidar comissões. Vou identificar links de afiliado.')+'</span></label><button type="submit" style="'+button+'"'+(affiliateBusy?' disabled':'')+'>'+tx('Join Whilo Partners →','Entrar no Whilo Partners →')+'</button></form></div>';
+      out += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px"><div style="'+panel+'"><div class="eyebrow">DIRECT SALES</div><h3>20% recurring</h3><p class="muted">'+tx('Of collected subscription payments for the first 12 months.','Dos pagamentos de assinatura recebidos nos primeiros 12 meses.')+'</p></div><div style="'+panel+'"><div class="eyebrow">PARTNER OVERRIDE</div><h3>5% · one level</h3><p class="muted">'+tx('On eligible subscription payments made by a direct affiliate you sponsored. No deeper-level override.','Sobre pagamentos elegíveis de afiliados diretos que você patrocinou. Sem comissão em níveis mais profundos.')+'</p></div><div style="'+panel+'"><div class="eyebrow">MARKETPLACE SALES</div><h3>5% + 2%</h3><p class="muted">'+tx('Direct referrals earn 5% of eligible order value; the one-level override is 2%, funded from Whilo’s marketplace fee.','Indicação direta recebe 5% do pedido elegível; o override de um nível é 2%, pago a partir da taxa do marketplace.')+'</p></div></div></section>';
+      return out;
+    }
+    const p = data.profile || {};
+    const s = data.stats || {};
+    const next = data.nextRank || {id:'Sovereign',referrals:1000,sales:200000000};
+    const canRequest = Number(s.availableMinor||0)>=10000 && p.payout && p.payout.connected && p.payout.detailsSubmitted && p.payout.transfersEnabled && p.payout.payoutsEnabled;
+    const rankIcons = {Seed:'◌',Bronze:'♙',Silver:'◈',Gold:'✦',Platinum:'⬡',Diamond:'◇',Apex:'✧',Sovereign:'✺'};
+    const tiers = Array.isArray(data.ranks)?data.ranks:[];
+    const progress = Math.max(0,Math.min(100,Math.min(Number(s.paidReferrals||0)/Math.max(1,Number(next.referrals||1)),Number(s.directSalesMinor||0)/Math.max(1,Number(next.sales||1)))*100));
+    out += '<div style="'+panel+'background:radial-gradient(ellipse at 0% 0%,rgba(255,255,255,.1),transparent 48%),#111"><div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap"><div><div class="eyebrow">'+tx('YOUR CURRENT TIER','SEU NÍVEL ATUAL')+'</div><h3 style="font-size:30px;letter-spacing:-1px;margin:8px 0">'+(rankIcons[p.tier]||'◌')+' '+esc(p.tier||'Seed')+'</h3><p class="muted" style="margin:0">'+esc(p.displayName||'Whilo Partner')+' · '+tx('member since','parceiro desde')+' '+esc(p.termsAcceptedAt?new Date(p.termsAcceptedAt).toLocaleDateString(pt?'pt-BR':'en-US'):'—')+'</p></div><div style="min-width:190px"><div class="eyebrow">'+tx('YOUR REFERRAL CODE','SEU CÓDIGO')+'</div><div style="font-size:21px;font-weight:900;letter-spacing:1px;margin:6px 0">'+esc(p.code||'—')+'</div><button data-act="affiliate-copy-code" style="'+secondary+'">'+tx('Copy code','Copiar código')+'</button></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button data-act="affiliate-copy-link" style="'+button+'">'+tx('Copy referral link ↗','Copiar link de indicação ↗')+'</button><button data-act="affiliate-share" style="'+secondary+'">'+tx('Share link','Compartilhar link')+'</button><button data-act="affiliate-refresh" style="'+secondary+'">'+tx('Refresh performance','Atualizar desempenho')+'</button></div><div style="margin-top:18px"><div style="display:flex;justify-content:space-between;gap:8px;color:#aaa;font-size:11px;margin-bottom:7px"><span>'+tx('Progress to','Progresso até')+' '+esc(next.id)+'</span><span>'+Number(s.paidReferrals||0)+' / '+Number(next.referrals||0)+' '+tx('paid referrals','clientes pagantes')+'</span></div><div style="height:8px;background:#303030;border-radius:999px;overflow:hidden"><div style="width:'+progress.toFixed(1)+'%;height:100%;background:linear-gradient(90deg,#eee,#a6a6a6);border-radius:999px"></div></div><div class="muted" style="font-size:11px;margin-top:8px">'+tx('Also requires direct referred sales volume of','Também exige volume de vendas diretas de')+' '+fmt(next.sales||0)+'. '+tx('Tier is calculated from verified sales and may update after a payment is confirmed.','O nível é calculado por vendas verificadas e pode mudar após a confirmação de pagamentos.')+'</div></div></div>';
+    out += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-top:12px">';
+    const metrics = [
+      [tx('Paid referrals','Indicações pagantes'),String(s.paidReferrals||0),tx('Verified paying customers','Clientes pagantes verificados')],
+      [tx('Direct sales volume','Volume de vendas diretas'),fmt(s.directSalesMinor||0),tx('Lifetime attributed sales','Vendas atribuídas acumuladas')],
+      [tx('Awaiting release','A liberar'),fmt(s.pendingMinor||0),tx('Held for 30 days against refunds','Retidas por 30 dias contra reembolsos')],
+      [tx('Available','Disponível'),fmt(s.availableMinor||0),tx('Eligible commission balance','Saldo elegível para comissão')],
+      [tx('Paid commissions','Comissões pagas'),fmt(s.paidMinor||0),tx('Confirmed transfers','Repasses confirmados')],
+      [tx('Partner team','Equipe parceira'),String(s.activeSubAffiliates||0),tx('Active direct sub-affiliates','Subafiliados diretos ativos')]
+    ];
+    out += metrics.map(m=>'<div style="'+panel+'padding:14px"><div style="font-size:10px;color:#999;font-weight:800;letter-spacing:.7px;text-transform:uppercase">'+m[0]+'</div><div style="font-size:22px;font-weight:850;letter-spacing:-.6px;margin:8px 0;overflow-wrap:anywhere">'+m[1]+'</div><div style="font-size:10px;color:#888;line-height:1.45">'+m[2]+'</div></div>').join('');
+    out += '</div>';
+    out += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 10px">'+[
+      ['overview',tx('Overview','Visão geral')],['network',tx('Network','Rede')],['commissions',tx('Commissions','Comissões')],['payouts',tx('Payouts','Repasses')],['ranks',tx('Rank path','Níveis')]
+    ].map(([id,label])=>'<button data-affiliate-pane="'+id+'" style="'+(affiliatePane===id?button:secondary)+'">'+label+'</button>').join('')+'</div>';
+    if (affiliatePane==='overview') {
+      out += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px"><div style="'+panel+'"><div class="eyebrow">'+tx('YOUR SHARE','SUA COMISSÃO')+'</div><h3 style="margin:8px 0">20% + 5%</h3><p class="muted">'+tx('20% direct recurring subscription commission for 12 months; 5% one-level partner override on eligible subscriptions.','20% de comissão recorrente direta por 12 meses; 5% de override de um nível em assinaturas elegíveis.')+'</p></div><div style="'+panel+'"><div class="eyebrow">'+tx('MARKETPLACE','MARKETPLACE')+'</div><h3 style="margin:8px 0">5% + 2%</h3><p class="muted">'+tx('Earn on paid marketplace orders attributed to your link. Both commissions come from Whilo’s 20% platform share.','Ganhe por pedidos pagos do marketplace atribuídos ao seu link. As comissões saem dos 20% da plataforma.')+'</p></div><div style="'+panel+'"><div class="eyebrow">'+tx('PAYOUT STATUS','STATUS DE REPASSE')+'</div><h3 style="margin:8px 0">'+(p.payout&&p.payout.payoutsEnabled?tx('Payout account verified','Conta de repasse verificada'):tx('Complete payout onboarding','Conclua o cadastro de repasse'))+'</h3><p class="muted">'+tx('Available commissions are held for 30 days and require at least R$100, a verified Stripe Connect account and reviewer approval.','Comissões disponíveis ficam retidas por 30 dias e exigem pelo menos R$ 100, conta Stripe Connect verificada e aprovação do responsável.')+'</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button data-act="affiliate-connect-payouts" style="'+secondary+'">'+tx('Connect payouts','Conectar repasses')+'</button><button data-act="affiliate-request-payout" style="'+button+'"'+(canRequest?'':' disabled')+'>'+tx('Request payout','Solicitar repasse')+'</button></div></div></div>';
+      out += '<div style="'+panel+'margin-top:12px"><div class="eyebrow">'+tx('HOW THE NETWORK WORKS','COMO FUNCIONA A REDE')+'</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:12px"><div><strong>01 · '+tx('You refer','Você indica')+'</strong><p class="muted">'+tx('A new customer signs up through your link; a single first attribution is recorded.','Um novo cliente se cadastra pelo seu link; a primeira atribuição elegível é registrada.')+'</p></div><div><strong>02 · '+tx('They pay','Ele paga')+'</strong><p class="muted">'+tx('Verified payments create a commission ledger entry, not a client-side promise.','Pagamentos verificados criam um registro de comissão, não uma promessa no navegador.')+'</p></div><div><strong>03 · '+tx('You progress','Você evolui')+'</strong><p class="muted">'+tx('Ranks come from paying referrals and eligible sales volume—not recruiting volume.','Os níveis dependem de clientes pagantes e volume elegível — não de recrutamento.')+'</p></div></div></div>';
+    } else if (affiliatePane==='network') {
+      const referrals = Array.isArray(data.referrals)?data.referrals:[];
+      out += '<div style="'+panel+'"><div class="eyebrow">'+tx('DIRECT CUSTOMERS','CLIENTES DIRETOS')+'</div><p class="muted">'+tx('Only basic names and referral status are shown; emails and private workspace data stay private.','Mostramos apenas nomes básicos e status; e-mails e dados privados do workspace ficam protegidos.')+'</p>';
+      out += referrals.length?'<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:10px;border-bottom:1px solid #333">Partner/customer</th><th style="text-align:left;padding:10px;border-bottom:1px solid #333">Status</th><th style="text-align:left;padding:10px;border-bottom:1px solid #333">First payment</th></tr></thead><tbody>'+referrals.map(r=>'<tr><td style="padding:10px;border-bottom:1px solid #292929">'+esc(r.displayName||'Whilo member')+'</td><td style="padding:10px;border-bottom:1px solid #292929">'+esc(r.status||'attributed')+'</td><td style="padding:10px;border-bottom:1px solid #292929">'+esc(r.firstPaidAt?new Date(r.firstPaidAt).toLocaleDateString(pt?'pt-BR':'en-US'):tx('No payment yet','Sem pagamento ainda'))+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty"><strong>'+tx('No referrals yet','Nenhuma indicação ainda')+'</strong><p>'+tx('Copy your personal link and share it with a genuine fit for Whilo.','Copie seu link e compartilhe com alguém para quem o Whilo realmente faça sentido.')+'</p></div>';
+      out += '</div>';
+    } else if (affiliatePane==='commissions') {
+      const rows = Array.isArray(data.commissions)?data.commissions:[];
+      out += '<div style="'+panel+'"><div class="eyebrow">'+tx('COMMISSION LEDGER','EXTRATO DE COMISSÕES')+'</div><p class="muted">'+tx('Each row represents an idempotently recorded eligible payment. Amounts are before personal tax obligations.','Cada linha representa um pagamento elegível registrado de forma idempotente. Os valores são antes das obrigações tributárias pessoais.')+'</p>';
+      out += rows.length?'<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:9px;border-bottom:1px solid #333">Source</th><th style="text-align:left;padding:9px;border-bottom:1px solid #333">Rate</th><th style="text-align:right;padding:9px;border-bottom:1px solid #333">Commission</th><th style="text-align:left;padding:9px;border-bottom:1px solid #333">Status</th></tr></thead><tbody>'+rows.map(r=>'<tr><td style="padding:9px;border-bottom:1px solid #292929">'+esc(r.sourceType==='subscription'?tx('Subscription','Assinatura'):tx('Marketplace','Marketplace'))+'<div style="font-size:10px;color:#888">'+esc(new Date(r.createdAt).toLocaleDateString(pt?'pt-BR':'en-US'))+'</div></td><td style="padding:9px;border-bottom:1px solid #292929">'+(Number(r.rateBps)/100).toFixed(2)+'%</td><td style="padding:9px;text-align:right;border-bottom:1px solid #292929;font-weight:800">'+fmt(r.commissionMinor)+'</td><td style="padding:9px;border-bottom:1px solid #292929">'+esc(r.status)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty"><strong>'+tx('No commission entries yet','Ainda sem comissões')+'</strong><p>'+tx('The ledger populates after a referred customer completes an eligible payment.','O extrato será preenchido quando um cliente indicado concluir um pagamento elegível.')+'</p></div>';
+      out += '</div>';
+    } else if (affiliatePane==='payouts') {
+      const rows = Array.isArray(data.payouts)?data.payouts:[];
+      out += '<div style="'+panel+'"><div class="eyebrow">'+tx('PAYOUT HISTORY','HISTÓRICO DE REPASSES')+'</div><p class="muted">'+tx('Every transfer needs an eligible Connect account and a server-side approval. A request is not a payment.','Todo repasse exige uma conta Connect elegível e aprovação do servidor. Uma solicitação ainda não é um pagamento.')+'</p>';
+      out += rows.length?'<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:10px;border-bottom:1px solid #333">Requested</th><th style="text-align:right;padding:10px;border-bottom:1px solid #333">Amount</th><th style="text-align:left;padding:10px;border-bottom:1px solid #333">Status</th></tr></thead><tbody>'+rows.map(r=>'<tr><td style="padding:10px;border-bottom:1px solid #292929">'+esc(new Date(r.requestedAt).toLocaleDateString(pt?'pt-BR':'en-US'))+'</td><td style="padding:10px;text-align:right;border-bottom:1px solid #292929">'+fmt(r.amountMinor)+'</td><td style="padding:10px;border-bottom:1px solid #292929">'+esc(r.status)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty"><strong>'+tx('No payouts requested','Nenhum repasse solicitado')+'</strong><p>'+tx('Once commissions mature to at least R$100 and your account is verified, you can request a payout.','Quando houver ao menos R$ 100 liberados e sua conta estiver verificada, você poderá solicitar um repasse.')+'</p></div>';
+      out += '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button data-act="affiliate-connect-payouts" style="'+secondary+'">'+tx('Connect / refresh payout account','Conectar / atualizar conta de repasse')+'</button><button data-act="affiliate-request-payout" style="'+button+'"'+(canRequest?'':' disabled')+'>'+tx('Request payout','Solicitar repasse')+'</button></div></div>';
+    } else {
+      out += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:10px">'+tiers.map(function(rank,index){
+        const isCurrent=rank.id===p.tier, isPassed=tiers.findIndex(x=>x.id===p.tier)>index;
+        return '<article style="'+panel+'border-color:'+(isCurrent?'#eee':'#363636')+';background:'+(isCurrent?'linear-gradient(145deg,#252525,#111)':'#111')+'"><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:22px">'+(rankIcons[rank.id]||'◈')+'</span><span class="eyebrow">'+(isCurrent?tx('CURRENT','ATUAL'):isPassed?tx('PASSED','CONCLUÍDO'):'TIER '+String(index+1).padStart(2,'0'))+'</span></div><h3 style="font-size:18px;margin:12px 0 7px">'+esc(rank.id)+'</h3><div class="muted" style="font-size:11px;line-height:1.5">'+Number(rank.referrals||0)+' '+tx('paid referrals','indicações pagantes')+'<br>'+fmt(rank.sales||0)+' '+tx('direct sales','em vendas diretas')+'</div><p style="font-size:11px;line-height:1.5;color:#aaa;margin:12px 0 0">'+esc(rank.reward||'Eligible partner progress')+'</p></article>';
+      }).join('')+'</div><div class="notice" style="margin-top:12px">'+tx('Tier rewards are status and enablement milestones; only the published commission schedule creates money owed. No reward is paid for recruiting alone.','Os benefícios de nível são marcos de status e habilitação; somente a tabela pública de comissões gera valores devidos. Não há recompensa financeira por recrutar alguém.')+'</div>';
+    }
+    if (affiliateFeedback) out += '<div class="notice" role="status">'+esc(affiliateFeedback)+'</div>';
+    out += '</section>';
+    return out;
   }
 
   async function loadCloudAuth() {
@@ -582,7 +707,7 @@
     return out + '</div><div class="sectionlabel">Workforce architecture</div><div class="grid"><article class="card"><div class="eyebrow">Persistent agent</div><h3>Pets own outcomes</h3><p>A Pet keeps its role, user-approved memory, skills, policy and scorecard across jobs. It is the accountable lead that plans, delegates and handles exceptions.</p></article><article class="card"><div class="eyebrow">Ephemeral specialist</div><h3>Bots execute bounded tasks</h3><p>A Pet can spawn Browser Researcher, Computer Operator, Analyst, CRM Operator, Writer, Coder or QA Verifier Bots. Each gets a narrow task contract, scoped tools, a budget and an output schema.</p></article><article class="card"><div class="eyebrow">Quality control</div><h3>Verifier checks the receipt</h3><p>A separate verification step checks evidence and acceptance criteria. More agents are used only when specialization or safe parallelism improves the expected outcome.</p></article></div><div class="sectionlabel">Expansion principle</div><div class="card"><h3>Outcome before headcount replacement</h3><p>Each workflow needs a named owner, source systems, acceptance criteria, exception handling, an approval threshold and a measurable result before it is allowed to run unattended.</p></div>';
   }
   function accountPage() {
-    return '<div class="hero"><div><h2 class="h2">Your Whilo account</h2><p class="muted">Sign in, create your account or recover access in one place. Workspace provisioning happens after authentication and requires Supabase setup.</p></div></div>' + cloudAuthCard();
+    return '<div class="hero"><div><h2 class="h2">Your Whilo account</h2><p class="muted">Manage identity, access and your Whilo Partners growth profile.</p></div></div>' + cloudAuthCard() + affiliateHubPage();
   }
   function connectPage() {
     if (!connectorCache && !connectorLoading && !connectorFeedback) loadConnectors();
@@ -1587,7 +1712,7 @@
           cloudAuthFeedback = mode === 'signup' ? 'Account created for ' + (user.email || email) + '.' : 'Signed in as ' + (user.email || email) + '.';
           return acceptPendingWorkspaceInvitation().catch(function(){ return null; }).then(function (invitation) {
             if (invitation) cloudAuthFeedback = invitation.detail || ('Joined ' + invitation.organizationName + '.');
-            return whiloApi('/api/account/bootstrap', {method:'POST', body:JSON.stringify({})});
+            return whiloApi('/api/account/bootstrap', {method:'POST', body:JSON.stringify({})}).then(function(workspace){ return claimPendingAffiliateReferral().then(function(){return workspace;}); });
           }).then(function (workspace) {
             if (workspace && workspace.ok) cloudAuthFeedback = 'Signed in as ' + (user.email || email) + '. Workspace ready with ' + (workspace.petsSeeded || []).length + ' default Pets.';
             connectorCache = null; connectorFeedback = ''; cloudMissionsCache = null; cloudMissionsFeedback = '';
