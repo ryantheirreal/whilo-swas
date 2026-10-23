@@ -307,6 +307,9 @@
                 : 'Signed in, but workspace provisioning is not ready yet.';
             }
           }
+          if (cloudAuthMode !== 'recovery') {
+            await claimPendingAffiliateReferral().catch(function(){ return null; });
+          }
         }
       } catch (sessionError) {
         cloudAuthSession = null;
