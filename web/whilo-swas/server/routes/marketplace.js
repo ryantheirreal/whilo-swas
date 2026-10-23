@@ -519,7 +519,7 @@ async function processWebhookEvent(event) {
     if (obj.mode === 'payment' && obj.payment_status === 'paid' || event.type === 'checkout.session.async_payment_succeeded') {
       const orderId = String((obj.metadata || {}).whilo_order_id || '');
       if (UUID_RE.test(orderId)) {
-        const orders = await db('marketplace_orders?id=eq.' + encodeURIComponent(orderId) + '&select=id,listing_id,buyer_organization_id,buyer_user_id,state&limit=1');
+        const orders = await db('marketplace_orders?id=eq.' + encodeURIComponent(orderId) + '&select=id,listing_id,buyer_organization_id,buyer_user_id,state,price_minor,currency&limit=1');
         const order = Array.isArray(orders) ? orders[0] : null;
         if (order && order.state !== 'refunded' && order.state !== 'disputed') {
           await db('marketplace_orders?id=eq.' + encodeURIComponent(order.id), {
@@ -629,11 +629,27 @@ async function processWebhookEvent(event) {
           method: 'PATCH', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ state, refunded_at: state === 'refunded' ? new Date().toISOString() : null, disputed_at: state === 'disputed' ? new Date().toISOString() : null })
         });
+        await db('rpc/reverse_whilo_affiliate_source', {
+          method: 'POST',
+          body: JSON.stringify({ p_source_type: 'marketplace', p_source_id: order.id, p_reason: event.type })
+        });
         if (state === 'refunded') await db('marketplace_entitlements?listing_id=eq.' + encodeURIComponent(order.listing_id) + '&buyer_user_id=eq.' + encodeURIComponent(order.buyer_user_id), {
           method: 'PATCH', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ status: 'revoked', revoked_at: new Date().toISOString() })
         });
       }
+    }
+    const invoiceValue = obj.invoice;
+    const invoiceId = typeof invoiceValue === 'string' ? invoiceValue : invoiceValue && invoiceValue.id;
+    if (invoiceId) {
+      await db('rpc/reverse_whilo_affiliate_source', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_source_type: 'subscription',
+          p_source_id: String(invoiceId),
+          p_reason: event.type
+        })
+      });
     }
   }
 }
