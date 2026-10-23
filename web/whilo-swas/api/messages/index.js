@@ -13,7 +13,10 @@ const MESSAGE_ROUTES = Object.freeze({
   marketplace: require('../../server/routes/marketplace'),
   'marketplace-webhook': require('../../server/routes/marketplace').webhook,
   'account-bootstrap': require('../../server/routes/account-bootstrap'),
-  affiliates: require('../../server/routes/affiliates')
+  affiliates: require('../../server/routes/affiliates'),
+  routines: require('../../server/routes/routines'),
+  credits: require('../../server/routes/credits'),
+  'credits-webhook': require('../../server/routes/credits').webhook
 });
 
 function inFilter(values) { return 'in.(' + values.map(String).join(',') + ')'; }
