@@ -52,8 +52,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 15) {
-  failures.push('Expected all fifteen versioned Supabase migrations to be present.');
+if (migrations.length < 20) {
+  failures.push('Expected all twenty versioned Supabase migrations to be present.');
 }
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 for (const [label, pattern] of [
@@ -85,7 +85,13 @@ for (const [label, pattern] of [
   ['integration view invoker security', /alter view public\.integration_connections_safe set \(security_invoker = true, security_barrier = true\)/i],
   ['trigger functions not executable by browser roles', /revoke all on function public\.handle_new_user\(\) from public, anon, authenticated, service_role/i],
   ['safe integration view grants authenticated read only', /grant select on table public\.integration_connections_safe to authenticated/i],
-  ['integration table column-level allowlist', /grant select \(id, organization_id, provider, status, external_account_id, external_account_name, scopes, metadata, connected_at, last_verified_at, revoked_at\)\s+on table public\.integration_connections to authenticated/i],
+  ['integration table column-level allowlist', /grant select \(id, organization_id, provider, status, external_account_id, external_account_name, scopes, metadata, connected_at, last_verified_at, revoked_at\)\s+on table public\.integration_connections to authenticated/i],,
+  ['workspace library asset model', /create table if not exists public\.whilo_library_assets/i],
+  ['durable approval-gated routine runs', /create table if not exists public\.whilo_routine_runs/i],
+  ['database-native routine scheduler', /function private\.dispatch_due_whilo_routines/i],
+  ['Willow Bucks usage wallet', /create table if not exists public\.whilo_credit_wallets/i],
+  ['atomic usage metering', /function public\.charge_whilo_usage/i],
+  ['idempotent Willow Bucks topups', /function public\.apply_whilo_credit_purchase/i]
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
@@ -118,10 +124,10 @@ if (!packageJson.dependencies || packageJson.dependencies.stripe !== '22.6.2') {
   failures.push('Marketplace webhooks must use the pinned official Stripe SDK version 22.6.2.');
 }
 const envExample = fs.readFileSync(path.join(root, 'web', 'whilo-swas', '.env.example'), 'utf8');
-for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'WHILO_CONNECTOR_ENCRYPTION_KEY', 'WHILO_OAUTH_STATE_SECRET', 'SLACK_CLIENT_SECRET', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS', 'WHILO_AFFILIATE_PAYOUTS_ENABLED']) {
+for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'WHILO_CONNECTOR_ENCRYPTION_KEY', 'WHILO_OAUTH_STATE_SECRET', 'SLACK_CLIENT_SECRET', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS', 'WHILO_AFFILIATE_PAYOUTS_ENABLED', 'STRIPE_CREDITS_WEBHOOK_SECRET']) {
   if (!envExample.includes(key)) failures.push('Missing environment documentation: ' + key);
 }
-for (const key of ['SUPABASE_SERVICE_ROLE_KEY=', 'WHILO_CONNECTOR_ENCRYPTION_KEY=', 'WHILO_OAUTH_STATE_SECRET=', 'SLACK_CLIENT_SECRET=', 'STRIPE_SECRET_KEY=', 'STRIPE_WEBHOOK_SECRET=', 'WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS=', 'WHILO_AFFILIATE_PAYOUTS_ENABLED=']) {
+for (const key of ['SUPABASE_SERVICE_ROLE_KEY=', 'WHILO_CONNECTOR_ENCRYPTION_KEY=', 'WHILO_OAUTH_STATE_SECRET=', 'SLACK_CLIENT_SECRET=', 'STRIPE_SECRET_KEY=', 'STRIPE_WEBHOOK_SECRET=', 'WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS=', 'WHILO_AFFILIATE_PAYOUTS_ENABLED=', 'STRIPE_CREDITS_WEBHOOK_SECRET=']) {
   const lines = envExample.split(/\r?\n/).filter(line => line.startsWith(key));
   if (lines.some(line => line.slice(key.length).trim() && !line.trim().endsWith('='))) {
     failures.push('Real secrets must not be committed in .env.example (' + key + ').');
