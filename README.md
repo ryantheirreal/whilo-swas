@@ -35,11 +35,17 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 - **Mac Bridge pairing foundation:** short-lived QR, atomic single-use claim, hashed device credential and heartbeat. **This is not an iMessage transport yet.**
 - **Owner provisioning:** uses Supabase Auth to hash/verify passwords. It refuses the weak password shared in chat and does not reset an existing account.
 
-## Configuration gate — not yet active
+## Production activation gate — partially configured, not end-to-end ready
 
-Cloud operations are not activated yet. The workspace owner must connect/configure Supabase, apply all thirteen migrations in ascending order, set server-side Vercel environment variables, and provision the owner account with a strong temporary password. Marketplace payments also require Stripe Connect, recurring Price IDs, test-mode webhooks, seller verification and end-to-end payment/refund/dispute tests before public sales. Follow `docs/connectors-and-identity.md` and `docs/marketplace-and-pricing-strategy.md`.
+The dedicated Supabase project `whilo-prod` is active in `sa-east-1`, and its migration history contains 26 applied migrations. Do **not** replay the existing migrations against this database. The Vercel project has `SUPABASE_URL`, the public `SUPABASE_ANON_KEY`, the canonical URL, the Slack callback URL, sensitive connector-encryption and OAuth-state secrets, and `WHILO_AFFILIATE_PAYOUTS_ENABLED=false`.
 
-No production owner account was created, no migration has been applied to a live database, and no Slack, Twilio, Stripe Connect or subscription billing account was activated in this session. The actual autonomous worker and native iMessage bridge also remain unimplemented. Do not represent plans, queued jobs, a QR pair or connector metadata as completed execution without evidence from the provider.
+**Blocking configuration:** Vercel still has no `SUPABASE_SERVICE_ROLE_KEY`. Server routes use this key for protected database operations, so authenticated backend workflows are not yet end-to-end functional. Add the current key from Supabase Project Settings → API Keys as a sensitive, server-only Vercel environment variable. Never expose it to browser code, commit it, or paste it into chat.
+
+Stripe is not yet configured for Whilo in a verified sandbox: the Stripe API and webhook secrets, recurring Price IDs and approved moderator/reviewer UUID allowlists are absent. Do not accept live payments or enable affiliate transfers until a dedicated sandbox passes checkout, duplicate-webhook, unpaid-session, refund/dispute and payout-recovery tests. Keep the payout kill switch false.
+
+The saved-library routine snapshot analyzer is implemented and covered by a regression test; it only analyzes bounded saved metadata and does not browse the live site or control a computer. “Run now” for an external site/computer remains an approval-gated mission plan unless an authorized execution worker and its live acceptance tests prove the action occurred. The native iMessage bridge and production autonomous desktop worker are still not implemented. Do not represent queued jobs, QR pairing or connector metadata as completed execution.
+
+See `docs/one-shot-activation-runbook.md` for verified infrastructure status and release gates. The Strix workflow exists but has not been run from this environment, and no Anthropic Claude Security scan is claimed as complete.
 
 ## Build and checks
 
