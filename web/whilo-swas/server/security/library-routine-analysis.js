@@ -100,7 +100,7 @@ function analyzeLibraryRoutine(routine, asset, now = new Date()) {
         type: clean(widget.type || 'unspecified', 40),
         hasValue: typeof widget.value === 'number' || typeof widget.value === 'string',
         unit: clean(widget.unit || '', 24)
-      })), fields: fields.slice(0, 24).map(field => clean(field, 100)) }
+      })), fields: fields.slice(0, 24).map(field => clean(field, 100)) } }
   ];
   const recommendations = recommendationList(asset, widgets, comparableGroups, numericWidgets.length);
   const stepResults = rawSteps.map((rawStep, index) => {
