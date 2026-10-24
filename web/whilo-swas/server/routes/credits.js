@@ -127,7 +127,7 @@ async function handleWebhook(req,res) {
       return send(res,200,{received:true,ignored:true});
     }
     const session=event.data&&event.data.object||{};
-    if(session.mode!=='payment'||(session.payment_status!=='paid'&&event.type!=='checkout.session.async_payment_succeeded')) {
+    if(session.mode!=='payment'||session.payment_status!=='paid') {
       return send(res,200,{received:true,ignored:true});
     }
     const meta=session.metadata||{};
