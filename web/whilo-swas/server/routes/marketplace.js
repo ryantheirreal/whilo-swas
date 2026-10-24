@@ -60,7 +60,7 @@ function requireStripeKey() {
     error.missingEnv = ['STRIPE_SECRET_KEY'];
     throw error;
   }
-  if (!/^sk_(test|live)_/.test(key)) fail(503, 'The payment provider key is not valid for this deployment.');
+  if (!/^(?:sk|rk)_(test|live)_/.test(key)) fail(503, 'The payment provider key must use a valid Stripe test/live secret or restricted-key prefix.');
   return key;
 }
 function stripeClient() { return new Stripe(requireStripeKey()); }
