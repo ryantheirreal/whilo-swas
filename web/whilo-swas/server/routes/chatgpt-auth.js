@@ -287,7 +287,6 @@ async function callback(req, res) {
     if (typeof tokens.id_token !== 'string') return genericCallbackError(res, 401);
     const identity = await verifyIdentityToken(tokens.id_token, settings.clientId, transaction.nonce, oidc);
     const user = await resolveAuthUser(identity, settings.clientId);
-    const session = signChatGPTSession(user);
     return deliverAppSession(res, user);
   } catch (error) {
     return genericCallbackError(res, error && error.statusCode || 400);
