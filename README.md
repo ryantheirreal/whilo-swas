@@ -31,7 +31,7 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 - **Mission API:** validates DAGs and constraints before persisting plans. Explicit approval is required before a job enters the durable queue; API responses say whether work is still waiting for a worker.
 - **Slack OAuth:** authenticated installation start, expiring one-time state, server-side token exchange, encrypted-at-rest bot token and disconnect flow.
 - **SMS via Twilio:** server-side credential validation and encrypted storage. Setup does not send messages.
-- **Human Messages:** DMs, groups, supergroups, public channels, people search, message history, edits/deletes, reactions, threads, read receipts, and invitation links. API code is ready for configuration; Supabase is not connected yet.
+- **Human Messages:** DMs, groups, supergroups, public channels, people search, message history, edits/deletes, reactions, threads, read receipts, and invitation links. The Supabase schema is applied, but live use still needs `SUPABASE_SERVICE_ROLE_KEY` in Vercel and authenticated end-to-end verification.
 - **Mac Bridge pairing foundation:** short-lived QR, atomic single-use claim, hashed device credential and heartbeat. **This is not an iMessage transport yet.**
 - **Owner provisioning:** uses Supabase Auth to hash/verify passwords. It refuses the weak password shared in chat and does not reset an existing account.
 
@@ -61,7 +61,7 @@ Desktop: `cd desktop/whilo-swas-desktop && npm install && npm run check`; packag
 
 The Vercel project root is `web/whilo-swas`; framework Vite, build command `npm run build`, output `public`, Node 24.x. Verify the latest deployment is **READY** before treating a commit as live.
 
-The base site bundle is still release-built rather than first-party source in this repository. Marketplace UI/API code is first-party extension code in this repository and remains in preview until its database and payment setup is complete. The current Work extension's mission planning and manual evidence review are not a production server-side autonomous worker. Data in that extension remains browser-local until the authenticated APIs and database are configured and the UI is migrated end-to-end.
+The base site bundle is still release-built rather than first-party source in this repository. The database exists and its 26 migrations are applied, but authenticated server APIs remain blocked until `SUPABASE_SERVICE_ROLE_KEY` is configured in Vercel. Marketplace code is present but not activated for live selling until Stripe sandbox credentials, signed webhooks and end-to-end payment/refund tests pass. The Work extension's mission planning and manual evidence review are not a production server-side autonomous worker. Do not claim a browser/desktop action executed unless a configured worker returns verifiable run evidence.
 
 The desktop project remains a secure Electron shell which opens the hosted Whilo site. Its build workflow targets macOS, Windows and Linux; no installer artifacts or platform signing should be assumed until a platform build has succeeded. It does not yet provide native computer control or a remote VM by itself.
 
