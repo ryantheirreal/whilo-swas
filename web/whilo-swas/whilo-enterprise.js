@@ -1653,7 +1653,7 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
       }
     }catch(error){
       const message=error&&error.message?error.message:'The chat request could not be completed.';
-      whiloChatAppend('assistant','I could not complete that request safely: '+message+' Nothing was saved or executed.','chat');
+      whiloChatAppend('assistant','I could not complete that request safely: '+message+' Nothing was saved or executed.',whiloChatMode);
       whiloChatFeedback=message;
     }finally{
       whiloChatBusy=false;
@@ -1673,7 +1673,7 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     try{
       const payload={
         action:'create_routine',title:whiloChatPendingRoutine.title,description:whiloChatPendingRoutine.description,
-        targetKind:kind,assetId:needsAsset?whiloChatAssetId:null,targetUrl:['website','api'].includes(kind)?String(whiloChatTargetUrl||'').trim()||null:(whiloChatTargetUrl||null),
+        targetKind:kind,assetId:needsAsset?whiloChatAssetId:null,targetUrl:['website','api'].includes(kind)?String(whiloChatTargetUrl||'').trim()||null:null,
         runtimeMode:whiloChatRuntimeMode,scheduleKind:whiloChatScheduleKind,scheduleTime:whiloChatScheduleTime,
         scheduleDays:whiloChatScheduleKind==='weekly'?[1]:[],timezone:'America/Sao_Paulo',maxCostWB:Number(whiloChatMaxCostWB),
         steps:whiloChatPendingRoutine.steps,acceptanceCriteria:whiloChatPendingRoutine.acceptanceCriteria,
