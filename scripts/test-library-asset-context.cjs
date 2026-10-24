@@ -31,5 +31,7 @@ assert.equal(parsed.ignoredPrivateField, undefined);
 assert.equal(parsed.widgets[2].title.length <= 120, true);
 assert.equal(libraryAssetContext(null), '');
 assert.equal(libraryAssetContext({ id: 'x', definition: { widgets: 'not-an-array' } }) !== '', true);
-assert.ok(libraryAssetContext({ id: 'x', name: 'n'.repeat(10000), definition: { widgets: Array.from({length:100}, (_,i)=>({title:'widget '+i,description:'d'.repeat(1000)})) } }).length <= 2600);
+const bounded = libraryAssetContext({ id: 'x', name: 'n'.repeat(10000), definition: { widgets: Array.from({length:100}, (_,i)=>({title:'widget '+i,description:'d'.repeat(1000)})) } });
+assert.ok(bounded.length <= 2600);
+assert.doesNotThrow(() => JSON.parse(bounded), 'bounded context must remain valid JSON');
 console.log('Library asset context tests passed.');
