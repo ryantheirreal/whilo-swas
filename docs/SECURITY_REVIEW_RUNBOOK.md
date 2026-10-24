@@ -21,7 +21,7 @@ The checker validates JavaScript syntax, Vercel function-count limits, critical 
 
 ### 2. Strix white-box scan
 
-The manual GitHub Actions workflow is `.github/workflows/strix-assessment.yml`. It scans the checked-out repository in a disposable GitHub-hosted runner. It is manual-only, restricted to the `main` branch, caps the scan's model budget at US$10, fails when the scanner does not complete, and retains the report artifact for 14 days. It does not perform an active black-box pentest of production.
+The manual GitHub Actions workflow is `.github/workflows/strix-assessment.yml`. It uses `workflow_dispatch`, requires an explicit ownership/authorization input, constrains the target to `repository-code-only`, scans `./web/whilo-swas` in a disposable GitHub-hosted runner, and has a 45-minute timeout. It uploads the `strix_runs/` artifact for 14 days. **The workflow does not currently configure a model-spend budget cap**, and it does not perform an active black-box pentest of production.
 
 Before dispatching, configure the GitHub repository secret `ANTHROPIC_API_KEY` **outside chat**. The workflow pins Strix 1.7.0, uses `anthropic/claude-sonnet-4-6`, runs a bounded quick scan with a 45-minute job timeout, and uploads `strix_runs/` as a 14-day artifact. Use the Actions tab → **Strix Authorized Repository Assessment** → **Run workflow**, explicitly confirm repository ownership, and keep scope set to `repository-code-only`. Review the entire artifact; a timeout, missing report, or incomplete run is not a clean result. The workflow has not been executed from this environment, so no Strix finding-free result is claimed.
 
