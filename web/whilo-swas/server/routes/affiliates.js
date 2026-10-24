@@ -27,7 +27,7 @@ function cleanText(value,max) {
 }
 function stripeClient() {
   const key = String(process.env.STRIPE_SECRET_KEY || '').trim();
-  if (!/^sk_(test|live)_/.test(key)) {
+  if (!/^(?:sk|rk)_(test|live)_/.test(key)) {
     const error = new Error('Stripe Connect is not configured for affiliate payouts yet.');
     error.statusCode = 503;
     error.missingEnv = ['STRIPE_SECRET_KEY'];
