@@ -72,6 +72,10 @@ async function walletSnapshot(user, member) {
 async function createCheckout(user, member, body) {
   const pack=PACKS[String(body.packId||'')];
   if(!pack) fail(400,'Choose one of the published Willow Bucks credit packs.');
+  const requestId=String(body.requestId||'').trim();
+  if(!/^[A-Za-z0-9:_-]{8,100}$/.test(requestId)) {
+    fail(400,'A valid checkout request ID is required so retries can be idempotent.');
+  }
   const base=baseUrl();
   const session=await stripeClient().checkout.sessions.create({
     mode:'payment',
@@ -95,7 +99,7 @@ async function createCheckout(user, member, body) {
     },
     success_url:base+'/?credits=success&session_id={CHECKOUT_SESSION_ID}',
     cancel_url:base+'/?credits=cancelled'
-  },{idempotencyKey:'whilo-wb-checkout-'+member.organization_id+'-'+user.id+'-'+pack.id+'-'+Date.now()});
+  },{idempotencyKey:'whilo-wb-checkout-'+member.organization_id+'-'+user.id+'-'+pack.id+'-'+requestId});
   if(!session.url || !/^https:\/\/checkout\.stripe\.com\//.test(session.url)) fail(502,'Stripe Checkout did not return a valid URL.');
   return {checkoutUrl:session.url,sessionId:session.id,pack:{id:pack.id,name:pack.name,amountMinor:pack.amountMinor,creditsWB:pack.credits}};
 }
