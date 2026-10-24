@@ -53,8 +53,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 26) {
-  failures.push('Expected all twenty-six versioned Supabase migrations to be present.');
+if (migrations.length < 28) {
+  failures.push('Expected all twenty-eight versioned Supabase migrations to be present.');
 }
 const migrationVersions = migrations.map(file => path.basename(file).match(/^(\d{12})_/));
 if (migrationVersions.some(match => !match)) failures.push('Every SQL migration must start with a 12-digit version and underscore.');
@@ -179,11 +179,24 @@ if (!routeMap.includes("affiliates: require('../../server/routes/affiliates')"))
 if (!(vercelConfig.rewrites || []).some(item => item.source === '/api/affiliates' && item.destination === '/api/messages?route=affiliates')) failures.push('The affiliate API rewrite is missing.');
 const affiliateRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'affiliates.js'), 'utf8');
 const chatgptAuthRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'chatgpt-auth.js'), 'utf8');
+const modelGatewayRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'model-gateway.js'), 'utf8');
+const connectorsRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'api', 'connectors', 'index.js'), 'utf8');
 const cloudAuthClient = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'), 'utf8');
 if (!chatgptAuthRoute.includes('consume_whilo_siwc_transaction') || !chatgptAuthRoute.includes('crypto.verify(') || !chatgptAuthRoute.includes('claims.nonce !== nonce')) failures.push('ChatGPT identity sign-in must consume state once and verify OIDC signature/nonce.');
 if (!chatgptAuthRoute.includes("scope', 'openid profile email") || chatgptAuthRoute.includes('chatgpt.tokens.use.direct')) failures.push('Hosted Whilo ChatGPT OAuth must remain identity-only until OpenAI approves consumer-plan inference.');
 if (!chatgptAuthRoute.includes('browser_session_hash') || !chatgptAuthRoute.includes('HttpOnly; Secure; SameSite=Lax')) failures.push('ChatGPT OAuth state must be bound to a secure, browser-only flow cookie.');
 if (!cloudAuthClient.includes('signInWithProvider') || !cloudAuthClient.includes('code_verifier:pending.verifier') || !cloudAuthClient.includes('window.history.replaceState')) failures.push('Google sign-in must use PKCE and remove callback credentials from the address bar.');
+if (!modelGatewayRoute.includes("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100") ||
+    !modelGatewayRoute.includes("https://api.openai.com/v1/responses") ||
+    !modelGatewayRoute.includes('store:false') ||
+    !modelGatewayRoute.includes('Math.min(2048') ||
+    !modelGatewayRoute.includes('provider_quota_or_rate_limit')) failures.push('BYOK model gateway must use official API endpoints, no-store requests, bounded output and quota-aware errors.');
+if (modelGatewayRoute.includes('chatgpt.tokens.use.direct') || modelGatewayRoute.includes('antigravity')) failures.push('Hosted model gateway must not impersonate consumer-plan or Antigravity clients.');
+if (!connectorsRoute.includes("action === 'connect_gemini_api'") || !connectorsRoute.includes("action === 'connect_openai_api'") ||
+    !connectorsRoute.includes("encryptPayload({kind:isGemini?'gemini_api_key':'openai_api_key'") ||
+    !connectorsRoute.includes("['owner','admin'].includes(member.role)")) failures.push('BYOK provider keys must be verified, encrypted at rest and restricted to workspace owners/admins.');
+if (!enterpriseUi.includes('BYOK Model Console') || !enterpriseUi.includes('connect-model-key-form') ||
+    !enterpriseUi.includes('model-playground-form')) failures.push('The Connect screen must include secure provider-key setup and a live-model console.');
 const marketplaceRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'marketplace.js'), 'utf8');
 for (const [label, source] of [['Willow Bucks', creditsRoute], ['affiliate payouts', affiliateRoute], ['marketplace', marketplaceRoute]]) {
   if (!source.includes('/^(?:sk|rk)_(test|live)_/')) failures.push(label + ' must support least-privilege Stripe restricted keys.');
