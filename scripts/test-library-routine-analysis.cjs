@@ -42,7 +42,7 @@ assert.equal(result.executionMode, 'saved_library_snapshot');
 assert.equal(result.executionStatus, 'succeeded');
 assert.equal(result.executedAt, fixedDate.toISOString());
 assert.equal(result.summary.assetId, 'asset-1');
-assert.equal(result.summary.widgetCount, 4, 'the context serializer bounds and filters widget data');
+assert.equal(result.summary.widgetCount, 5, 'the context serializer preserves bounded widget metadata while stripping object values and private fields');
 assert.equal(result.summary.numericMetricCount, 3);
 assert.equal(result.summary.comparableUnitGroups, 1, 'only BRL metrics with matching units are compared');
 assert.deepEqual(result.stepResults[2].data.comparableGroups[0].metrics.map(row => row.value), [1200, 900]);
