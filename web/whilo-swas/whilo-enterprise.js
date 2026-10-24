@@ -376,6 +376,15 @@
             ? 'Create an account with the invited email. Whilo checks the invitation against your authenticated email before granting workspace access.'
             : 'Create your Whilo identity with your email. Confirm the email if prompted, then sign in to provision your private workspace.')
           : 'Sign in with your email and password. Whilo sends credentials only to Supabase over HTTPS and never stores your password.';
+    const providerButtons = (!creating && !recovering && !resetting) ?
+      '<div style="display:grid;gap:9px;max-width:520px;margin:0 0 12px">' +
+      '<button type="button" data-act="cloud-provider-chatgpt" style="display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:68px;padding:12px 15px;border:1px solid #343434;border-radius:14px;background:transparent;color:#f7f7f7;cursor:pointer"'+(cloudAuthBusy?' disabled':'')+'>' +
+      '<svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true" style="flex:0 0 26px"><g fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4.8a6.1 6.1 0 0 0-5.3 3.1l-1.1 1.9a6 6 0 0 0-2.8 8.1l1.1 1.9a6 6 0 0 0 5.2 8.1h2.2a6 6 0 0 0 7.1-3.7l1.1-1.9a6 6 0 0 0 2.7-8.1l-1.1-1.9a6 6 0 0 0-5.2-8.1z"/><path d="M10.3 8.2 16 11.5l5.7-3.3M7.7 20.1 13.4 17v-6.6M24.3 20.1 18.6 17v-6.6M10.4 24l5.6-3.3 5.7 3.3M8.7 9.8l5.7 3.3v6.6M23.3 9.8l-5.7 3.3v6.6"/></g></svg>' +
+      '<span style="display:grid;gap:3px"><span style="font-size:13px;font-weight:750">Sign in with ChatGPT</span><span style="font-size:11px;line-height:1.45;color:#9a9a9a">Verified identity; ChatGPT-plan inference requires separate OpenAI approval.</span></span></button>' +
+      '<button type="button" data-act="cloud-provider-google" style="display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:68px;padding:12px 15px;border:1px solid #343434;border-radius:14px;background:transparent;color:#f7f7f7;cursor:pointer"'+(cloudAuthBusy?' disabled':'')+'>' +
+      '<svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" style="flex:0 0 26px"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11c-.5 2.5-1.9 4.6-4.1 6l6.5 5.1c3.8-3.5 6.2-8.6 6.2-14.8z"/><path fill="#34A853" d="M24 44c5.4 0 10-1.8 13.4-4.8l-6.5-5.1c-1.8 1.2-4.1 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.5L6 32.6C9.5 39.5 16.3 44 24 44z"/><path fill="#FBBC05" d="M12.6 27.5c-.4-1.1-.6-2.3-.6-3.5s.2-2.4.6-3.5L6 15.4C4.7 18.1 4 21 4 24s.7 5.9 2 8.6z"/><path fill="#EA4335" d="M24 12.4c3 0 5.7 1 7.8 3l5.8-5.8C34.1 6.6 29.4 4.5 24 4.5c-7.6 0-14.5 4.5-18 10.9l6.6 5.1c1.6-4.9 6.1-8.1 11.4-8.1z"/></svg>' +
+      '<span style="display:grid;gap:3px"><span style="font-size:13px;font-weight:750">Sign in with Google</span><span style="font-size:11px;line-height:1.45;color:#9a9a9a">Use Google for your Whilo identity; Gemini API access is connected separately.</span></span></button>' +
+      '<div style="text-align:center;font-size:10px;letter-spacing:.12em;color:#777">OR CONTINUE WITH EMAIL</div></div>' : '';
     return '<section class="whilo-auth-shell" style="display:grid;grid-template-columns:1fr;gap:0;margin:14px 0;border:1px solid #292929;border-radius:24px;overflow:hidden;background:linear-gradient(145deg,#141414,#080808);color:#f7f7f7">' +
       '<div style="padding:clamp(22px,5vw,38px);background:radial-gradient(ellipse at 12% 0%,rgba(255,255,255,.09),transparent 55%),#0a0a0a">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:28px"><span style="display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#fff;color:#080808;font-weight:900;font-size:22px;letter-spacing:-2px">w.</span><div><div style="font-size:16px;font-weight:750;letter-spacing:-.4px">whilo</div><div style="font-size:11px;color:#9b9b9b;letter-spacing:1.2px;text-transform:uppercase">Your work, in motion</div></div><span style="margin-left:auto;border:1px solid #343434;border-radius:99px;padding:6px 10px;font-size:11px;color:#bdbdbd">'+(recovering?'SECURE RESET':resetting?'ACCOUNT RECOVERY':creating?'CREATE ACCOUNT':'PRIVATE WORKSPACE')+'</span></div>' +
@@ -384,6 +393,7 @@
       '<p style="font-size:14px;line-height:1.65;color:#b5b5b5;max-width:470px;margin:0 0 22px">'+description+'</p>' +
       '<div style="display:grid;gap:11px;max-width:520px">' +
       (cloudAuthFeedback ? '<div class="notice" role="status">' + esc(cloudAuthFeedback) + '</div>' : '') +
+      providerButtons +
       '<form id="cloud-signin-form" style="display:grid;gap:13px"><input type="hidden" name="mode" value="'+(recovering?'recovery':resetting?'reset-request':creating?'signup':'signin')+'">' +
       (recovering ? '' : '<div class="fieldgroup"><label class="label" for="whilo-cloud-email" style="color:#e3e3e3">Email address</label><input id="whilo-cloud-email" class="field" name="email" type="email" autocomplete="username" required maxlength="320" placeholder="you@company.com" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"'+(unavailable||cloudAuthBusy?' disabled':'')+'></div>') +
       (resetting ? '' : '<div class="fieldgroup"><label class="label" for="whilo-cloud-password" style="color:#e3e3e3">'+(recovering?'New password':'Password')+'</label><input id="whilo-cloud-password" class="field" name="password" type="password" autocomplete="'+(creating||recovering?'new-password':'current-password')+'" required minlength="'+(creating||recovering?'14':'1')+'" maxlength="256" placeholder="'+(creating||recovering?'At least 14 characters':'Your password')+'" style="min-height:48px;border-radius:12px;background:#101010;border:1px solid #393939;color:#fff;padding:0 14px"'+(unavailable||cloudAuthBusy?' disabled':'')+'></div>') +
@@ -2013,6 +2023,29 @@
       const dept = DEPARTMENTS.find(function (d) { return d.id === id; });
       if (dept) addTask(dept.template, dept.name, 'Whilo', 'High');
       active = 'work'; render(); return;
+    }
+    if (act === 'cloud-provider-google') {
+      if (cloudAuthBusy || !window.WhiloCloudAuth || typeof window.WhiloCloudAuth.signInWithProvider !== 'function') return;
+      cloudAuthBusy = true; cloudAuthFeedback = 'Preparing secure Google sign-in…'; render();
+      window.WhiloCloudAuth.signInWithProvider('google').catch(function (error) {
+        cloudAuthBusy = false;
+        cloudAuthFeedback = error && error.message ? error.message : 'Google sign-in could not start. Confirm that Google is enabled in Supabase Auth.';
+        render();
+      });
+      return;
+    }
+    if (act === 'cloud-provider-chatgpt') {
+      if (cloudAuthBusy || !window.WhiloCloudAuth) return;
+      cloudAuthBusy = true; cloudAuthFeedback = 'Checking ChatGPT identity availability…'; render();
+      window.WhiloCloudAuth.publicConfig().then(function (config) {
+        if (!config.chatgptSignInEnabled) throw new Error('ChatGPT sign-in needs an approved OpenAI website OAuth client and its exact registered callback. It is not enabled for this deployment yet.');
+        window.location.assign('/api/auth/chatgpt/start');
+      }).catch(function (error) {
+        cloudAuthBusy = false;
+        cloudAuthFeedback = error && error.message ? error.message : 'ChatGPT identity sign-in is unavailable.';
+        render();
+      });
+      return;
     }
     if (act === 'toggle-cloud-auth-mode') {
       const requestedMode = action.getAttribute('data-mode');
