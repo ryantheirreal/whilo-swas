@@ -19,6 +19,7 @@ const MESSAGE_ROUTES = Object.freeze({
   'credits-webhook': require('../../server/routes/credits').webhook,
   'chatgpt-auth-start': require('../../server/routes/chatgpt-auth').start,
   'chatgpt-auth-callback': require('../../server/routes/chatgpt-auth').callback,
+  'chatgpt-auth-link-start': require('../../server/routes/chatgpt-auth').linkStart,
   'model-gateway': require('../../server/routes/model-gateway')
 });
 
