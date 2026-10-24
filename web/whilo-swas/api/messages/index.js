@@ -16,7 +16,9 @@ const MESSAGE_ROUTES = Object.freeze({
   affiliates: require('../../server/routes/affiliates'),
   routines: require('../../server/routes/routines'),
   credits: require('../../server/routes/credits'),
-  'credits-webhook': require('../../server/routes/credits').webhook
+  'credits-webhook': require('../../server/routes/credits').webhook,
+  'chatgpt-auth-start': require('../../server/routes/chatgpt-auth').start,
+  'chatgpt-auth-callback': require('../../server/routes/chatgpt-auth').callback
 });
 
 function inFilter(values) { return 'in.(' + values.map(String).join(',') + ')'; }
