@@ -7,7 +7,7 @@ Updated: 24 October 2026.
 - Canonical production URL: https://whilo-swas.vercel.app
 - Vercel project: `whilo-swas`, linked to `ryantheirreal/whilo-swas`.
 - Supabase project: `whilo-prod` (`pnmewiqemeoqwannyjuz`), region `sa-east-1`, status `ACTIVE_HEALTHY`.
-- The Supabase migration history reports 26 applied migrations, including workspace isolation, marketplace, affiliates, Willow Bucks, routine scheduling, usage metering, server-only Data API grants and bounded library-asset context. Do not replay these migrations on this database.
+- The Supabase migration history reports 29 applied migrations, including workspace isolation, marketplace, affiliates, Willow Bucks, routine scheduling, usage metering, server-only Data API grants and bounded library-asset context. Do not replay these migrations on this database.
 - Security advisor: the exposed SECURITY DEFINER view and public trigger-function execution findings were corrected. Remaining `rls_enabled_no_policy` items are INFO-level on server-only tables whose browser-role grants are revoked; verify grants and RLS together, not the warning count alone.
 - Performance advisor currently includes unused-index INFO notices. Do not drop indexes based only on low-traffic/no-usage telemetry; re-evaluate after representative production traffic.
 - Vercel currently has `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `WHILO_PUBLIC_URL`, `SLACK_REDIRECT_URI`, `WHILO_CONNECTOR_ENCRYPTION_KEY`, `WHILO_OAUTH_STATE_SECRET` and the explicit kill switch `WHILO_AFFILIATE_PAYOUTS_ENABLED=false`.
@@ -17,7 +17,7 @@ Updated: 24 October 2026.
 
 ## Supabase and authentication
 
-1. Keep the selected database as the dedicated `whilo-prod` project. The known migration history contains versions 001–026; compare the live list to the repository before any future schema change.
+1. Keep the selected database as the dedicated `whilo-prod` project. The live migration history currently contains 29 applied migrations, including the routine/library context, ChatGPT identity linking and atomic affiliate payout claim additions. Compare the live list to the repository before any future schema change; never replay these migrations.
 2. In Supabase Auth, confirm Site URL is `https://whilo-swas.vercel.app`; allow the sign-in, recovery and invitation return URLs actually used by the UI. Verify password-reset email delivery with a production SMTP provider before public onboarding.
 3. Retrieve the project's current service-role secret from Supabase's project API keys and add it to Vercel as a **sensitive server-only** variable named `SUPABASE_SERVICE_ROLE_KEY`. Do not paste it into chat, source code, client-side JavaScript or logs. Use it only for server routes; the public anon/publishable key is not a replacement.
 4. Confirm `/api/health` reports configuration booleans without exposing values. Test sign-up/sign-in, email confirmation, recovery, session restoration and `POST /api/account/bootstrap` with a dedicated staging account before opening public registration.
@@ -57,7 +57,7 @@ Still required before their respective features can work:
 
 ## Security assessment
 
-- The repository contains a manual Strix code-only workflow at `.github/workflows/strix-assessment.yml`. It requires the repository owner's explicit workflow-dispatch authorization and an `ANTHROPIC_API_KEY` Actions secret. Keep its scope restricted to repository code unless a separately authorized scope is documented.
+- The repository contains a manual Strix code-only workflow at `.github/workflows/strix-assessment.yml`. It requires the repository owner's explicit workflow-dispatch authorization and an `ANTHROPIC_API_KEY` Actions secret, and caps model spend at USD 10 per run. Keep its scope restricted to repository code unless a separately authorized scope is documented.
 - **Do not claim Strix or Anthropic's security review has passed until a run is executed and its report is independently triaged.** The current environment has no direct workflow-dispatch action and no configured Anthropic Actions secret was verified here.
 - Track every finding with severity, affected asset, reproducible evidence, fix, regression test and residual risk. Keep the report private because it can contain exploit details.
 - See `docs/SECURITY_REVIEW_RUNBOOK.md` for the current security gates and response process.
@@ -68,7 +68,7 @@ Do not announce full production activation until all of the following are verifi
 1. The latest main commit builds and is the canonical `whilo-swas.vercel.app` deployment.
 2. `SUPABASE_SERVICE_ROLE_KEY` is configured server-side and /api/health reports the necessary booleans without exposing values.
 3. Sign-in, recovery, tenant bootstrap and essential authenticated API flows pass end-to-end tests in staging.
-4. All 26 current migrations are accounted for; database security advisors have no unresolved ERRORs/WARNs and remaining INFOs have documented rationale.
+4. All 29 current migrations are accounted for; database security advisors have no unresolved ERRORs/WARNs and remaining INFOs have documented rationale.
 5. Routine snapshot unit tests, SSRF tests, syntax/static checks and build pass; live browser/desktop claims are limited to a tested worker.
 6. Stripe sandbox checkout and webhooks pass duplicate, unpaid, mismatch, refund, dispute and failure-recovery tests.
 7. Strix and Anthropic security scans are actually run and their findings are triaged.
