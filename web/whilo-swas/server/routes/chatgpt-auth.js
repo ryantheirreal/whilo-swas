@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const { send, redirect, appUrl, db } = require('../../api/_lib/platform');
+const { send, redirect, appUrl, db, authenticate, organizationFor } = require('../../api/_lib/platform');
 const { signChatGPTSession } = require('../security/whilo-session');
 
 const OPENAI_ORIGIN = 'https://auth.openai.com';
@@ -160,7 +160,7 @@ async function adminCreateAuthUser(identity) {
   if (!response.ok || !value.id || !UUID_RE.test(value.id)) fail(503, 'Whilo could not provision an account for this verified identity.');
   return { id: value.id, email: identity.email };
 }
-async function resolveAuthUser(identity, clientId) {
+async function resolveAuthUser(identity, clientId, linkAuthUserId) {
   const identityQuery = 'whilo_external_identities?provider=eq.' + encodeURIComponent(PROVIDER) +
     '&client_id=eq.' + encodeURIComponent(clientId) + '&provider_subject=eq.' + encodeURIComponent(identity.subject) +
     '&select=auth_user_id,verified_email&limit=1';
@@ -170,31 +170,47 @@ async function resolveAuthUser(identity, clientId) {
       fail(409, 'This ChatGPT identity changed its verified email. Sign in with your existing Whilo account and contact support before relinking.');
     }
     const id = alreadyLinked[0].auth_user_id;
+    if (linkAuthUserId && id !== linkAuthUserId) {
+      fail(409, 'This ChatGPT identity is already linked to a different Whilo account. Sign in to that account to continue.');
+    }
     const rows = await db('profiles?id=eq.' + encodeURIComponent(id) + '&select=id,email&limit=1');
     if (!Array.isArray(rows) || !rows[0]) fail(403, 'The linked Whilo account is no longer available.');
-    return { id: rows[0].id, email: identity.email };
+    return { id: rows[0].id, email: String(rows[0].email || identity.email).toLowerCase() };
   }
 
-  // Matching an already-verified email links the OAuth identity to an existing Whilo account;
-  // otherwise provision a new Auth user and let the database bootstrap trigger create its workspace.
-  let users = await db('profiles?email=eq.' + encodeURIComponent(identity.email) + '&select=id,email&limit=1');
-  let user = Array.isArray(users) && users[0] ? { id: users[0].id, email: identity.email } : await adminCreateAuthUser(identity);
-  if (!UUID_RE.test(String(user.id || ''))) fail(503, 'Whilo could not resolve the signed-in account.');
+  let user;
+  if (linkAuthUserId) {
+    // Link only to the authenticated Whilo user that created this one-time OAuth transaction.
+    const rows = await db('profiles?id=eq.' + encodeURIComponent(linkAuthUserId) + '&select=id,email&limit=1');
+    if (!Array.isArray(rows) || !rows[0]) fail(403, 'The signed-in Whilo account could not be confirmed. Sign in again and retry.');
+    user = { id: rows[0].id, email: String(rows[0].email || '').toLowerCase() };
+  } else {
+    // Never merge an external identity into an existing account based on email equality alone.
+    const existing = await db('profiles?email=eq.' + encodeURIComponent(identity.email) + '&select=id,email&limit=1');
+    if (Array.isArray(existing) && existing[0]) {
+      fail(409, 'A Whilo account already exists for this email. Sign in to that Whilo account, then choose Link ChatGPT from Account. Whilo never links accounts from email equality alone.');
+    }
+    user = await adminCreateAuthUser(identity);
+  }
 
+  if (!UUID_RE.test(String(user.id || ''))) fail(503, 'Whilo could not resolve the signed-in account.');
   try {
     await db('whilo_external_identities', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({ provider: PROVIDER, client_id: clientId, provider_subject: identity.subject, auth_user_id: user.id, verified_email: identity.email })
+      body: JSON.stringify({
+        provider: PROVIDER, client_id: clientId, provider_subject: identity.subject,
+        auth_user_id: user.id, verified_email: identity.email
+      })
     });
   } catch (error) {
-    // A simultaneous callback for the same provider identity must use the canonical row.
+    // A simultaneous callback can only proceed if the canonical identity is bound to this same user.
     const linked = await db(identityQuery).catch(function () { return []; });
-    if (!Array.isArray(linked) || !linked[0]) throw error;
-    user = { id: linked[0].auth_user_id, email: identity.email };
+    if (!Array.isArray(linked) || !linked[0] || linked[0].auth_user_id !== user.id) throw error;
   }
   return user;
 }
+
 function deliverAppSession(res, user) {
   const session = signChatGPTSession(user);
   const sessionJson = JSON.stringify({
@@ -219,8 +235,7 @@ function genericCallbackError(res, status) {
   return htmlPage(res, code, 'Sign-in could not be completed', 'The identity response was not accepted. Return to Whilo and try again. No provider token was saved.');
 }
 
-async function start(req, res) {
-  if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return send(res, 405, { error: 'Method not allowed' }); }
+async function beginSignIn(req, res, linkAuthUserId) {
   let settings, oidc;
   try {
     settings = config();
@@ -242,6 +257,7 @@ async function start(req, res) {
         code_verifier: verifier,
         client_id: settings.clientId,
         redirect_uri: settings.redirectUri,
+        link_auth_user_id: linkAuthUserId || null,
         expires_at: expiresAt
       })
     });
@@ -256,9 +272,27 @@ async function start(req, res) {
     authorize.searchParams.set('code_challenge', challenge);
     authorize.searchParams.set('code_challenge_method', 'S256');
     authorize.searchParams.set('prompt', 'select_account');
+    if (linkAuthUserId) return send(res, 200, { authorizeUrl: authorize.toString() });
     return redirect(res, authorize.toString());
   } catch (error) {
-    return htmlPage(res, error.statusCode || 503, 'ChatGPT sign-in is not ready', 'This login method requires an approved OpenAI website OAuth client, exact callback registration and server-side secrets. Email and Google identity login remain separate.');
+    return htmlPage(res, error.statusCode || 503, 'ChatGPT sign-in is not ready', 'This login method requires an approved OpenAI website OAuth client, exact callback registration and server-side secrets. Provider identity and API model access remain separate.');
+  }
+}
+
+async function start(req, res) {
+  if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return send(res, 405, { error: 'Method not allowed' }); }
+  return beginSignIn(req, res, null);
+}
+
+async function linkStart(req, res) {
+  if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return send(res, 405, { error: 'Method not allowed' }); }
+  try {
+    const user = await authenticate(req);
+    await organizationFor(user);
+    return beginSignIn(req, res, user.id);
+  } catch (error) {
+    const status = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+    return send(res, status, { error: status >= 500 ? 'Whilo could not start account linking safely.' : error.message });
   }
 }
 
@@ -286,11 +320,19 @@ async function callback(req, res) {
     const tokens = await exchangeCode(code, transaction, settings, oidc);
     if (typeof tokens.id_token !== 'string') return genericCallbackError(res, 401);
     const identity = await verifyIdentityToken(tokens.id_token, settings.clientId, transaction.nonce, oidc);
-    const user = await resolveAuthUser(identity, settings.clientId);
+    const user = await resolveAuthUser(identity, settings.clientId, transaction.link_auth_user_id || null);
+    if (transaction.link_auth_user_id) {
+      const app = new URL('/', appUrl());
+      app.searchParams.set('whilo_auth', 'chatgpt_linked');
+      return redirect(res, app.toString());
+    }
     return deliverAppSession(res, user);
   } catch (error) {
+    if (error && error.statusCode === 409) {
+      return htmlPage(res, 409, 'Link your existing Whilo account', 'Whilo did not merge accounts based on matching email. Return to Whilo, sign in with your existing method, open Account, and choose Link ChatGPT. No account was merged.');
+    }
     return genericCallbackError(res, error && error.statusCode || 400);
   }
 }
 
-module.exports = { start, callback };
+module.exports = { start, callback, linkStart };
