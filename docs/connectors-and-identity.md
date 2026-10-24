@@ -57,11 +57,18 @@ The pairing foundation issues a 5-minute one-time QR payload, allows a device to
 
 Copy names from `web/whilo-swas/.env.example` into Vercel's encrypted Environment Variables UI. Generate independent random values for `WHILO_CONNECTOR_ENCRYPTION_KEY` and `WHILO_OAUTH_STATE_SECRET`. Never commit real values, use a public `NEXT_PUBLIC_*` prefix for secrets, log token responses, or paste service-role keys into client scripts.
 
-## Current boundary
+## Current boundary — verified 24 October 2026
 
-Implemented in code: database migrations, Supabase owner provisioning script, authenticated connector API, Slack OAuth start/callback, encrypted integration storage, Twilio credential verification, QR pairing token issuance/claiming, and bridge heartbeat identity.
+Implemented in code and database: the dedicated `whilo-prod` Supabase project, 26 applied migrations, owner provisioning script, authenticated server API, Slack OAuth start/callback, encrypted integration storage, Twilio credential verification flow, QR pairing token issuance/claiming and bridge heartbeat identity. The membership table, base integration table, safe-view browser grants and secret columns were checked after the security migrations; browser roles cannot select `organization_members` or encrypted integration secrets, and the RLS helper functions are in the `private` schema.
 
-Not yet activated: the actual Supabase/Vercel secrets, running migrations in a live database, owner account provisioning, Slack app credentials, tested OAuth against a real workspace, Twilio account credentials, a native macOS bridge, iMessage message transport, and autonomous worker execution. Never market these as live until verified end-to-end.
+Still blocking or unverified:
+- `SUPABASE_SERVICE_ROLE_KEY` is missing from Vercel, so protected backend routes are not yet working end-to-end. Add it as a sensitive server-only variable from Supabase Project Settings → API Keys.
+- Owner account creation, SMTP/recovery flows and real authenticated workspace bootstrap need staging end-to-end tests.
+- Slack app client credentials, a real OAuth installation, Twilio account credentials and live connector sends are not configured/verified.
+- The native macOS bridge, iMessage transport and autonomous desktop/browser worker are not implemented as a working production runtime.
+- Stripe credentials and verified sandbox purchases/refunds are not configured; Marketplace and affiliate payout flows remain behind launch gates.
+
+Never market a pairing token, saved integration metadata, queued mission or static build as a live authenticated integration or completed execution without test evidence.
 
 
 ## Marketplace and subscriptions
