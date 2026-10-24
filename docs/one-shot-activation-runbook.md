@@ -7,7 +7,7 @@ Updated: 24 October 2026.
 - Canonical production URL: https://whilo-swas.vercel.app
 - Vercel project: `whilo-swas`, linked to `ryantheirreal/whilo-swas`.
 - Supabase project: `whilo-prod` (`pnmewiqemeoqwannyjuz`), region `sa-east-1`, status `ACTIVE_HEALTHY`.
-- The Supabase migration history reports 29 applied migrations, including workspace isolation, marketplace, affiliates, Willow Bucks, routine scheduling, usage metering, server-only Data API grants and bounded library-asset context. Do not replay these migrations on this database.
+- The Supabase migration history reports 30 applied migrations, including workspace isolation, marketplace, affiliates, Willow Bucks, routine scheduling, usage metering, server-only Data API grants and bounded library-asset context. Do not replay these migrations on this database.
 - Security advisor: the exposed SECURITY DEFINER view and public trigger-function execution findings were corrected. Remaining `rls_enabled_no_policy` items are INFO-level on server-only tables whose browser-role grants are revoked; verify grants and RLS together, not the warning count alone.
 - Performance advisor currently includes unused-index INFO notices. Do not drop indexes based only on low-traffic/no-usage telemetry; re-evaluate after representative production traffic.
 - Vercel currently has `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `WHILO_PUBLIC_URL`, `SLACK_REDIRECT_URI`, `WHILO_CONNECTOR_ENCRYPTION_KEY`, `WHILO_OAUTH_STATE_SECRET` and the explicit kill switch `WHILO_AFFILIATE_PAYOUTS_ENABLED=false`.
@@ -17,7 +17,7 @@ Updated: 24 October 2026.
 
 ## Supabase and authentication
 
-1. Keep the selected database as the dedicated `whilo-prod` project. The live migration history currently contains 29 applied migrations, including the routine/library context, ChatGPT identity linking and atomic affiliate payout claim additions. Compare the live list to the repository before any future schema change; never replay these migrations.
+1. Keep the selected database as the dedicated `whilo-prod` project. The live migration history currently contains 30 applied migrations, including the routine/library context, ChatGPT identity linking and atomic affiliate payout claim additions. Compare the live list to the repository before any future schema change; never replay these migrations.
 2. In Supabase Auth, confirm Site URL is `https://whilo-swas.vercel.app`; allow the sign-in, recovery and invitation return URLs actually used by the UI. Verify password-reset email delivery with a production SMTP provider before public onboarding.
 3. Retrieve the project's current service-role secret from Supabase's project API keys and add it to Vercel as a **sensitive server-only** variable named `SUPABASE_SERVICE_ROLE_KEY`. Do not paste it into chat, source code, client-side JavaScript or logs. Use it only for server routes; the public anon/publishable key is not a replacement.
 4. Confirm `/api/health` reports configuration booleans without exposing values. Test sign-up/sign-in, email confirmation, recovery, session restoration and `POST /api/account/bootstrap` with a dedicated staging account before opening public registration.
@@ -42,7 +42,7 @@ Still required before their respective features can work:
 
 ## Willow Bucks and Stripe test plan
 
-- Willow Bucks packs are prepaid, non-transferable usage credits, not cash or cryptocurrency. The nominal credit model is 1 WB = R$0.01; the internal provider-cost guard targets no more than 40% of nominal credit value, leaving 60% contribution **before** payment processing, taxes, infrastructure, support, refunds and fraud costs. This is a guardrail, not a promise of net profit.
+- Willow Bucks packs are prepaid, non-transferable usage credits, not cash or cryptocurrency. The verified credit webhook now reconciles `charge.refunded`, dispute opening and dispute closure with an idempotent reversal ledger. If credits were already spent, the wallet records non-spendable recovery debt; future top-ups recover it first. A won dispute restores eligible credit value or clears outstanding recovery debt without allowing a negative spendable balance. The nominal credit model is 1 WB = R$0.01; the internal provider-cost guard targets no more than 40% of nominal credit value, leaving 60% contribution **before** payment processing, taxes, infrastructure, support, refunds and fraud costs. This is a guardrail, not a promise of net profit.
 - Stripe Checkout now uses dynamic payment methods and caller-scoped idempotency keys. Fulfillment must happen only after a verified webhook reports an actually paid session; never fulfill from the success URL.
 - In the Stripe sandbox, test each pack's amount/credit metadata, duplicate webhook delivery, mismatched amount/currency, failed or unpaid sessions, and retrying the same checkout request ID. Verify each paid session credits the ledger exactly once.
 - For Marketplace, test checkout, entitlement grant, duplicate webhooks, refund/dispute reversals, creator proceeds, fees and seller Connect onboarding. Do not create test objects in a live account.
@@ -68,7 +68,7 @@ Do not announce full production activation until all of the following are verifi
 1. The latest main commit builds and is the canonical `whilo-swas.vercel.app` deployment.
 2. `SUPABASE_SERVICE_ROLE_KEY` is configured server-side and /api/health reports the necessary booleans without exposing values.
 3. Sign-in, recovery, tenant bootstrap and essential authenticated API flows pass end-to-end tests in staging.
-4. All 29 current migrations are accounted for; database security advisors have no unresolved ERRORs/WARNs and remaining INFOs have documented rationale.
+4. All 30 current migrations are accounted for; database security advisors have no unresolved ERRORs/WARNs and remaining INFOs have documented rationale.
 5. Routine snapshot unit tests, SSRF tests, syntax/static checks and build pass; live browser/desktop claims are limited to a tested worker.
 6. Stripe sandbox checkout and webhooks pass duplicate, unpaid, mismatch, refund, dispute and failure-recovery tests.
 7. Strix and Anthropic security scans are actually run and their findings are triaged.
