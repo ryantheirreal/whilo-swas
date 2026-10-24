@@ -51,12 +51,12 @@ async function walletSnapshot(user, member) {
     body:JSON.stringify({organization_id:member.organization_id})
   });
   const [walletRows,ledgerRows]=await Promise.all([
-    db('whilo_credit_wallets?organization_id=eq.'+encodeURIComponent(member.organization_id)+'&select=balance_wb,total_purchased_wb,total_spent_wb&limit=1'),
+    db('whilo_credit_wallets?organization_id=eq.'+encodeURIComponent(member.organization_id)+'&select=balance_wb,total_purchased_wb,total_spent_wb,recovery_debt_wb&limit=1'),
     db('whilo_credit_ledger?organization_id=eq.'+encodeURIComponent(member.organization_id)+'&select=id,kind,amount_wb,balance_after_wb,amount_paid_minor,currency,pack_id,created_at,reference&order=created_at.desc&limit=20')
   ]);
   const wallet=Array.isArray(walletRows)&&walletRows[0]?walletRows[0]:{balance_wb:0,total_purchased_wb:0,total_spent_wb:0};
   return {
-    wallet:{balanceWB:Number(wallet.balance_wb||0),totalPurchasedWB:Number(wallet.total_purchased_wb||0),totalSpentWB:Number(wallet.total_spent_wb||0)},
+    wallet:{balanceWB:Number(wallet.balance_wb||0),totalPurchasedWB:Number(wallet.total_purchased_wb||0),totalSpentWB:Number(wallet.total_spent_wb||0),recoveryDebtWB:Number(wallet.recovery_debt_wb||0)},
     ledger:(Array.isArray(ledgerRows)?ledgerRows:[]).map(row=>({
       id:row.id,kind:row.kind,amountWB:Number(row.amount_wb),balanceAfterWB:Number(row.balance_after_wb),
       amountPaidMinor:Number(row.amount_paid_minor||0),currency:row.currency,packId:row.pack_id,createdAt:row.created_at
@@ -116,6 +116,118 @@ async function handle(req,res) {
   if(action==='create-checkout') return send(res,201,await createCheckout(user,member,body));
   return send(res,400,{error:'Unsupported Willow Bucks action.'});
 }
+async function findCreditCheckoutForCharge(charge) {
+  const paymentIntent = charge && charge.payment_intent;
+  const paymentIntentId = typeof paymentIntent === 'string' ? paymentIntent : paymentIntent && paymentIntent.id;
+  if (!paymentIntentId) return null;
+
+  const stripe = stripeClient();
+  const listed = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 10 });
+  const session = (listed.data || []).find(item => {
+    const meta = item && item.metadata || {};
+    return item && item.id && meta.whilo_credit_pack_id && meta.whilo_organization_id && meta.whilo_user_id;
+  });
+  if (!session) return null;
+
+  const meta = session.metadata || {};
+  const organizationId = String(meta.whilo_organization_id || '');
+  const userId = String(meta.whilo_user_id || '');
+  const pack = PACKS[String(meta.whilo_credit_pack_id || '')];
+  const creditAmount = Number(meta.whilo_credit_amount);
+  if (!UUID_RE.test(organizationId) || !UUID_RE.test(userId) || !pack ||
+      creditAmount !== pack.credits || session.client_reference_id !== userId ||
+      session.mode !== 'payment' || String(session.currency || '').toLowerCase() !== 'brl' ||
+      Number(session.amount_total) !== pack.amountMinor) {
+    fail(400, 'Stripe charge does not match a published Willow Bucks Checkout session.');
+  }
+
+  const purchaseRows = await db('whilo_credit_ledger?provider_session_id=eq.' + encodeURIComponent(session.id) +
+    '&organization_id=eq.' + encodeURIComponent(organizationId) +
+    '&user_id=eq.' + encodeURIComponent(userId) +
+    '&kind=eq.topup&select=provider_session_id,pack_id,amount_wb,amount_paid_minor&limit=1');
+  const purchase = Array.isArray(purchaseRows) ? purchaseRows[0] : null;
+  if (!purchase) {
+    // Stripe retries a non-2xx webhook; do not silently drop an out-of-order refund.
+    fail(503, 'The verified credit purchase ledger is not committed yet; Stripe should retry this webhook.');
+  }
+  if (purchase.pack_id !== pack.id || Number(purchase.amount_wb) !== pack.credits ||
+      Number(purchase.amount_paid_minor) !== pack.amountMinor) {
+    fail(409, 'Credit purchase ledger does not match the verified Stripe session.');
+  }
+  return { session, organizationId, userId, pack };
+}
+
+async function handleCreditReversalEvent(event) {
+  const object = event.data && event.data.object || {};
+  const isDispute = event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed';
+  let charge = object;
+
+  if (isDispute) {
+    const chargeRef = object.charge;
+    const chargeId = typeof chargeRef === 'string' ? chargeRef : chargeRef && chargeRef.id;
+    if (!chargeId) return sendReversalIgnored();
+    charge = await stripeClient().charges.retrieve(chargeId);
+  }
+  const purchase = await findCreditCheckoutForCharge(charge);
+  if (!purchase) return sendReversalIgnored();
+
+  let reason = 'refund';
+  let refundTotalMinor = Number(charge.amount_refunded || 0);
+  if (event.type === 'charge.dispute.created') {
+    reason = 'dispute_opened';
+    refundTotalMinor = purchase.pack.amountMinor;
+  } else if (event.type === 'charge.dispute.closed') {
+    if (String(object.status || '').toLowerCase() === 'won') {
+      reason = 'dispute_won';
+      // Re-evaluate the actual refunded total from the current Charge object.
+      refundTotalMinor = Number(charge.amount_refunded || 0);
+    } else if (String(object.status || '').toLowerCase() === 'lost') {
+      reason = 'dispute_opened';
+      refundTotalMinor = purchase.pack.amountMinor;
+    } else {
+      return sendReversalIgnored();
+    }
+  }
+
+  if (!Number.isSafeInteger(refundTotalMinor) || refundTotalMinor < 0) {
+    fail(400, 'Stripe returned an invalid cumulative refund amount.');
+  }
+  const reversal = await db('rpc/reverse_whilo_credit_purchase', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_organization_id: purchase.organizationId,
+      p_user_id: purchase.userId,
+      p_provider_event_id: String(event.id),
+      p_provider_session_id: String(purchase.session.id),
+      p_refund_total_minor: refundTotalMinor,
+      p_reason: reason,
+      p_metadata: {
+        stripe_event_type: String(event.type),
+        stripe_charge_id: String(charge.id || ''),
+        stripe_payment_intent_id: String(typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent && charge.payment_intent.id || ''),
+        currency: String(charge.currency || 'brl').toLowerCase(),
+        amount_refunded_minor: refundTotalMinor
+      }
+    })
+  });
+  const value = Array.isArray(reversal) ? reversal[0] : reversal;
+  return sendWebhookReceipt({
+    received: true,
+    reversed: Boolean(value && value.reversed),
+    duplicate: Boolean(value && value.duplicate),
+    deltaWB: Number(value && value.delta_wb || 0),
+    reason
+  });
+}
+
+function sendReversalIgnored() {
+  return sendWebhookReceipt({ received: true, ignored: true });
+}
+function sendWebhookReceipt(body) {
+  // The caller returns this object to the webhook handler; keep response emission in one place.
+  return body;
+}
+
 async function handleWebhook(req,res) {
   if(req.method!=='POST') { res.setHeader('Allow','POST'); return send(res,405,{error:'Method not allowed'}); }
   try {
@@ -126,6 +238,12 @@ async function handleWebhook(req,res) {
     try { event=stripeClient().webhooks.constructEvent(raw,req.headers['stripe-signature'],secret); }
     catch(_) { return send(res,400,{error:'Invalid payment webhook signature or payload.'}); }
     if(!event || !event.id || !event.type) return send(res,400,{error:'Invalid Stripe webhook event.'});
+
+    if (['charge.refunded','charge.dispute.created','charge.dispute.closed'].includes(event.type)) {
+      const receipt = await handleCreditReversalEvent(event);
+      return send(res,200,receipt);
+    }
+
     if(!['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)) {
       return send(res,200,{received:true,ignored:true});
     }
@@ -153,7 +271,8 @@ async function handleWebhook(req,res) {
       })
     });
     const value=Array.isArray(result)?result[0]:result;
-    return send(res,200,{received:true,credited:Boolean(value&&value.credited),duplicate:Boolean(value&&value.duplicate)});
+    return send(res,200,{received:true,credited:Boolean(value&&value.credited),duplicate:Boolean(value&&value.duplicate),
+      recoveryDebtRepaidWB:Number(value&&value.recovery_debt_repaid_wb||0)});
   } catch(error) { return safeError(res,error); }
 }
 module.exports=async function creditsHandler(req,res) {
