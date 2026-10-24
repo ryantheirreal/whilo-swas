@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('node:crypto');
 const Stripe = require('stripe');
 const { send, authenticate, organizationFor, db, readJson, safeError, appUrl } = require('../../api/_lib/platform');
 
@@ -78,10 +77,8 @@ async function createCheckout(user, member, body) {
     fail(400,'A valid checkout request ID is required so retries can be idempotent.');
   }
   const base=baseUrl();
-  const integrationSuffix=Array.from({length:8},()=>String.fromCharCode(97+crypto.randomInt(26))).join('');
   const session=await stripeClient().checkout.sessions.create({
     mode:'payment',
-    integration_identifier:'whilo-willow-bucks-'+integrationSuffix,
     line_items:[{
       price_data:{
         currency:'brl',
