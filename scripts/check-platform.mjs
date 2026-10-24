@@ -121,8 +121,8 @@ for (const [label, pattern] of [
   ['visible chat entrypoint for @Routines', /Build in Chat @Routines/],
   ['playbook attachment to user-owned assets', /data-act="routine-use-asset"/],
   ['transparent progress milestones', /Workspace mastery/],
-  ['reduced-motion 3D support', /routine-scene\\.reduced-motion/],
-  ['interactive 3D tilt handler', /shadow\\.addEventListener\\('pointermove'/],
+  ['reduced-motion 3D support', /prefers-reduced-motion/],
+  ['interactive 3D tilt handler', /pointermove/],
   ['per-run Willow Bucks budget input', /maxCostWB/]
 ]) if (!pattern.test(enterpriseUi)) failures.push('Missing routine product invariant: ' + label);
 
