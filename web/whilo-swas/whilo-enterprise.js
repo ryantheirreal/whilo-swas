@@ -374,7 +374,9 @@
         '<div style="font-size:12px;color:#b7b7b7;line-height:1.55;margin-top:8px">' + (cloudAuthSession.provider === 'chatgpt' ? 'ChatGPT identity verified. Consumer-plan inference is not enabled by this hosted Whilo sign-in.' : cloudAuthSession.provider === 'google' ? 'Google identity verified. Gemini Developer API credentials and quotas are managed separately from this login.' : 'Whilo identity verified. Model availability and usage depend on providers configured for your workspace.') + '</div>' +
         '<div style="font-size:11px;color:#777;line-height:1.5;margin-top:8px">Provider quota is displayed only when an official provider API exposes verified usage data. Whilo never invents remaining quota.</div></div>' +
         (cloudAuthFeedback ? '<div class="notice" role="status">' + esc(cloudAuthFeedback) + '</div>' : '') +
-        '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-act="open-account-work" style="min-height:46px;border-radius:999px;background:#f7f7f7;color:#080808;font-weight:800;border:0">Open my workspace →</button><button class="btn secondary" data-act="cloud-signout" style="min-height:46px;border-radius:999px"'+(cloudAuthBusy?' disabled':'')+'>Sign out</button></div>' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-act="open-account-work" style="min-height:46px;border-radius:999px;background:#f7f7f7;color:#080808;font-weight:800;border:0">Open my workspace →</button>' +
+        (cloudAuthSession.provider === 'chatgpt' ? '' : '<button class="btn secondary" data-act="cloud-provider-chatgpt-link" style="min-height:46px;border-radius:999px"'+(cloudAuthBusy?' disabled':'')+'>Link ChatGPT identity</button>') +
+        '<button class="btn secondary" data-act="cloud-signout" style="min-height:46px;border-radius:999px"'+(cloudAuthBusy?' disabled':'')+'>Sign out</button></div>' +
         '<p style="font-size:11px;line-height:1.55;color:#858585;margin:18px 0 0">Whilo verifies API sessions server-side and checks workspace membership on protected requests. Identity sign-in is separate from model access and usage quotas.</p></div>' +
         '<div style="padding:18px 24px;border-top:1px solid #292929;background:#101010;display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:15px">' +
         '<div><div style="font-size:12px;font-weight:750;color:#eee;margin-bottom:5px">One workspace</div><div style="font-size:12px;color:#929292;line-height:1.5">Tasks, people and assets stay organized.</div></div>' +
@@ -2101,6 +2103,22 @@
       });
       return;
     }
+    if (act === 'cloud-provider-chatgpt-link') {
+      if (cloudAuthBusy || !window.WhiloCloudAuth || typeof window.WhiloCloudAuth.publicConfig !== 'function') return;
+      cloudAuthBusy = true; cloudAuthFeedback = 'Preparing an authenticated account-link transaction…'; render();
+      window.WhiloCloudAuth.publicConfig().then(function (config) {
+        if (!config.chatgptSignInEnabled) throw new Error('ChatGPT identity linking requires an approved OpenAI website OAuth client and its exact registered callback.');
+        return whiloApi('/api/auth/chatgpt/link-start', { method:'POST', body:JSON.stringify({}) });
+      }).then(function (data) {
+        if (!data || typeof data.authorizeUrl !== 'string' || !/^https:\/\/auth\.openai\.com\//.test(data.authorizeUrl)) throw new Error('OpenAI returned an invalid authorization URL.');
+        window.location.assign(data.authorizeUrl);
+      }).catch(function (error) {
+        cloudAuthBusy = false;
+        cloudAuthFeedback = error && error.message ? error.message : 'ChatGPT identity could not be linked.';
+        render();
+      });
+      return;
+    }
     if (act === 'toggle-cloud-auth-mode') {
       const requestedMode = action.getAttribute('data-mode');
       cloudAuthMode = requestedMode || (cloudAuthMode === 'signup' ? 'signin' : 'signup');
@@ -2449,7 +2467,17 @@
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && veil.classList.contains('open')) closePanel(); });
 
   function boot() {
-    const oauthResult = new URLSearchParams(window.location.search).get('whilo_connect');
+    const pageParams = new URLSearchParams(window.location.search);
+    const identityResult = pageParams.get('whilo_auth');
+    if (identityResult === 'chatgpt_linked') {
+      active = 'account';
+      cloudAuthFeedback = 'ChatGPT identity linked to the currently signed-in Whilo account. This does not grant consumer-plan inference or API quota.';
+      const cleanIdentityUrl = new URL(window.location.href);
+      cleanIdentityUrl.searchParams.delete('whilo_auth');
+      window.history.replaceState({}, '', cleanIdentityUrl.pathname + cleanIdentityUrl.search + cleanIdentityUrl.hash);
+      setTimeout(function () { openPanel('account'); }, 0);
+    }
+    const oauthResult = pageParams.get('whilo_connect');
     if (oauthResult && /^slack_(success|error|cancelled|expired)$/.test(oauthResult)) {
       active = 'connect';
       connectorCache = null;
