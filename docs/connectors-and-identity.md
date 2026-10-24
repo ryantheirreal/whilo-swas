@@ -1,6 +1,6 @@
 # Whilo identity, integrations and connector security
 
-Updated: 21 October 2026
+Updated: 24 October 2026
 
 ## Owner account and database
 
@@ -8,14 +8,14 @@ The requested owner identity is `ryantheirreal@gmail.com`. Whilo uses **Supabase
 
 The password shared in chat is short and should be replaced before production use. The bootstrap script deliberately rejects passwords shorter than 14 characters or without mixed character classes. It reads the chosen value only from a temporary environment variable, never logs it, and refuses to reset an existing account. Supabase Auth receives the credential over TLS and stores its own password hash.
 
-Prerequisites:
-1. Create/select the intended Supabase project and set `SUPABASE_URL`, `SUPABASE_ANON_KEY` and the server-only `SUPABASE_SERVICE_ROLE_KEY`.
-2. Apply all thirteen files under `supabase/migrations/` in ascending filename order (001 through 013), including mission transactions, owner/Pet bootstrap, explicit server-role grants, human Messages, invitations, marketplace listings, payment-order ledger, subscription state and the transactional buyer-install ledger. Use a separate staging project before production.
-3. Set the temporary owner password in a local secret manager or hidden terminal prompt, then run `node scripts/bootstrap-owner.mjs`.
-4. The Whilo extension now provides a cloud sign-in card in **Work** and **Connect**, using `whilo-cloud-auth.js` and `/api/public-config`. Sign in with the owner account created by Supabase Auth. The script stores only a Supabase session/refresh token in this browser, never the password. Do not expose the service-role key to browser code.
-5. Verify the owner row and workspace membership through Supabase, then remove the temporary password from the process environment.
+Prerequisites / verified current state (24 October 2026):
+1. The dedicated Supabase project is `whilo-prod` (`pnmewiqemeoqwannyjuz`), active in `sa-east-1`; its migration history contains 26 applied migrations. **Do not replay them** on this database. Future schema changes must be new versioned migrations and verified against a separate staging project where possible.
+2. Vercel already has `SUPABASE_URL`, the public `SUPABASE_ANON_KEY`, `WHILO_PUBLIC_URL`, `SLACK_REDIRECT_URI`, sensitive `WHILO_CONNECTOR_ENCRYPTION_KEY` / `WHILO_OAUTH_STATE_SECRET`, and `WHILO_AFFILIATE_PAYOUTS_ENABLED=false`.
+3. **Blocking:** `SUPABASE_SERVICE_ROLE_KEY` is missing from Vercel. Add the current service-role key from Supabase Project Settings → API Keys as a sensitive, server-only variable for the required environments. Do not send it in chat, put it in Git or expose it in browser code. The backend's protected database routes cannot work end-to-end until this is configured.
+4. Owner account creation, email confirmation/recovery and workspace bootstrap still need authenticated end-to-end verification. Use a strong temporary password from a secret manager or hidden terminal prompt for `node scripts/bootstrap-owner.mjs`; never share or log it. Verify the account/workspace and remove the temporary password from the process environment.
+5. The browser receives only the public anon/publishable key and a Supabase session, never the service-role key. Keep financial data, connector tokens, HMAC/encryption keys and all provider secrets server-side.
 
-The intended Vercel project had no Supabase credentials when this was implemented. The public canonical URL and Slack callback URL have been configured, but `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, encryption key and OAuth state secret still need secure configuration. The owner account has **not** been created and no live production database has been mutated.
+The project and database migrations exist, but a green static build is not proof that the auth/workspace runtime is active. The owner account, production SMTP/recovery, actual Slack OAuth, Stripe sandbox and autonomous worker still require explicit end-to-end acceptance tests.
 
 ## Cloud sign-in
 
@@ -75,7 +75,7 @@ The first marketplace release is scoped to published declarative Pets, Bots, Ski
 - Required server env keys: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `WHILO_MARKETPLACE_ADMIN_USER_IDS`, plus all eight recurring Price IDs. Keep them out of Git and browser code.
 - The current proposed launch test prices are Free, Plus R$39.90/month, Premium R$169.90/month, Super R$399.90/month and Ultra R$999.90/month; annual prices are R$399, R$1,699, R$3,999 and R$9,999. These are pricing hypotheses, not active subscriptions.
 
-The database/API/UI code does not itself activate the live marketplace. It remains in preview until Supabase is configured, migrations 001–013 are applied, Stripe test-mode onboarding/checkout/webhooks are verified, and the production terms/refund/tax and seller-verification policies are reviewed.
+These tables and API/UI code are present, and the dedicated Supabase database has 26 applied migrations. This does **not** activate live marketplace selling: Vercel still lacks the server-only service-role key and Stripe sandbox/API/webhook secrets, Price IDs and end-to-end acceptance tests. Before launch, verify Stripe test-mode onboarding/checkout/webhooks, plus production terms, refunds/tax and seller-verification policies.
 
 
 ## Whilo Partners and affiliate commissions
