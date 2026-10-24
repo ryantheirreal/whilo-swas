@@ -227,6 +227,7 @@ if (!enterpriseUi.includes('function affiliateHubPage()') || !enterpriseUi.inclu
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'package.json'), 'utf8'));
 if (!packageJson.scripts || !packageJson.scripts.check.includes('test-library-routine-analysis.cjs')) failures.push('Build checks must execute the library routine analysis regression tests.');
+if (!packageJson.scripts.check.includes('test-routines-product-contract.cjs')) failures.push('Build checks must protect the Routines 3D/onboarding/@Routines/library contract.');
 if (!packageJson.dependencies || packageJson.dependencies.stripe !== '22.6.2') {
   failures.push('Marketplace webhooks must use the pinned official Stripe SDK version 22.6.2.');
 }
