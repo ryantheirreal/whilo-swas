@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const Stripe = require('stripe');
 const { send, authenticate, organizationFor, db, readJson, safeError, appUrl } = require('../../api/_lib/platform');
 
@@ -17,7 +18,7 @@ function fail(statusCode, message) {
 }
 function stripeClient() {
   const key = String(process.env.STRIPE_SECRET_KEY || '').trim();
-  if (!/^sk_(test|live)_/.test(key)) {
+  if (!/^(?:sk|rk)_(test|live)_/.test(key)) {
     const error = new Error('Stripe Checkout is not configured for Willow Bucks top-ups.');
     error.statusCode = 503; error.missingEnv = ['STRIPE_SECRET_KEY']; throw error;
   }
@@ -77,9 +78,10 @@ async function createCheckout(user, member, body) {
     fail(400,'A valid checkout request ID is required so retries can be idempotent.');
   }
   const base=baseUrl();
+  const integrationSuffix=Array.from({length:8},()=>String.fromCharCode(97+crypto.randomInt(26))).join('');
   const session=await stripeClient().checkout.sessions.create({
     mode:'payment',
-    payment_method_types:['card'],
+    integration_identifier:'whilo-willow-bucks-'+integrationSuffix,
     line_items:[{
       price_data:{
         currency:'brl',
