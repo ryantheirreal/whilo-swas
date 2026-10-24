@@ -188,7 +188,7 @@ async function createRoutine(user, member, body) {
   });
   return rows[0];
 }
-async function findPriorRoutineRun(organizationId, routineId, userId, role, idempotencyKey) {
+async function findPriorRoutineRun(organizationId, routineId, userId, role, idempotencyKey, expectedMode = 'mission') {
   const rows = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(organizationId) +
     '&idempotency_key=eq.' + encodeURIComponent(idempotencyKey) +
     '&select=id,routine_id,requested_by,mission_id,status,result&limit=1');
@@ -198,7 +198,14 @@ async function findPriorRoutineRun(organizationId, routineId, userId, role, idem
   if (prior.requested_by !== userId && !['owner','admin'].includes(role)) {
     fail(403, 'You cannot inspect another member’s routine run.');
   }
-  return { run: prior, duplicate: true, detail: 'This idempotent routine request was already recorded.' };
+  const priorMode = prior.result && prior.result.executionMode === 'saved_library_snapshot' ? 'saved_library_snapshot' : 'mission';
+  if (priorMode !== expectedMode) fail(409, 'This idempotency key was already used for a different routine action.');
+  const response = { run: prior, duplicate: true, detail: 'This idempotent routine request was already recorded.' };
+  if (expectedMode === 'saved_library_snapshot' && prior.result) {
+    response.summary = prior.result.summary || null;
+    response.safety = prior.result.safety || null;
+  }
+  return response;
 }
 
 async function runRoutine(user, member, body) {
@@ -356,7 +363,7 @@ async function runAssetAnalysis(user, member, body) {
     fail(409, 'Saved-snapshot analysis supports only routines explicitly linked to a library asset, dashboard or web app.');
   }
 
-  const duplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+  const duplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey, 'saved_library_snapshot');
   if (duplicate) return duplicate;
 
   const recentSince = new Date(Date.now() - 60 * 1000).toISOString();
