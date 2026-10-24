@@ -15,7 +15,7 @@ assert.match(source, /Number\(session\.amount_total\)!==pack\.amountMinor/, 'Pai
 assert.match(source, /expectedCredits!==pack\.credits/, 'Credit amount must match the server-defined pack');
 console.log('Willow Bucks Checkout regression tests passed.');
 
-const refundMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202610240003_willow_bucks_refunds_and_debt.sql'), 'utf8');
+const refundMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202610240005_willow_bucks_refunds_and_debt.sql'), 'utf8');
 assert.ok(source.includes('charge.refunded'), 'Verified charge refunds must trigger a credit reversal');
 assert.ok(source.includes('charge.dispute.created'), 'Opening a dispute must conservatively reverse credit value');
 assert.ok(source.includes('charge.dispute.closed'), 'A won dispute must restore eligible credits or clear its outstanding recovery debt');
