@@ -164,7 +164,7 @@ for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'WHILO_CONNECTOR_ENCRYPTION_KEY'
 }
 for (const key of ['SUPABASE_SERVICE_ROLE_KEY=', 'WHILO_CONNECTOR_ENCRYPTION_KEY=', 'WHILO_OAUTH_STATE_SECRET=', 'SLACK_CLIENT_SECRET=', 'STRIPE_SECRET_KEY=', 'STRIPE_WEBHOOK_SECRET=', 'WHILO_AFFILIATE_PAYOUT_ADMIN_USER_IDS=', 'WHILO_AFFILIATE_PAYOUTS_ENABLED=', 'STRIPE_CREDITS_WEBHOOK_SECRET=']) {
   const lines = envExample.split(/\r?\n/).filter(line => line.startsWith(key));
-  if (lines.some(line => line.slice(key.length).trim() && !line.trim().endsWith('='))) {
+  if (lines.some(line => { const value = line.slice(key.length).trim(); return value && !(key === 'WHILO_AFFILIATE_PAYOUTS_ENABLED=' && value === 'false'); })) {
     failures.push('Real secrets must not be committed in .env.example (' + key + ').');
   }
 }
