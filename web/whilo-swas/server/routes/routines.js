@@ -398,14 +398,14 @@ async function runAssetAnalysis(user, member, body) {
     });
   } catch (error) {
     if (Number(error.dbStatus) !== 409) throw error;
-    const concurrentDuplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+    const concurrentDuplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey, 'saved_library_snapshot');
     if (concurrentDuplicate) return concurrentDuplicate;
     throw error;
   }
 
   const run = Array.isArray(inserted) ? inserted[0] : null;
   if (!run) {
-    const concurrentDuplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+    const concurrentDuplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey, 'saved_library_snapshot');
     if (concurrentDuplicate) return concurrentDuplicate;
     fail(503, 'The saved-snapshot analysis could not be recorded.');
   }
