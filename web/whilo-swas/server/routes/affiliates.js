@@ -266,7 +266,7 @@ async function handle(req,res) {
     if(String(process.env.WHILO_AFFILIATE_PAYOUTS_ENABLED||'').toLowerCase()!=='true') fail(503,'Affiliate money transfers are disabled until sandbox payout tests and live-account approval are complete.');
     const payoutId=String(body.payoutId||'');
     if(!UUID_RE.test(payoutId)) fail(400,'A valid payout ID is required.');
-    const rows=await db('affiliate_payouts?id=eq.'+encodeURIComponent(payoutId)+'&status=in.(requested,failed,processing)&select=*&limit=1');
+    const rows=await db('affiliate_payouts?id=eq.'+encodeURIComponent(payoutId)+'&status=in.(requested,failed)&select=*&limit=1');
     const payout=Array.isArray(rows)?rows[0]:null;
     if(!payout) fail(404,'An eligible payout request was not found.');
     const afRows=await db('affiliate_profiles?user_id=eq.'+encodeURIComponent(payout.affiliate_user_id)+'&select=user_id,stripe_account_id,stripe_details_submitted,stripe_transfers_enabled,stripe_payouts_enabled,status&limit=1');
@@ -307,10 +307,14 @@ async function handle(req,res) {
       });
       fail(409,'The commission ledger changed after this payout was requested. The request was cancelled safely; ask the partner to refresh the balance and request a new payout.');
     }
-    const claimed=await db('affiliate_payouts?id=eq.'+encodeURIComponent(payoutId)+'&status=in.(requested,failed,processing)',{
-      method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({status:'processing',failure_code:null})
+    const claimed=await db('rpc/claim_whilo_affiliate_payout',{
+      method:'POST',body:JSON.stringify({p_payout_id:payoutId})
     });
-    if(!Array.isArray(claimed)||!claimed[0]) fail(409,'Payout could not be claimed for processing.');
+    const claimedRow=Array.isArray(claimed)?claimed[0]:claimed;
+    if(!claimedRow || claimedRow.id!==payoutId || claimedRow.status!=='processing') {
+      fail(409,'Another request already claimed this payout, or its status changed. Refresh the queue before retrying.');
+    }
+    payout.processing_at=claimedRow.processing_at || new Date().toISOString();
     let transfer;
     try {
       transfer=await stripeOperation('transfer.find',{transfer_group:'whilo_affiliate_'+payout.id,payout_id:payout.id});
