@@ -17,11 +17,22 @@ module.exports = async function handler(req, res) {
     } catch (_) {}
   }
   const anonKey = configured && supabaseUrl ? process.env.SUPABASE_ANON_KEY : null;
+  let chatgptSignInEnabled = false;
+  try {
+    const base = String(process.env.WHILO_PUBLIC_URL || '').replace(/\/+$/, '');
+    const callback = new URL(String(process.env.OPENAI_SIWC_REDIRECT_URI || ''));
+    chatgptSignInEnabled = String(process.env.OPENAI_SIWC_ENABLED || '').toLowerCase() === 'true' &&
+      /^oaiapp_[A-Za-z0-9_-]{8,160}$/.test(String(process.env.OPENAI_SIWC_CLIENT_ID || '')) &&
+      String(process.env.OPENAI_SIWC_CLIENT_SECRET || '').length >= 16 &&
+      Buffer.byteLength(String(process.env.WHILO_OPENAI_SESSION_SECRET || ''), 'utf8') >= 32 &&
+      Boolean(base) && callback.origin === base && callback.href === base + '/api/auth/chatgpt/callback';
+  } catch (_) { chatgptSignInEnabled = false; }
   return send(res, configured && supabaseUrl ? 200 : 503, {
     configured: Boolean(anonKey),
     supabaseUrl,
     supabaseAnonKey: anonKey,
     signInEnabled: Boolean(anonKey),
+    chatgptSignInEnabled,
     note: anonKey ? 'Use the public anon key with Supabase Auth; all privileged operations stay server-side.' : 'The workspace owner must configure the Supabase URL and anon key in the server environment.'
   });
 };
