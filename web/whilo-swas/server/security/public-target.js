@@ -3,7 +3,8 @@
 const dns = require('node:dns/promises');
 const net = require('node:net');
 
-const blockedAddresses = new net.BlockList();
+const blockedIPv4Addresses = new net.BlockList();
+const blockedIPv6Addresses = new net.BlockList();
 const blockedIPv4 = [
   ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8],
   ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24],
@@ -15,8 +16,8 @@ const blockedIPv6 = [
   ['64:ff9b:1::', 48], ['100::', 64], ['2001::', 23], ['2001:db8::', 32],
   ['2002::', 16], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8]
 ];
-for (const [address, prefix] of blockedIPv4) blockedAddresses.addSubnet(address, prefix, 'ipv4');
-for (const [address, prefix] of blockedIPv6) blockedAddresses.addSubnet(address, prefix, 'ipv6');
+for (const [address, prefix] of blockedIPv4) blockedIPv4Addresses.addSubnet(address, prefix, 'ipv4');
+for (const [address, prefix] of blockedIPv6) blockedIPv6Addresses.addSubnet(address, prefix, 'ipv6');
 
 const BLOCKED_SUFFIXES = [
   '.localhost', '.local', '.internal', '.test', '.invalid', '.example',
@@ -65,7 +66,11 @@ function validateHttpsTarget(value) {
 function isPublicIp(address) {
   const family = net.isIP(String(address || ''));
   if (family !== 4 && family !== 6) return false;
-  return !blockedAddresses.check(address, family === 4 ? 'ipv4' : 'ipv6');
+  // Keep families isolated: Node's BlockList can treat IPv4-mapped IPv6 entries as matches in an IPv4 check.
+  // IPv4-mapped IPv6 literals remain blocked by the IPv6 ::ffff:0:0/96 deny range.
+  return family === 4
+    ? !blockedIPv4Addresses.check(address, 'ipv4')
+    : !blockedIPv6Addresses.check(address, 'ipv6');
 }
 
 async function resolvePublicHttpsTarget(value, lookup = dns.lookup) {
