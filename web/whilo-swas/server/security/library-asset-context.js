@@ -1,7 +1,7 @@
 'use strict';
 
 function text(value, max) {
-  return String(value == null ? '' : value).replace(/\\s+/g, ' ').trim().slice(0, max);
+  return String(value == null ? '' : value).replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
 function libraryAssetContext(asset) {
@@ -27,8 +27,8 @@ function libraryAssetContext(asset) {
     if (!field || typeof field !== 'object' || Array.isArray(field)) return '';
     return text(field.name || field.label || field.key || '', 100);
   }).filter(Boolean) : [];
-  return JSON.stringify({
-    assetId: asset.id,
+  const payload = {
+    assetId: text(asset.id, 80),
     name: text(asset.name, 100),
     type: text(asset.asset_type, 40),
     version: Number(asset.version || 1),
@@ -36,6 +36,21 @@ function libraryAssetContext(asset) {
     sourceUrl: text(asset.source_url, 500),
     widgets,
     fields
-  }).slice(0, 2600);
+  };
+  let encoded = JSON.stringify(payload);
+  while (encoded.length > 2600 && payload.widgets.length) {
+    payload.widgets.pop();
+    encoded = JSON.stringify(payload);
+  }
+  while (encoded.length > 2600 && payload.fields.length) {
+    payload.fields.pop();
+    encoded = JSON.stringify(payload);
+  }
+  if (encoded.length > 2600) {
+    payload.description = payload.description.slice(0, 180);
+    payload.sourceUrl = payload.sourceUrl.slice(0, 180);
+    encoded = JSON.stringify(payload);
+  }
+  return encoded;
 }
 module.exports = { libraryAssetContext };
