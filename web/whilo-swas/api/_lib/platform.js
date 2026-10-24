@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { verifyChatGPTSession } = require('../../server/security/whilo-session');
 
 function send(res, status, body, headers = {}) {
   res.statusCode = status;
@@ -65,6 +66,9 @@ async function authenticate(req) {
     error.statusCode = 401;
     throw error;
   }
+  // ChatGPT is an identity-only login here. This short-lived app token is HMAC-verified;
+  // no OpenAI provider access/refresh token is accepted by this session path.
+  if (token.startsWith('whilo1.')) return verifyChatGPTSession(token);
   const url = supabaseUrl();
   const response = await fetch(url + '/auth/v1/user', {
     headers: { apikey: anonKey(), Authorization: 'Bearer ' + token }
