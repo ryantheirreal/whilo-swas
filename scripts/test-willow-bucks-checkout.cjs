@@ -14,3 +14,14 @@ assert.match(source, /session\.payment_status\s*!==\s*'paid'/, 'Credits must not
 assert.match(source, /Number\(session\.amount_total\)!==pack\.amountMinor/, 'Paid amount must match the server-defined pack');
 assert.match(source, /expectedCredits!==pack\.credits/, 'Credit amount must match the server-defined pack');
 console.log('Willow Bucks Checkout regression tests passed.');
+
+const refundMigration = fs.readFileSync(path.join(root, 'supabase/migrations/202610240003_willow_bucks_refunds_and_debt.sql'), 'utf8');
+assert.match(source, /charge\\.refunded/, 'Verified charge refunds must trigger a credit reversal');
+assert.match(source, /charge\\.dispute\\.created/, 'Opening a dispute must conservatively reverse credit value');
+assert.match(source, /charge\\.dispute\\.closed/, 'A won dispute must restore eligible credits or clear its outstanding recovery debt');
+assert.match(source, /rpc\\/reverse_whilo_credit_purchase/, 'Webhook reversals must use the atomic server-only RPC');
+assert.match(source, /Stripe should retry this webhook/, 'Out-of-order refund events must be retried rather than silently dropped');
+assert.match(refundMigration, /recovery_debt_wb bigint not null default 0/, 'Spent credits cannot create a spendable negative wallet; they create recovery debt');
+assert.match(refundMigration, /whilo_credit_reversal_events/, 'Stripe event IDs must be durably deduplicated');
+assert.match(refundMigration, /recovery_debt_repaid_wb/, 'Future top-ups must first repay recovery debt');
+console.log('Willow Bucks refund/dispute recovery regression tests passed.');
