@@ -1,12 +1,14 @@
 # Whilo Marketplace & plans — implementation brief
 
-Updated: 22 October 2026.
+Updated: 24 October 2026.
 
-## Current truth
+## Current truth — 24 October 2026
 
-The current app has a general Store entry point and a Pet/Bot concept, but it is not yet a live multi-seller marketplace. No production Supabase project is connected in this repository state, no marketplace migration has been applied to a live database, no Stripe Connect account is linked, and there are no verified purchases or payouts. The marketplace UI must label sample assets as previews until the server returns actual published listings. The Pet-install RPC creates a workspace Pet record; Bots, Skills, Playbooks and Templates are saved as declarative installed assets, and task-runtime invocation remains a separate launch gate.
+The Store, tenant-aware marketplace schema, listing/order APIs, Stripe checkout plumbing and signed-webhook handlers exist in the repo. The dedicated Supabase project `whilo-prod` is active and has 26 applied migrations, including marketplace, entitlement/install, refund/affiliate and Willow Bucks ledger migrations. This database state must not be described as absent or have the existing migrations replayed.
 
-This implementation plan adds the product surface, tenant-aware persistence schema, authenticated listing/order APIs, server-side Stripe Connect onboarding and checkout plumbing, plus signed-webhook verification. It still depends on configuration, database migrations, provider account verification, and end-to-end tests before real users can buy or receive payouts.
+This is **not yet a live multi-seller marketplace**. The Vercel server-only `SUPABASE_SERVICE_ROLE_KEY` is missing; Stripe API/webhook secrets, sandbox Price IDs and approved moderator UUID allowlists are also missing. There are no verified sandbox purchases, refunds, Connect onboarding or payouts in this release record. The marketplace UI must label sample assets as previews until the authenticated server returns actual published listings. The Pet-install RPC creates a workspace Pet record; runtime execution remains a separate gate.
+
+Before real users can buy or receive payouts, configure server credentials in Vercel, use a separate Stripe sandbox, verify signed/idempotent webhooks and payment-status handling, test refund/dispute/Connect recovery, and complete the applicable legal, tax, consumer and seller-verification review. Keep the affiliate-payout kill switch disabled.
 
 ## Marketplace promise
 
@@ -92,7 +94,7 @@ Ask Whilo can become the display name above the chat input while the navigation 
 
 ## Release gates before public sale
 
-1. Apply migrations 001–013 in a **staging** Supabase project; 009 creates the marketplace/commerce schema and 010 adds transactional buyer-side installations.
+1. Verify the current `whilo-prod` database migration history (26 applied migrations). Never replay those migrations on the production project. Rehearse any future schema change as a new migration in a dedicated **staging** project; 009 created the marketplace schema and 010 added transactional buyer-side installations.
 2. Configure Stripe test-mode secret and webhook signing key; set a webhook route at /api/marketplace/webhook; use test-mode Connect accounts and verify onboarding, account.updated, checkout.completed, duplicate webhook, failure, refund and dispute flows.
 3. Set platform moderator user IDs server-side. New creator listings stay in review until a moderator approves them.
 4. Complete legal terms, prohibited-listing rules, IP takedown path, refund/dispute policy, privacy policy, Brazilian consumer/data/tax review and seller verification.
