@@ -1445,7 +1445,7 @@
     out+=routines.length?'<div class="routine-list">'+routines.map(function(r){
       const a=assets.find(function(x){return x.id===r.asset_id;});
       const schedule=r.schedule_kind==='manual'?'Manual launch':(r.schedule_kind==='daily'?'Daily':'Weekly')+' · '+(r.schedule_time||'')+' · '+(r.timezone||'UTC');
-      return '<article class="routine-row"><div class="routine-row-icon">'+(r.target_kind==='computer'?'▣':(r.target_kind==='dashboard'||(a&&a.asset_type==='dashboard'))?'▦':'◇')+'</div><div><div class="routine-row-title"><b>'+esc(r.title)+'</b><span class="'+(r.enabled?'enabled':'')+'">'+(r.enabled?'Enabled':'Paused')+'</span></div><p>'+esc(r.description)+'</p><div class="routine-meta"><span>'+esc(r.target_kind)+(a?' · '+esc(a.name):'')+'</span><span>'+esc(schedule)+'</span><span>Budget ≤ '+Number(r.max_cost_wb||1000).toLocaleString()+' WB (R$ '+(Number(r.max_cost_wb||1000)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+')</span><span>Last: '+esc(routineDate(r.last_run_at))+'</span></div>'+(r.next_run_at?'<small class="routine-next">Next: '+esc(routineDate(r.next_run_at))+'</small>':'')+'<div class="tour-actions"><button class="btn" data-act="routine-run" data-id="'+esc(r.id)+'"'+(routineBusy?' disabled':'')+'>Run now</button><button class="btn secondary" data-act="routine-chat" data-id="'+esc(r.id)+'">Build in Chat @Routines</button><button class="btn secondary" data-act="routine-toggle" data-enabled="'+(!r.enabled)+'" data-id="'+esc(r.id)+'">'+(r.enabled?'Pause schedule':'Enable schedule')+'</button></div></div></article>';
+      return '<article class="routine-row"><div class="routine-row-icon">'+(r.target_kind==='computer'?'▣':(r.target_kind==='dashboard'||(a&&a.asset_type==='dashboard'))?'▦':'◇')+'</div><div><div class="routine-row-title"><b>'+esc(r.title)+'</b><span class="'+(r.enabled?'enabled':'')+'">'+(r.enabled?'Enabled':'Paused')+'</span></div><p>'+esc(r.description)+'</p><div class="routine-meta"><span>'+esc(r.target_kind)+(a?' · '+esc(a.name):'')+'</span><span>'+esc(schedule)+'</span><span>Budget ≤ '+Number(r.max_cost_wb||1000).toLocaleString()+' WB (R$ '+(Number(r.max_cost_wb||1000)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+')</span><span>Last: '+esc(routineDate(r.last_run_at))+'</span></div>'+(r.next_run_at?'<small class="routine-next">Next: '+esc(routineDate(r.next_run_at))+'</small>':'')+'<div class="tour-actions">'+((a && ['library_asset','dashboard','web_app'].includes(r.target_kind))?'<button class="btn secondary" data-act="routine-analyze-library" data-id="'+esc(r.id)+'"'+(routineBusy?' disabled':'')+'>Analyze saved snapshot</button>':'')+'<button class="btn" data-act="routine-run" data-id="'+esc(r.id)+'"'+(routineBusy?' disabled':'')+'>Run now</button><button class="btn secondary" data-act="routine-chat" data-id="'+esc(r.id)+'">Build in Chat @Routines</button><button class="btn secondary" data-act="routine-toggle" data-enabled="'+(!r.enabled)+'" data-id="'+esc(r.id)+'">'+(r.enabled?'Pause schedule':'Enable schedule')+'</button></div></div></article>';
     }).join('')+'</div>':'<div class="routine-empty"><b>No routines saved yet.</b><p>Create one above, test a manual run and review the mission before approving it.</p></div>';
     out+='</section><section class="routine-panel"><div class="eyebrow">05 / HISTORY</div><h3>Traceable run ledger</h3><p class="muted">A queued mission is not proof of an action. Inspect status and evidence before accepting its output.</p>';
     out+=runs.length?'<div class="routine-run-list">'+runs.slice(0,20).map(function(run){
@@ -1728,6 +1728,22 @@
         .finally(function(){routineBusy=false;routineLoad(true);if(active==='routines')render();});
       return;
     }
+    if (act === 'routine-analyze-library') {
+      if(routineBusy)return;
+      const key='asset-analysis:'+id+':'+(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
+      routineBusy=true;routineFeedback='Analyzing saved library snapshot (read-only; no external access)…';render();
+      whiloApi('/api/routines',{method:'POST',body:JSON.stringify({action:'run_asset_analysis',routineId:id,idempotencyKey:key})})
+        .then(function(result){
+          const summary=result.summary||{};
+          routineFeedback=(result.detail||'Saved snapshot analysis completed.')+
+            (summary.widgetCount!=null?' Widgets analyzed: '+Number(summary.widgetCount)+'.':'')+
+            (summary.numericMetricCount!=null?' Numeric metrics: '+Number(summary.numericMetricCount)+'.':'');
+          routineData=null;
+        })
+        .catch(function(error){routineFeedback=error&&error.message?error.message:'Saved snapshot analysis failed.';})
+        .finally(function(){routineBusy=false;routineLoad(true);if(active==='routines')render();});
+      return;
+    }
     if (act === 'routine-run') {
       if(routineBusy)return;
       const key='manual:'+id+':'+(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
@@ -1741,7 +1757,8 @@
     if (act === 'credits-buy') {
       if(creditsBusy)return;
       creditsBusy=true;creditsFeedback='Opening secure Stripe Checkout…';render();
-      whiloApi('/api/credits',{method:'POST',body:JSON.stringify({action:'create-checkout',packId:id})})
+      const requestId='wb-checkout:'+(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2));
+      whiloApi('/api/credits',{method:'POST',body:JSON.stringify({action:'create-checkout',packId:id,requestId:requestId})})
         .then(function(result){
           if(!result.checkoutUrl||!/^https:\/\/checkout\.stripe\.com\//.test(result.checkoutUrl))throw new Error('A valid Stripe Checkout URL was not returned.');
           window.location.assign(result.checkoutUrl);
