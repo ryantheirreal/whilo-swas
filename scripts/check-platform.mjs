@@ -132,7 +132,6 @@ if (!bootstrap.includes('password.length < 14')) failures.push('Owner bootstrap 
 if (bootstrap.includes('1223344q')) failures.push('A weak chat-shared password must never be committed to source.');
 if (/console\.(?:log|error)\(\s*password\b/i.test(bootstrap) || /console\.(?:log|error)\(\s*JSON\.stringify\(\s*\{[^}]*\bpassword\s*:/is.test(bootstrap)) failures.push('Owner bootstrap must not log passwords.');
 const cloudAuth = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'), 'utf8');
-const enterpriseUi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'), 'utf8');
 const accountBootstrap = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'account-bootstrap.js'), 'utf8');
 const routeMap = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'api', 'messages', 'index.js'), 'utf8');
 const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'vercel.json'), 'utf8'));
@@ -147,7 +146,6 @@ if (!(vercelConfig.rewrites || []).some(item => item.source === '/api/affiliates
 const affiliateRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'affiliates.js'), 'utf8');
 if (!affiliateRoute.includes("action==='claim-referral'") || !affiliateRoute.includes('authenticate(req)')) failures.push('Affiliate attribution must use an authenticated server endpoint.');
 if (!affiliateRoute.includes('WHILO_AFFILIATE_PAYOUTS_ENABLED')) failures.push('Real affiliate transfers must be protected by an explicit server-side kill switch.');
-const routinesRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'routines.js'), 'utf8');
 const publicTarget = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'security', 'public-target.js'), 'utf8');
 const routineSecurityTests = fs.readFileSync(path.join(root, 'scripts', 'test-routine-security.cjs'), 'utf8');
 if (!routinesRoute.includes('resolvePublicHttpsTarget')) failures.push('Routine URL targets must pass DNS-aware public-address validation at save and run time.');
