@@ -53,8 +53,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 29) {
-  failures.push('Expected all twenty-nine versioned Supabase migrations to be present.');
+if (migrations.length < 31) {
+  failures.push('Expected all thirty-one versioned Supabase migrations to be present.');
 }
 const migrationVersions = migrations.map(file => path.basename(file).match(/^(\d{12})_/));
 if (migrationVersions.some(match => !match)) failures.push('Every SQL migration must start with a 12-digit version and underscore.');
@@ -114,6 +114,8 @@ for (const [label, pattern] of [
   ['unspent and already-used credit recovery debt', /recovery_debt_wb bigint not null default 0/i],
   ['atomic Stripe refund/dispute reversal', /function public\\.reverse_whilo_credit_purchase/i],
   ['future top-ups repay recovery debt first', /recovery_debt_repaid_wb/i],
+  ['credit purchase-state user foreign-key index', /create index if not exists whilo_credit_purchase_state_user_fk_idx\\s+on public\\.whilo_credit_purchase_state\\(user_id\\)/i],
+  ['credit reversal organization foreign-key index', /create index if not exists whilo_credit_reversal_events_org_fk_idx\\s+on public\\.whilo_credit_reversal_events\\(organization_id\\)/i],
 ]) {
   if (!pattern.test(allSql)) failures.push('Missing database invariant: ' + label);
 }
