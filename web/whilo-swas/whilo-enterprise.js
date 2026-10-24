@@ -37,6 +37,8 @@
   const INTEGRATIONS = [
     { id: 'slack', name: 'Slack', detail: 'Workspace OAuth; message sends stay approval-gated', icon: '◌', action: 'connect-slack', button: 'Connect Slack' },
     { id: 'twilio', name: 'SMS via Twilio', detail: 'Verify tenant-owned API credentials; no message is sent during setup', icon: '✉', action: 'connect-twilio', button: 'Configure SMS' },
+    { id: 'gemini-api', name: 'Gemini Developer API', detail: 'Bring your own API key; encrypted at rest and billed by Google API usage', icon: '✦', action: 'connect-gemini-api', button: 'Connect API key' },
+    { id: 'openai-api', name: 'OpenAI Developer API', detail: 'Bring your own API key; Responses API with provider-side API billing', icon: '◎', action: 'connect-openai-api', button: 'Connect API key' },
     { id: 'imessage-bridge', name: 'iMessage via Mac Bridge', detail: 'One-time QR device pairing; native message transport is a separate release gate', icon: '⌘', action: 'pair-imessage', button: 'Pair Mac (QR)' },
     { id: 'github', name: 'GitHub', detail: 'Repositories, issues and pull requests', icon: '⌘', action: 'connect-setup', button: 'Plan setup' },
     { id: 'gmail', name: 'Gmail & Calendar', detail: 'Research, drafts and calendar preparation', icon: '✉', action: 'connect-setup', button: 'Plan setup' },
@@ -63,6 +65,16 @@
   let connectorFeedback = '';
   let connectorBusy = false;
   let showTwilioForm = false;
+  let showModelKeyForm = false;
+  let modelKeyProvider = 'gemini-api';
+  let modelLabProvider = 'gemini-api';
+  let modelLabModels = [];
+  let modelLabSelected = '';
+  let modelLabPrompt = '';
+  let modelLabResult = '';
+  let modelLabFeedback = '';
+  let modelLabLoading = false;
+  let modelLabBusy = false;
   let bridgePairing = null;
   let bridgePollTimer = null;
   let cloudMissionsCache = null;
@@ -767,6 +779,30 @@
   function accountPage() {
     return '<div class="hero"><div><h2 class="h2">Your Whilo account</h2><p class="muted">Manage identity, access and your Whilo Partners growth profile.</p></div></div>' + cloudAuthCard() + affiliateHubPage();
   }
+  function modelProviderLabel(provider) { return provider === 'openai-api' ? 'OpenAI API' : 'Gemini Developer API'; }
+
+  async function loadModelCatalog(provider) {
+    modelLabLoading = true;
+    modelLabFeedback = 'Loading models available to this API key…';
+    modelLabProvider = provider;
+    render();
+    try {
+      const data = await whiloApi('/api/model-gateway?provider=' + encodeURIComponent(provider), { method: 'GET' });
+      modelLabModels = Array.isArray(data.models) ? data.models : [];
+      modelLabSelected = modelLabModels.length ? modelLabModels[0].id : '';
+      modelLabFeedback = modelLabModels.length
+        ? modelLabModels.length + ' models discovered. Requests are billed by the connected provider API account.'
+        : 'No generation-capable models are available to this API key.';
+    } catch (error) {
+      modelLabModels = [];
+      modelLabSelected = '';
+      modelLabFeedback = error && error.message ? error.message : 'The provider model list could not be loaded.';
+    } finally {
+      modelLabLoading = false;
+      if (active === 'connect') render();
+    }
+  }
+
   function connectPage() {
     if (!connectorCache && !connectorLoading && !connectorFeedback) loadConnectors();
     const apiItems = connectorCache && Array.isArray(connectorCache.integrations) ? connectorCache.integrations : [];
@@ -795,6 +831,20 @@
         '<div class="actions"><button class="btn secondary" data-act="' + esc(action) + '" data-id="' + esc(i.id) + '"' + (disabled ? ' disabled' : '') + '>' + esc(button) + '</button></div></article>';
     }).join('');
     out += '</div>';
+
+    if (showModelKeyForm) {
+      const gemini = modelKeyProvider === 'gemini-api';
+      out += '<div class="card" style="margin-top:16px"><h3>Connect ' + modelProviderLabel(modelKeyProvider) + '</h3><p class="muted">The key is verified against the official model catalog, encrypted server-side and never returned to the browser. Only workspace owners and admins can change shared provider credentials. This uses Developer API billing, not a consumer ChatGPT/Gemini subscription.</p>' +
+        '<form id="connect-model-key-form"><input type="hidden" name="provider" value="' + esc(modelKeyProvider) + '"><div class="fieldgroup"><label class="label" for="whilo-model-api-key">API key</label><input class="field" id="whilo-model-api-key" name="apiKey" type="password" required minlength="20" maxlength="512" autocomplete="new-password" spellcheck="false" placeholder="' + (gemini ? 'Google AI Studio API key' : 'OpenAI project API key') + '"></div><div class="actions"><button class="btn" type="submit"' + (connectorBusy ? ' disabled' : '') + '>Verify & encrypt key</button><button class="btn secondary" type="button" data-act="cancel-model-key">Cancel</button></div></form></div>';
+    }
+
+    out += '<section class="card" style="margin-top:16px"><div class="row" style="align-items:flex-start"><div><h3>BYOK Model Console</h3><p class="muted">Test models that your connected Developer API key can access. Whilo lists only live models returned by the provider; provider costs and quotas are kept separate from Willow Bucks.</p></div></div>' +
+      '<div class="fieldgroup"><label class="label" for="whilo-model-provider">Provider</label><select class="field" id="whilo-model-provider"><option value="gemini-api"' + (modelLabProvider === 'gemini-api' ? ' selected' : '') + '>Gemini Developer API</option><option value="openai-api"' + (modelLabProvider === 'openai-api' ? ' selected' : '') + '>OpenAI Developer API</option></select></div>' +
+      '<div class="actions"><button class="btn secondary" type="button" data-act="load-model-catalog"' + (modelLabLoading ? ' disabled' : '') + '>' + (modelLabLoading ? 'Loading models…' : 'Refresh available models') + '</button></div>' +
+      (modelLabFeedback ? '<div class="notice" role="status" style="margin-top:10px">' + esc(modelLabFeedback) + '</div>' : '') +
+      (modelLabModels.length ? '<form id="model-playground-form" style="display:grid;gap:12px;margin-top:14px"><div class="fieldgroup"><label class="label" for="whilo-model-selection">Available model</label><select class="field" name="model" id="whilo-model-selection" required>' + modelLabModels.map(function(m){return '<option value="' + esc(m.id) + '"' + (modelLabSelected === m.id ? ' selected' : '') + '>' + esc(m.name) + '</option>';}).join('') + '</select></div><div class="fieldgroup"><label class="label" for="whilo-model-prompt">Prompt</label><textarea class="field" id="whilo-model-prompt" name="prompt" rows="5" maxlength="15000" required placeholder="Give the model a bounded task. No browser or computer actions run from this console.">' + esc(modelLabPrompt) + '</textarea></div><div class="actions"><button class="btn" type="submit"' + (modelLabBusy ? ' disabled' : '') + '>' + (modelLabBusy ? 'Running…' : 'Run model test') + '</button></div></form>' : '<p class="muted" style="margin-top:12px">Connect an API key above, then refresh the model catalog to test a live model.</p>') +
+      (modelLabResult ? '<div style="margin-top:14px;padding:15px;border:1px solid #343434;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere"><div class="eyebrow">MODEL OUTPUT</div><div style="font-size:13px;line-height:1.6;margin-top:8px">' + esc(modelLabResult) + '</div></div>' : '') +
+      '<p class="muted" style="font-size:11px;margin-top:12px">Limits: 15,000-character prompt, 4,000-character system context and 2,048 output tokens per request. Real provider usage is returned when available; Whilo does not guess quota remaining.</p></section>';
 
     if (showTwilioForm) {
       out += '<div class="card" style="margin-top:16px"><h3>Configure SMS via Twilio</h3><p class="muted">Credentials are sent to Whilo over HTTPS, validated server-side and encrypted before persistence. This setup sends no SMS. Use a Messaging Service SID; outbound sends need separate consent and approval safeguards.</p>' +
@@ -2083,8 +2133,13 @@
         .catch(function (error) { connectorFeedback = error && error.message ? error.message : 'Slack connection could not start.'; connectorBusy = false; render(); });
       return;
     }
-    if (act === 'connect-twilio') { showTwilioForm = true; render(); return; }
+    if (act === 'connect-twilio') { showTwilioForm = true; showModelKeyForm = false; render(); return; }
     if (act === 'cancel-twilio') { showTwilioForm = false; render(); return; }
+    if (act === 'connect-gemini-api' || act === 'connect-openai-api') {
+      showModelKeyForm = true; showTwilioForm = false; modelKeyProvider = act === 'connect-openai-api' ? 'openai-api' : 'gemini-api'; connectorFeedback = ''; render(); return;
+    }
+    if (act === 'cancel-model-key') { showModelKeyForm = false; render(); return; }
+    if (act === 'load-model-catalog') { loadModelCatalog(modelLabProvider); return; }
     if (act === 'disconnect-connector') {
       connectorBusy = true; connectorFeedback = 'Revoking and removing the encrypted connection…'; render();
       whiloApi('/api/connectors', { method: 'POST', body: JSON.stringify({ action: 'disconnect', provider: id }) })
@@ -2289,6 +2344,48 @@
         .finally(function () { cloudAuthBusy = false; render(); });
       return;
     }
+    if (form.id === 'connect-model-key-form') {
+      const fd = new FormData(form);
+      const apiKey = String(fd.get('apiKey') || '');
+      const provider = String(fd.get('provider') || '');
+      if (!['gemini-api','openai-api'].includes(provider) || !apiKey) return;
+      connectorBusy = true;
+      connectorFeedback = 'Verifying provider access and encrypting the key…';
+      render();
+      whiloApi('/api/connectors', { method:'POST', body:JSON.stringify({ action: provider === 'gemini-api' ? 'connect_gemini_api' : 'connect_openai_api', apiKey: apiKey }) })
+        .then(function(data) {
+          form.reset();
+          showModelKeyForm = false;
+          connectorFeedback = data.detail || 'Provider key verified and stored.';
+          modelLabProvider = provider;
+          modelLabModels = [];
+          modelLabSelected = '';
+          modelLabResult = '';
+          return loadConnectors();
+        })
+        .catch(function(error) { connectorFeedback = error && error.message ? error.message : 'The provider key could not be verified.'; })
+        .finally(function() { connectorBusy = false; if (active === 'connect') render(); });
+      return;
+    }
+    if (form.id === 'model-playground-form') {
+      const fd = new FormData(form);
+      modelLabPrompt = String(fd.get('prompt') || '');
+      modelLabSelected = String(fd.get('model') || '');
+      if (!modelLabPrompt.trim() || modelLabBusy) return;
+      modelLabBusy = true;
+      modelLabResult = '';
+      modelLabFeedback = 'Sending this bounded request to the connected provider API…';
+      render();
+      whiloApi('/api/model-gateway', { method:'POST', body:JSON.stringify({ provider:modelLabProvider, model:modelLabSelected, prompt:modelLabPrompt, maxOutputTokens:1024 }) })
+        .then(function(data) {
+          const usage=data.usage||{};
+          modelLabResult=(data.text||'(The provider returned no text.)')+'\n\n---\nProvider: '+data.provider+' · Model: '+data.model+'\nTokens: '+(usage.inputTokens||0)+' input / '+(usage.outputTokens||0)+' output / '+(usage.totalTokens||0)+' total. Provider API billing applies.';
+          modelLabFeedback='Request completed. This was an explicit manual test; no routine or computer action was started.';
+        })
+        .catch(function(error) { modelLabFeedback=error&&error.message?error.message:'Model request failed.'; })
+        .finally(function() { modelLabBusy=false; if(active==='connect')render(); });
+      return;
+    }
     if (form.id === 'connect-twilio-form') {
       const fd = new FormData(form);
       connectorBusy = true; connectorFeedback = 'Verifying credentials and storing an encrypted connection…'; render();
@@ -2318,6 +2415,15 @@
       state.hourlyCost = Math.max(0, Math.min(100000, Number(fd.get('cost')) || 0));
       save(); render();
     }
+  });
+  shadow.addEventListener('change', function(event) {
+    const target=event.target;
+    if(target && target.id==='whilo-model-provider') {
+      modelLabProvider=target.value==='openai-api'?'openai-api':'gemini-api';
+      modelLabModels=[]; modelLabSelected=''; modelLabResult=''; modelLabFeedback='';
+      render();
+    }
+    if(target && target.id==='whilo-model-selection') modelLabSelected=target.value||'';
   });
   shadow.addEventListener('input', function (event) {
     const target = event.target;
