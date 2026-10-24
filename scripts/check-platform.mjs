@@ -150,7 +150,7 @@ const publicTarget = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'serve
 const routineSecurityTests = fs.readFileSync(path.join(root, 'scripts', 'test-routine-security.cjs'), 'utf8');
 if (!routinesRoute.includes('resolvePublicHttpsTarget')) failures.push('Routine URL targets must pass DNS-aware public-address validation at save and run time.');
 if (!routinesRoute.includes('max_cost_wb')) failures.push('Routine execution records must carry a per-run budget ceiling.');
-if (!publicTarget.includes('blockedAddresses.check') || !publicTarget.includes('lookup(new URL(normalized).hostname')) failures.push('Routine target validator must block private/reserved DNS answers.');
+if (!publicTarget.includes('blockedIPv4Addresses.check') || !publicTarget.includes('blockedIPv6Addresses.check') || !publicTarget.includes('lookup(new URL(normalized).hostname')) failures.push('Routine target validator must block private/reserved DNS answers by IP family.');
 if (!routineSecurityTests.includes('mixedLookup') || !routineSecurityTests.includes('169.254.169.254')) failures.push('Routine SSRF tests must cover metadata IPs and mixed public/private DNS answers.');
 if (!enterpriseUi.includes('function affiliateHubPage()') || !enterpriseUi.includes('affiliate-enroll-form')) failures.push('The Account screen must expose affiliate enrollment and dashboard UI.');
 
