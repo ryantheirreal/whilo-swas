@@ -47,7 +47,23 @@ jobs:
         env:
           STRIX_LLM: anthropic/claude-sonnet-4-6
           LLM_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: strix --non-interactive --target ./web/whilo-swas --scan-mode quick
+        run: strix --non-interactive --target ./web/whilo-swas --scan-mode quick --max-budget 10
+      - name: Require a completed assessment report
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          reports = sorted(Path("strix_runs").glob("**/run.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+          if not reports:
+              raise SystemExit("Strix did not produce run.json; this is not a clean assessment.")
+          report = json.loads(reports[0].read_text())
+          status = str(report.get("status", "")).lower()
+          if status != "completed":
+              raise SystemExit(f"Strix assessment status is {status!r}, not 'completed'. Treat this run as incomplete.")
+          print(f"Completed Strix report: {reports[0]}")
+          PY
       - name: Preserve report for maintainer review
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.2
