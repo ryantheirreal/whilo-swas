@@ -7,6 +7,8 @@ const {
 const CATALOG = [
   { id: 'slack', name: 'Slack', category: 'Messaging', method: 'OAuth 2.0', capabilities: ['Read approved workspace metadata', 'Post only with a separate approval policy'], status: 'available' },
   { id: 'twilio', name: 'SMS via Twilio', category: 'Messaging', method: 'API key', capabilities: ['Verify provider credentials', 'Messaging Service required before sending'], status: 'available' },
+  { id: 'gemini-api', name: 'Gemini Developer API', category: 'AI models', method: 'Encrypted API key (BYOK)', capabilities: ['Dynamic model discovery', 'Provider-side API quotas and billing'], status: 'available' },
+  { id: 'openai-api', name: 'OpenAI API', category: 'AI models', method: 'Encrypted API key (BYOK)', capabilities: ['Dynamic model discovery', 'Responses API with store=false'], status: 'available' },
   { id: 'imessage-bridge', name: 'iMessage via Mac Bridge', category: 'Messaging', method: 'Pair a user-owned macOS bridge', capabilities: ['Pairing foundation only', 'Requires the native bridge runtime'], status: 'bridge_required' },
   { id: 'github', name: 'GitHub', category: 'Engineering', method: 'OAuth / GitHub App', capabilities: ['Repository and issue workflows'], status: 'planned' },
   { id: 'gmail', name: 'Gmail & Calendar', category: 'Email & calendar', method: 'Google OAuth', capabilities: ['Read and draft; send requires approval'], status: 'planned' },
@@ -46,6 +48,45 @@ module.exports = async function handler(req, res) {
     }
 
     const body = await readJson(req);
+    if (body.action === 'connect_gemini_api' || body.action === 'connect_openai_api') {
+      if (!['owner','admin'].includes(member.role)) return send(res,403,{error:'Only a workspace owner or admin can change shared AI provider credentials.'});
+      const isGemini = body.action === 'connect_gemini_api';
+      const provider = isGemini ? 'gemini-api' : 'openai-api';
+      const apiKey = String(body.apiKey || '').trim();
+      if (apiKey.length < 20 || apiKey.length > 512 || /\\s/.test(apiKey)) {
+        return send(res,400,{error:'Enter a valid API key without whitespace.'});
+      }
+      const url = isGemini
+        ? 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1'
+        : 'https://api.openai.com/v1/models';
+      let response;
+      try {
+        response = await fetch(url,{headers:Object.assign({Accept:'application/json'},isGemini?{'x-goog-api-key':apiKey}:{Authorization:'Bearer '+apiKey}),cache:'no-store',signal:AbortSignal.timeout(10000)});
+      } catch (_) {
+        return send(res,502,{error:'The provider could not be reached. No credential was saved.'});
+      }
+      if (response.status === 401 || response.status === 403) return send(res,400,{error:'The provider rejected this API key. Check its access and try again.'});
+      if (response.status === 429) return send(res,429,{error:'The provider is rate-limited. Wait and retry; no credential was saved.'});
+      if (!response.ok) return send(res,502,{error:'The provider did not verify the key. Check API access and retry.'});
+      let providerData={};
+      try { providerData=await response.json(); } catch (_) { return send(res,502,{error:'The provider returned an unreadable response. No credential was saved.'}); }
+      const validModels = isGemini ? Array.isArray(providerData.models) : Array.isArray(providerData.data);
+      if (!validModels) return send(res,502,{error:'The provider key could not be verified against its model catalog.'});
+      const encrypted=encryptPayload({kind:isGemini?'gemini_api_key':'openai_api_key',apiKey});
+      const now=new Date().toISOString();
+      await db('integration_connections?on_conflict=organization_id,provider,external_account_id',{
+        method:'POST',
+        headers:{Prefer:'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify(Object.assign({
+          organization_id:orgId,provider,status:'connected',external_account_id:'default',
+          external_account_name:isGemini?'Gemini Developer API':'OpenAI API',
+          scopes:isGemini?['models:list','models:generateContent']:['models:list','responses:create'],
+          metadata:{verified_at:now,credential_type:'provider_api_key'},created_by:user.id,connected_at:now,revoked_at:null
+        },encrypted))
+      });
+      await audit(orgId,user.id,'connector.connected','integration_connection',provider,'success',{provider,method:'provider_api_key'});
+      return send(res,200,{ok:true,provider,status:'connected',detail:'API key verified and encrypted. Usage is charged by this provider API account; Whilo does not use the consumer subscription quota.'});
+    }
     if (body.action === 'connect_twilio') {
       const accountSid = String(body.accountSid || '').trim();
       const apiKeySid = String(body.apiKeySid || '').trim();
