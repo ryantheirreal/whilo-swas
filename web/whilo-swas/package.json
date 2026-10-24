@@ -5,7 +5,7 @@
   "description": "Whilo browser application",
   "scripts": {
     "build": "bash build.sh",
-    "check": "bash -n build.sh && node --check whilo-enterprise.js && node --check whilo-marketplace.js && node ../../scripts/check-platform.mjs && node ../../scripts/test-routine-security.cjs && node ../../scripts/test-library-asset-context.cjs && node ../../scripts/test-library-routine-analysis.cjs && node ../../scripts/test-willow-bucks-checkout.cjs && node ../../scripts/test-whilo-session.cjs",
+    "check": "bash -n build.sh && node --check whilo-enterprise.js && node --check whilo-marketplace.js && node ../../scripts/check-platform.mjs && node ../../scripts/test-routine-security.cjs && node ../../scripts/test-library-asset-context.cjs && node ../../scripts/test-library-routine-analysis.cjs && node ../../scripts/test-willow-bucks-checkout.cjs && node ../../scripts/test-whilo-session.cjs && node ../../scripts/test-model-gateway.cjs",
     "build:clean": "rm -rf public"
   },
   "dependencies": {
