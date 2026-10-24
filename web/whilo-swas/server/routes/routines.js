@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const { validateHttpsTarget, resolvePublicHttpsTarget } = require('../security/public-target');
 const { send, authenticate, organizationFor, db, readJson, safeError, audit } = require('../../api/_lib/platform');
+const { libraryAssetContext } = require('../security/library-asset-context');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ASSET_TYPES = new Set(['dashboard','web_app','document','report','workflow','template','dataset']);
@@ -67,40 +68,6 @@ function validateSchedule(body) {
     fail(400, 'Weekly schedules need one or more days between Sunday (0) and Saturday (6).');
   }
   return { kind, time: kind === 'manual' ? null : time, days: kind === 'weekly' ? days : [], timezone: validateTimezone(body.timezone) };
-}
-function libraryAssetContext(asset) {
-  if (!asset || typeof asset !== 'object') return '';
-  const definition = asset.definition && typeof asset.definition === 'object' && !Array.isArray(asset.definition)
-    ? asset.definition : {};
-  const widgets = Array.isArray(definition.widgets) ? definition.widgets.slice(0, 16).map(function (widget) {
-    if (!widget || typeof widget !== 'object' || Array.isArray(widget)) return null;
-    const item = {};
-    if (typeof widget.title === 'string') item.title = text(widget.title, 120);
-    if (typeof widget.type === 'string') item.type = text(widget.type, 40);
-    else if (typeof widget.kind === 'string') item.type = text(widget.kind, 40);
-    if (typeof widget.description === 'string') item.description = text(widget.description, 240);
-    if (typeof widget.sourceLabel === 'string') item.sourceLabel = text(widget.sourceLabel, 120);
-    else if (typeof widget.source_label === 'string') item.sourceLabel = text(widget.source_label, 120);
-    if (typeof widget.value === 'number' && Number.isFinite(widget.value)) item.value = widget.value;
-    else if (typeof widget.value === 'string') item.value = text(widget.value, 100);
-    if (typeof widget.unit === 'string') item.unit = text(widget.unit, 24);
-    return Object.keys(item).length ? item : null;
-  }).filter(Boolean) : [];
-  const fields = Array.isArray(definition.fields) ? definition.fields.slice(0, 24).map(function (field) {
-    if (typeof field === 'string') return text(field, 100);
-    if (!field || typeof field !== 'object' || Array.isArray(field)) return '';
-    return text(field.name || field.label || field.key || '', 100);
-  }).filter(Boolean) : [];
-  return JSON.stringify({
-    assetId: asset.id,
-    name: text(asset.name, 100),
-    type: text(asset.asset_type, 40),
-    version: Number(asset.version || 1),
-    description: text(asset.description, 500),
-    sourceUrl: text(asset.source_url, 500),
-    widgets,
-    fields
-  }).slice(0, 2600);
 }
 function extractMissionId(value) {
   if (typeof value === 'string' && UUID_RE.test(value)) return value;
