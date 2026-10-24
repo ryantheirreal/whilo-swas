@@ -34,6 +34,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/model-gateway",
+      "destination": "/api/messages?route=model-gateway"
+    },
+    {
       "source": "/api/auth/chatgpt/callback",
       "destination": "/api/messages?route=chatgpt-auth-callback"
     },
