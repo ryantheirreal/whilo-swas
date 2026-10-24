@@ -27,6 +27,9 @@ assert.ok(api.includes('max_cost_wb'), 'Routine records enforce a server-side ma
 assert.ok(api.includes('not_started'), 'Enqueued missions are not falsely marked as executed');
 assert.ok(analysis.includes('executionMode'), 'Library analysis returns a typed, explicit execution mode');
 assert.ok(ui.includes('function whiloChatPage()'), 'Whilo has a first-party Chat surface rather than only a host-chat prefill');
+assert.ok(ui.includes('let whiloChatModelPromise = null;') || ui.includes('whiloChatModelPromise = null;'), 'Concurrent Chat model discovery reuses a single in-flight request');
+assert.ok(ui.includes('return whiloChatModelPromise;'), 'Routine Chat waits for model discovery before generation');
+assert.ok(ui.includes("steps[steps.length-1].kind='verify';"), 'Every model-proposed routine ends with an explicit verification step');
 assert.ok(ui.includes('data-tab="chat"'), 'Chat is a first-class Whilo workspace tab');
 assert.ok(ui.includes("whiloApi('/api/model-gateway'"), 'Chat responses use the authenticated BYOK model gateway');
 assert.ok(ui.includes("if(/^@Routines\\b/i.test(message))whiloChatMode='routines'"), '@Routines switches the composer into the structured routine builder');
