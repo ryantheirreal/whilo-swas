@@ -26,4 +26,12 @@ assert.ok(api.includes('resolvePublicHttpsTarget'), 'Routine target save/run use
 assert.ok(api.includes('max_cost_wb'), 'Routine records enforce a server-side maximum per-run budget');
 assert.ok(api.includes('not_started'), 'Enqueued missions are not falsely marked as executed');
 assert.ok(analysis.includes('executionMode'), 'Library analysis returns a typed, explicit execution mode');
-console.log('Routines product-contract regression tests passed (3D, onboarding, @Routines, library snapshots, budget and safety boundaries).');
+assert.ok(ui.includes('function whiloChatPage()'), 'Whilo has a first-party Chat surface rather than only a host-chat prefill');
+assert.ok(ui.includes('data-tab="chat"'), 'Chat is a first-class Whilo workspace tab');
+assert.ok(ui.includes("whiloApi('/api/model-gateway'"), 'Chat responses use the authenticated BYOK model gateway');
+assert.ok(ui.includes("if(/^@Routines\\b/i.test(message))whiloChatMode='routines'"), '@Routines switches the composer into the structured routine builder');
+assert.ok(ui.includes("action:'create_routine'"), 'A reviewed @Routines draft is saved through the authenticated routine API');
+assert.ok(ui.includes("approvalPolicy:'always',enabled:false"), 'Chat-created routines are always approval-gated and initially paused');
+assert.ok(ui.includes('DRAFT · NOT SAVED OR EXECUTED'), 'Model-proposed automation is clearly labelled as a draft before save');
+assert.ok(ui.includes("targetUrl:['website','api'].includes(kind)?String(whiloChatTargetUrl||'').trim()||null:null,"), 'Target URLs cannot leak from a previous context into a library routine');
+console.log('Routines product-contract regression tests passed (3D onboarding, first-party Chat, @Routines save flow, library snapshots, budget and safety boundaries).');
