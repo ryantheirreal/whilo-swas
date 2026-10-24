@@ -21,14 +21,9 @@ The checker validates JavaScript syntax, Vercel function-count limits, critical 
 
 ### 2. Strix white-box scan
 
-The manual GitHub Actions workflow is `.github/workflows/strix-security-scan.yml`. It scans the checked-out repository in a disposable GitHub-hosted runner. It is manual-only, restricted to the `main` branch, caps the scan's model budget at US$10, fails when the scanner does not complete, and retains the report for 30 days. It does not perform an active black-box pentest of production.
+The manual GitHub Actions workflow is `.github/workflows/strix-assessment.yml`. It scans the checked-out repository in a disposable GitHub-hosted runner. It is manual-only, restricted to the `main` branch, caps the scan's model budget at US$10, fails when the scanner does not complete, and retains the report for 30 days. It does not perform an active black-box pentest of production.
 
-Before dispatching, configure GitHub repository secrets **outside chat**:
-
-- `STRIX_LLM`: a LiteLLM-compatible model identifier supported by Strix.
-- `LLM_API_KEY`: the corresponding provider key.
-
-Use the Actions tab → **Strix Security Scan** → **Run workflow**. Review every finding and the `run.json`; an incomplete run is not a clean result. The workflow has not been executed from this environment, so no Strix finding-free result is claimed.
+Before dispatching, configure the GitHub repository secret `ANTHROPIC_API_KEY` **outside chat**. The workflow pins Strix 1.7.0, uses `anthropic/claude-sonnet-4-6`, runs a bounded quick scan with a 45-minute job timeout, and uploads `strix_runs/` as a 14-day artifact. Use the Actions tab → **Strix Authorized Repository Assessment** → **Run workflow**, explicitly confirm repository ownership, and keep scope set to `repository-code-only`. Review the entire artifact; a timeout, missing report, or incomplete run is not a clean result. The workflow has not been executed from this environment, so no Strix finding-free result is claimed.
 
 Official references: [Strix Quick Start](https://github.com/usestrix/strix/blob/main/docs/quickstart.mdx), [Strix CI security scanning skill](https://github.com/usestrix/strix/blob/main/skills/ci-security-scanning-with-strix/SKILL.md).
 
@@ -51,4 +46,4 @@ Official references: [Anthropic automated security reviews in Claude Code](https
 
 ## Current verification boundary
 
-The Supabase database grant checks and advisory queries were run during this implementation. The static source checker and production deployment must still pass after the latest commits. No end-to-end authenticated routine execution, Stripe sandbox purchase/refund, computer-control session, Strix scan or Anthropic Claude Security scan is represented as passed unless a matching CI run or deployment result is recorded.
+The Supabase database grant checks and advisory queries were run during this implementation. The static source checker and production deployment must pass after the latest commits. Recent deployment attempts exposed brittle regular expressions in the checker; the current source corrects the 3D-motion assertions and must be rebuilt before the new code is considered live. No end-to-end authenticated routine execution, Stripe sandbox purchase/refund, computer-control session, Strix scan or Anthropic Claude Security scan is represented as passed unless a matching CI run or deployment result is recorded.
