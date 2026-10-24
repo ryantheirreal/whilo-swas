@@ -17,11 +17,11 @@ npm run check
 npm run build
 ```
 
-The checker validates JavaScript syntax, Vercel function-count limits, critical schema invariants, server-only table grants, routine access gates, paid-only Stripe wallet credits, bounded library-context projections, and secret hygiene. The build also runs SSRF regression tests and unit tests for the library-context projection.
+The checker validates JavaScript syntax, Vercel function-count limits, critical schema invariants, server-only table grants, routine access gates, paid-only Stripe wallet credits, bounded library-context projections, dynamic Stripe Checkout and secret hygiene. The build invokes `npm run check`, which includes SSRF regression tests, library-context projection tests and the new saved-library routine-analysis regression suite.
 
 ### 2. Strix white-box scan
 
-The manual GitHub Actions workflow is `.github/workflows/strix-assessment.yml`. It scans the checked-out repository in a disposable GitHub-hosted runner. It is manual-only, restricted to the `main` branch, caps the scan's model budget at US$10, fails when the scanner does not complete, and retains the report for 30 days. It does not perform an active black-box pentest of production.
+The manual GitHub Actions workflow is `.github/workflows/strix-assessment.yml`. It scans the checked-out repository in a disposable GitHub-hosted runner. It is manual-only, restricted to the `main` branch, caps the scan's model budget at US$10, fails when the scanner does not complete, and retains the report artifact for 14 days. It does not perform an active black-box pentest of production.
 
 Before dispatching, configure the GitHub repository secret `ANTHROPIC_API_KEY` **outside chat**. The workflow pins Strix 1.7.0, uses `anthropic/claude-sonnet-4-6`, runs a bounded quick scan with a 45-minute job timeout, and uploads `strix_runs/` as a 14-day artifact. Use the Actions tab → **Strix Authorized Repository Assessment** → **Run workflow**, explicitly confirm repository ownership, and keep scope set to `repository-code-only`. Review the entire artifact; a timeout, missing report, or incomplete run is not a clean result. The workflow has not been executed from this environment, so no Strix finding-free result is claimed.
 
@@ -46,4 +46,4 @@ Official references: [Anthropic automated security reviews in Claude Code](https
 
 ## Current verification boundary
 
-The Supabase database grant checks and advisory queries were run during this implementation. The static source checker and production deployment must pass after the latest commits. Recent deployment attempts exposed brittle regular expressions in the checker; the current source corrects the 3D-motion assertions and must be rebuilt before the new code is considered live. No end-to-end authenticated routine execution, Stripe sandbox purchase/refund, computer-control session, Strix scan or Anthropic Claude Security scan is represented as passed unless a matching CI run or deployment result is recorded.
+The Supabase grant checks and security/performance advisors were run after the database hardening; browser access to `organization_members` and secret integration columns was revoked and verified. The last successful Vercel build was commit `936e143`, before the latest build-script, Stripe and runbook commits; a new deployment must validate the full analyzer suite and be promoted to the canonical production alias before the feature is considered live. The Vercel project still lacks `SUPABASE_SERVICE_ROLE_KEY` and Stripe sandbox credentials, so E2E workflows remain blocked. No authenticated live routine execution, Stripe sandbox purchase/refund, computer-control session, Strix scan or Anthropic Claude Security scan is claimed as passed unless a matching test result is recorded.
