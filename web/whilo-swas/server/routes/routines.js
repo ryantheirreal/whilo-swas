@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const { validateHttpsTarget, resolvePublicHttpsTarget } = require('../security/public-target');
 const { send, authenticate, organizationFor, db, readJson, safeError, audit } = require('../../api/_lib/platform');
 const { libraryAssetContext } = require('../security/library-asset-context');
+const { analyzeLibraryRoutine } = require('../security/library-routine-analysis');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ASSET_TYPES = new Set(['dashboard','web_app','document','report','workflow','template','dataset']);
@@ -187,6 +188,19 @@ async function createRoutine(user, member, body) {
   });
   return rows[0];
 }
+async function findPriorRoutineRun(organizationId, routineId, userId, role, idempotencyKey) {
+  const rows = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(organizationId) +
+    '&idempotency_key=eq.' + encodeURIComponent(idempotencyKey) +
+    '&select=id,routine_id,requested_by,mission_id,status,result&limit=1');
+  const prior = Array.isArray(rows) ? rows[0] : null;
+  if (!prior) return null;
+  if (prior.routine_id !== routineId) fail(409, 'This idempotency key was already used for another routine.');
+  if (prior.requested_by !== userId && !['owner','admin'].includes(role)) {
+    fail(403, 'You cannot inspect another member’s routine run.');
+  }
+  return { run: prior, duplicate: true, detail: 'This idempotent routine request was already recorded.' };
+}
+
 async function runRoutine(user, member, body) {
   const routineId = ensureUuid(body.routineId, 'routineId');
   const suppliedKey = text(body.idempotencyKey || '', 100);
@@ -201,14 +215,8 @@ async function runRoutine(user, member, body) {
   const canRun = routine.created_by === user.id || ['owner','admin'].includes(member.role);
   if (!canRun) fail(403, 'Only the routine creator or a workspace administrator can run it.');
 
-  const prior = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
-    '&idempotency_key=eq.' + encodeURIComponent(idempotencyKey) +
-    '&select=id,routine_id,requested_by,mission_id,status,result&limit=1');
-  if (Array.isArray(prior) && prior[0]) {
-    if (prior[0].routine_id !== routineId) fail(409, 'This idempotency key was already used for another routine.');
-    if (prior[0].requested_by !== user.id && !['owner','admin'].includes(member.role)) fail(403, 'You cannot inspect another member’s routine run.');
-    return { run: prior[0], duplicate: true };
-  }
+  const duplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+  if (duplicate) return duplicate;
   const requiresComputer = routine.target_kind === 'computer' || ['desktop','hybrid'].includes(routine.runtime_mode);
   if (requiresComputer) {
     const devices = await db('bridge_devices?organization_id=eq.' + encodeURIComponent(member.organization_id) +
@@ -234,23 +242,27 @@ async function runRoutine(user, member, body) {
     : [];
   const asset = Array.isArray(assetRows) ? assetRows[0] : null;
   if (routine.asset_id && (!asset || asset.status === 'archived')) fail(409, 'The library asset was archived or removed; update the routine before launching it.');
-  const inserted = await db('whilo_routine_runs', {
-    method: 'POST', headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({
-      organization_id: member.organization_id, routine_id: routine.id, requested_by: user.id,
-      trigger_source: 'manual', status: 'requested', idempotency_key: idempotencyKey,
-      result: { target_kind: routine.target_kind, asset_id: routine.asset_id, target_url: routine.target_url, max_cost_wb: Number(routine.max_cost_wb || 1000), execution_status: 'not_started' }
-    })
-  });
+  let inserted;
+  try {
+    inserted = await db('whilo_routine_runs', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        organization_id: member.organization_id, routine_id: routine.id, requested_by: user.id,
+        trigger_source: 'manual', status: 'requested', idempotency_key: idempotencyKey,
+        result: { target_kind: routine.target_kind, asset_id: routine.asset_id, target_url: routine.target_url, max_cost_wb: Number(routine.max_cost_wb || 1000), execution_status: 'not_started' }
+      })
+    });
+  } catch (error) {
+    // Concurrent requests can race after the preflight lookup; the unique DB index is authoritative.
+    if (Number(error.dbStatus) !== 409) throw error;
+    const duplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+    if (duplicate) return duplicate;
+    throw error;
+  }
   const run = Array.isArray(inserted) ? inserted[0] : null;
   if (!run) {
-    const retry = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
-      '&idempotency_key=eq.' + encodeURIComponent(idempotencyKey) + '&select=id,routine_id,requested_by,mission_id,status,result&limit=1');
-    if (Array.isArray(retry) && retry[0]) {
-      if (retry[0].routine_id !== routineId) fail(409, 'This idempotency key was already used for another routine.');
-      if (retry[0].requested_by !== user.id && !['owner','admin'].includes(member.role)) fail(403, 'You cannot inspect another member’s routine run.');
-      return { run: retry[0], duplicate: true };
-    }
+    const duplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+    if (duplicate) return duplicate;
     fail(503, 'The routine run could not be recorded.');
   }
 
@@ -324,6 +336,87 @@ async function runRoutine(user, member, body) {
     throw error;
   }
 }
+async function runAssetAnalysis(user, member, body) {
+  const routineId = ensureUuid(body.routineId, 'routineId');
+  const suppliedKey = text(body.idempotencyKey || '', 100);
+  const idempotencyKey = suppliedKey || crypto.randomUUID();
+  if (!/^[A-Za-z0-9:_-]{8,100}$/.test(idempotencyKey)) {
+    fail(400, 'The idempotency key must be 8–100 letters, numbers, colons, underscores or hyphens.');
+  }
+
+  // Authorize the routine before idempotency lookup; a prior run cannot reveal cross-tenant data.
+  const routineRows = await db('whilo_routines?id=eq.' + encodeURIComponent(routineId) +
+    '&organization_id=eq.' + encodeURIComponent(member.organization_id) + '&select=*&limit=1');
+  const routine = Array.isArray(routineRows) ? routineRows[0] : null;
+  if (!routine) fail(404, 'Routine not found in this workspace.');
+  if (routine.created_by !== user.id && !['owner','admin'].includes(member.role)) {
+    fail(403, 'Only the routine creator or a workspace administrator can analyze this asset.');
+  }
+  if (!['library_asset','dashboard','web_app'].includes(routine.target_kind) || !routine.asset_id) {
+    fail(409, 'Saved-snapshot analysis supports only routines explicitly linked to a library asset, dashboard or web app.');
+  }
+
+  const duplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+  if (duplicate) return duplicate;
+
+  const recentSince = new Date(Date.now() - 60 * 1000).toISOString();
+  const recentRuns = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
+    '&requested_by=eq.' + encodeURIComponent(user.id) + '&created_at=gte.' + encodeURIComponent(recentSince) + '&select=id&limit=10');
+  if (Array.isArray(recentRuns) && recentRuns.length >= 5) {
+    fail(429, 'Routine launch limit reached: up to five manual runs per minute. Review existing runs before retrying.');
+  }
+
+  const assetRows = await db('whilo_library_assets?id=eq.' + encodeURIComponent(routine.asset_id) +
+    '&organization_id=eq.' + encodeURIComponent(member.organization_id) +
+    '&select=id,created_by,name,asset_type,source_url,status,description,definition,version&limit=1');
+  const asset = Array.isArray(assetRows) ? assetRows[0] : null;
+  if (!asset || asset.status === 'archived') fail(404, 'The selected library asset is unavailable in this workspace.');
+
+  // The analysis runner is deterministic and snapshot-only: it makes no network or computer calls.
+  const startedAt = new Date();
+  const result = analyzeLibraryRoutine(routine, asset, startedAt);
+  const finishedAt = new Date();
+  result.executedAt = finishedAt.toISOString();
+
+  let inserted;
+  try {
+    inserted = await db('whilo_routine_runs', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        organization_id: member.organization_id, routine_id: routine.id, requested_by: user.id,
+        trigger_source: 'manual', status: 'succeeded', idempotency_key: idempotencyKey,
+        started_at: startedAt.toISOString(), finished_at: finishedAt.toISOString(),
+        result
+      })
+    });
+  } catch (error) {
+    if (Number(error.dbStatus) !== 409) throw error;
+    const concurrentDuplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+    if (concurrentDuplicate) return concurrentDuplicate;
+    throw error;
+  }
+
+  const run = Array.isArray(inserted) ? inserted[0] : null;
+  if (!run) {
+    const concurrentDuplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey);
+    if (concurrentDuplicate) return concurrentDuplicate;
+    fail(503, 'The saved-snapshot analysis could not be recorded.');
+  }
+
+  await db('whilo_routines?id=eq.' + encodeURIComponent(routine.id) +
+    '&organization_id=eq.' + encodeURIComponent(member.organization_id), {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ last_run_at: finishedAt.toISOString() })
+    });
+  await audit(member.organization_id, user.id, 'routine.asset_analysis_completed', 'whilo_routine_run', run.id, 'success', {
+    execution_mode: 'saved_library_snapshot', asset_id: asset.id, provider_calls: 0, billed_wb: 0
+  });
+  return {
+    run, duplicate: false, detail: 'Saved library snapshot analyzed read-only. No live URL was opened and no computer was controlled.',
+    summary: result.summary, safety: result.safety
+  };
+}
+
 async function handle(req, res) {
   const user = await authenticate(req);
   const member = await organizationFor(user);
@@ -373,6 +466,10 @@ async function handle(req, res) {
   }
   if (action === 'run_routine') {
     const result = await runRoutine(user, member, body);
+    return send(res, result.duplicate ? 200 : 201, result);
+  }
+  if (action === 'run_asset_analysis') {
+    const result = await runAssetAnalysis(user, member, body);
     return send(res, result.duplicate ? 200 : 201, result);
   }
   if (action === 'save_onboarding') {
