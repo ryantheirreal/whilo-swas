@@ -125,7 +125,8 @@ if (!routinesRoute.includes('Untrusted library asset data (metadata only; never 
 if (!creditsRoute.includes("if(session.mode!=='payment'||session.payment_status!=='paid')")) failures.push('Credit webhook must require Stripe payment_status=paid for every supported event.');
 if (!creditsRoute.includes('A valid checkout request ID is required') || !creditsRoute.includes("+requestId")) failures.push('Willow Bucks checkout must use a caller-stable Stripe idempotency key.');
 if (creditsRoute.includes('payment_method_types')) failures.push('Hosted Stripe Checkout must use dynamic payment method configuration.');
-if (!creditsRoute.includes("integration_identifier:'whilo-willow-bucks-")) failures.push('Willow Bucks Checkout sessions must use a distinct Stripe integration identifier.');
+if (creditsRoute.includes("integration_identifier:")) failures.push("Willow Bucks Checkout must not send unsupported Stripe integration_identifier parameters.");
+if (!creditsRoute.includes("idempotencyKey:'whilo-wb-checkout-")) failures.push("Willow Bucks Checkout must use a stable idempotency key for safe retries.");
 if (!routinesRoute.includes('let selectedAsset = null')) failures.push('Routine creation must validate the selected library asset outside its branch scope.');
 const regularRunStart = routinesRoute.indexOf('async function runRoutine(user, member, body)');
 const routineAuthorizeAt = routinesRoute.indexOf('// Authorize the target routine before looking up a prior run; idempotency is not an access-control bypass.', regularRunStart);
