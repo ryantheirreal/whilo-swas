@@ -34,6 +34,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api/auth/chatgpt/callback",
+      "destination": "/api/messages?route=chatgpt-auth-callback"
+    },
+    {
+      "source": "/api/auth/chatgpt/start",
+      "destination": "/api/messages?route=chatgpt-auth-start"
+    },
+    {
       "source": "/api/credits/webhook",
       "destination": "/api/messages?route=credits-webhook"
     },
