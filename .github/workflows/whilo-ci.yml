@@ -34,5 +34,14 @@ jobs:
           node --check desktop/whilo-swas-desktop/src/main.cjs
           node --check desktop/whilo-swas-desktop/src/preload.cjs
           bash -n web/whilo-swas/build.sh
+      - name: Install web dependencies
+        working-directory: web/whilo-swas
+        run: npm install --ignore-scripts --no-audit
+      - name: Run platform and security regression checks
+        working-directory: web/whilo-swas
+        run: npm run check
+      - name: Build deployable web bundle
+        working-directory: web/whilo-swas
+        run: npm run build
       - name: Test mission approval and evidence gates
         run: npm --prefix shared/whilo-agent-core test
