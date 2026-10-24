@@ -4,7 +4,7 @@
 
 Whilo's application data plane is intentionally server-only. Browser roles do not have direct table privileges in the exposed `public` schema; requests must pass through authenticated server routes, which use the service role only on the server. RLS remains defense in depth. Internal RLS helper functions are kept in the `private` schema, integration metadata views use `security_invoker`, and connector secrets are excluded from the safe-view column allowlist.
 
-Routine launch controls include workspace/creator authorization before idempotency lookups, conflict checks for reused idempotency keys, a per-user manual-launch limit, and explicit computer read/control scopes plus a recent device heartbeat. These controls prevent unapproved starts; they do not imply a desktop worker is configured or that a routine executed.
+Routine launch controls include workspace/creator authorization before idempotency lookups, conflict checks for reused idempotency keys, a per-user manual-launch limit, explicit computer read/control scopes plus a recent device heartbeat, and bounded projections of user-created library metadata for both manual and scheduled mission planning. User-provided titles and descriptions are still untrusted input. Routine launches create approval-gated missions; no configured autonomous desktop worker is claimed. These controls prevent unapproved starts; they do not imply a desktop worker is configured or that a routine executed.
 
 ## Automated review entrypoints
 
@@ -17,7 +17,7 @@ npm run check
 npm run build
 ```
 
-The checker validates JavaScript syntax, Vercel function-count limits, critical schema invariants, server-only table grants, routine access gates, and secret hygiene.
+The checker validates JavaScript syntax, Vercel function-count limits, critical schema invariants, server-only table grants, routine access gates, paid-only Stripe wallet credits, bounded library-context projections, and secret hygiene. The build also runs SSRF regression tests and unit tests for the library-context projection.
 
 ### 2. Strix white-box scan
 
