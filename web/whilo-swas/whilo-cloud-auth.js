@@ -312,7 +312,10 @@
       return null;
     }
     const user = await response.json();
-    return user && user.id ? { id: user.id, email: user.email || '' } : null;
+    if (!user || !user.id) return null;
+    const metadata = user.app_metadata || {};
+    const provider = metadata.provider || ((Array.isArray(metadata.providers) && metadata.providers.find(function (p) { return p && p !== 'email'; })) || 'email');
+    return { id: user.id, email: user.email || '', provider: provider };
   }
 
   authRedirectPromise = consumeAuthRedirect();
