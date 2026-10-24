@@ -1349,7 +1349,7 @@
   let routineData = null, routineLoading = false, routineBusy = false, routineFeedback = '', routineTourStep = 0;
   let creditsData = null, creditsLoading = false, creditsBusy = false, creditsFeedback = '';
   let whiloChatMessages = [], whiloChatDraft = '', whiloChatBusy = false, whiloChatFeedback = '';
-  let whiloChatProvider = 'gemini-api', whiloChatModels = [], whiloChatSelectedModel = '', whiloChatModelLoading = false, whiloChatModelFeedback = '';
+  let whiloChatProvider = 'gemini-api', whiloChatModels = [], whiloChatSelectedModel = '', whiloChatModelLoading = false, whiloChatModelFeedback = '', whiloChatModelPromise = null;
   let whiloChatMode = 'chat', whiloChatPendingRoutine = null, whiloChatRoutineSaving = false;
   let whiloChatTargetKind = 'library_asset', whiloChatAssetId = '', whiloChatTargetUrl = '', whiloChatRuntimeMode = 'browser';
   let whiloChatScheduleKind = 'manual', whiloChatScheduleTime = '09:00', whiloChatMaxCostWB = 1000;
@@ -1522,19 +1522,24 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
 
 
   function whiloChatLoadModels(force) {
-    if (!cloudAuthSession || whiloChatModelLoading || (!force && whiloChatModels.length)) return;
+    if (!cloudAuthSession) return Promise.resolve([]);
+    if (whiloChatModelPromise) return whiloChatModelPromise;
+    if (!force && whiloChatModels.length) return Promise.resolve(whiloChatModels);
     whiloChatModelLoading=true;whiloChatModelFeedback='';
-    whiloApi('/api/model-gateway?provider='+encodeURIComponent(whiloChatProvider),{method:'GET'})
+    whiloChatModelPromise=whiloApi('/api/model-gateway?provider='+encodeURIComponent(whiloChatProvider),{method:'GET'})
       .then(function(data){
         whiloChatModels=Array.isArray(data.models)?data.models:[];
         if(!whiloChatModels.some(function(m){return m.id===whiloChatSelectedModel;}))whiloChatSelectedModel=whiloChatModels.length?whiloChatModels[0].id:'';
         if(!whiloChatModels.length)whiloChatModelFeedback='No generation-capable models were found for this connected API key.';
+        return whiloChatModels;
       })
       .catch(function(error){
         whiloChatModels=[];whiloChatSelectedModel='';
         whiloChatModelFeedback=error&&error.message?error.message:'Connect a provider API key in Connect to use Whilo Chat.';
+        return [];
       })
-      .finally(function(){whiloChatModelLoading=false;if(active==='chat')render();});
+      .finally(function(){whiloChatModelLoading=false;whiloChatModelPromise=null;if(active==='chat')render();});
+    return whiloChatModelPromise;
   }
   function whiloChatAppend(role,text,mode) {
     whiloChatMessages.push({role:role==='user'?'user':'assistant',text:String(text||'').slice(0,12000),mode:mode||whiloChatMode,createdAt:new Date().toISOString()});
@@ -1558,7 +1563,7 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
       return {label:label,kind:safeKinds.includes(row.kind)?row.kind:(index===11?'verify':'inspect')};
     }).filter(Boolean);
     if(!steps.length)throw new Error('The routine needs at least one bounded inspection, draft or verification step.');
-    if(!safeKinds.includes(steps[steps.length-1].kind))steps[steps.length-1].kind='verify';
+    steps[steps.length-1].kind='verify';
     const acceptanceCriteria=(Array.isArray(value.acceptanceCriteria)?value.acceptanceCriteria:Array.isArray(value.criteria)?value.criteria:[])
       .map(function(item){return String(item||'').replace(/\s+/g,' ').trim().slice(0,240);}).filter(Boolean).slice(0,8);
     if(!acceptanceCriteria.length)acceptanceCriteria.push('Every material claim is supported by recorded evidence.','Missing data and limitations are stated explicitly.');
