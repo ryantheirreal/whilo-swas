@@ -59,7 +59,21 @@ begin
   ) into has_duplicate;
 
   if has_duplicate then
-    return jsonb_build_object('allowed',false,'duplicate',true,'reason','already_reserved');
+    -- If the original request already inserted its run, surface it as an idempotent duplicate.
+    if exists (
+      select 1 from public.whilo_routine_runs rr
+      where rr.organization_id=p_organization_id and rr.idempotency_key=p_idempotency_key
+    ) then
+      return jsonb_build_object('allowed',false,'duplicate',true,'reason','already_reserved');
+    end if;
+
+    -- No run exists yet (for example, a transient DB failure after reservation).
+    -- Reusing the same idempotency key reactivates that reservation without creating a second slot.
+    update public.whilo_routine_launch_attempts
+      set created_at=now_at
+      where organization_id=p_organization_id and user_id=p_user_id
+        and action_kind=p_action_kind and idempotency_key=p_idempotency_key;
+    return jsonb_build_object('allowed',true,'duplicate',false,'retry',true);
   end if;
 
   delete from public.whilo_routine_launch_attempts
