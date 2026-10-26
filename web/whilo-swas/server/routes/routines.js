@@ -227,7 +227,7 @@ async function reserveRoutineLaunch(user, member, routineId, role, idempotencyKe
   }
   if (reservation && reservation.reason === 'rate_limit') {
     const seconds = Math.max(1, Math.min(60, Number(reservation.retry_after_seconds) || 60));
-    fail(429, 'Routine launch limit reached: five manual launches per minute across the workspace. Retry in about ' + seconds + ' seconds.');
+    fail(429, 'Whilo action limit reached: five launches per minute per user, shared across routine runs and saved-library analysis. Retry in about ' + seconds + ' seconds.');
   }
   fail(503, 'The routine launch could not be reserved safely. Retry with the same idempotency key.');
 }
