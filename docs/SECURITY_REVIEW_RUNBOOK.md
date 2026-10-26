@@ -17,7 +17,7 @@ npm run check
 npm run build
 ```
 
-The checker validates JavaScript syntax, Vercel function-count limits, critical schema invariants, server-only table grants, routine access gates, paid-only Stripe wallet credits, bounded library-context projections, dynamic Stripe Checkout and secret hygiene. The build invokes `npm run check`, which includes SSRF regression tests, library-context projection tests and the new saved-library routine-analysis regression suite.
+The checker validates JavaScript syntax, Vercel function-count limits, critical schema invariants, server-only table grants, routine access gates, paid-only Stripe wallet credits, bounded library-context projections, dynamic Stripe Checkout, secret hygiene and the OAuth-link foreign-key index. The build invokes `npm run check`, which includes SSRF regression tests, library-context projection tests and the new saved-library routine-analysis regression suite.
 
 ### 2. Strix white-box scan
 
