@@ -145,3 +145,24 @@ Changes applied directly to `main` after the initial audit:
 **Production boundary remains unchanged:** production observed at `dpl_Dj5eXe8XGig9VNkmQdLXxZz9XGUp`, `READY`, commit `d626e2e545ceff4b2987b22e5b9ea9c07fdede0b`. These code changes were not promoted to production. The inspected Vercel environment still lacked `SUPABASE_SERVICE_ROLE_KEY`, Stripe secret/webhook keys, price IDs, Slack client credentials, and admin/reviewer UUID allowlists. Configure secrets directly in the provider dashboards; never put values into chat or Git. Keep `WHILO_AFFILIATE_PAYOUTS_ENABLED=false`.
 
 **Next exact action:** confirm current `main` head and deployment state; configure `SUPABASE_SERVICE_ROLE_KEY` as a sensitive server-only Vercel variable from Supabase Project Settings (never share the value here), then test signup/login, email confirmation/recovery, session restoration, workspace bootstrap and protected routes in staging. Reconcile migration *names and reviewed SQL*, not only counts. Test Stripe in sandbox and run the authorized security workflow when its runner/secret are available. Do not promote to production until these gates pass; do not claim an autonomous browser/desktop worker until it exists and emits verifiable evidence.
+
+## Additional architecture finding — source reproducibility
+
+The current `web/whilo-swas/build.sh` does **not** build the whole site from first-party source. It downloads the pinned GitHub release artifact `whilo-site-v1.0.2.tar.gz`, checks it against a hardcoded SHA-256, extracts it into `public/`, and then overlays the editable enterprise/auth/marketplace/agent-core JavaScript files. This checksum protects against unexpected content changes, but the base HTML/auth/runtime source is not maintained directly in the current repository. The web README explicitly documents this boundary.
+
+This is a major maintainability, debugging, and iteration bottleneck for the long-term product. **Do not replace the bundle in one blind rewrite.** P1 implementation path:
+1. Extract the exact pinned release artifact and record its checksum/license/source inventory in a reproducible local environment.
+2. Identify the base bundle's `index.html`, auth/runtime scripts, routes, styling and dependency footprint; compare each against the first-party overlays to prevent duplicate or divergent behavior.
+3. Move one coherent slice at a time into first-party source files with the current artifact as a golden baseline.
+4. Add browser smoke tests for login/recovery, initial hydration, route rendering, mobile recovery, Chat, Pets/Store and error fallback before replacing any release-built asset.
+5. Keep the SHA-verified artifact as a rollback path until the source-built app passes parity and E2E acceptance gates. Only then remove the remote release dependency from `build.sh`.
+
+The GitHub release tarball could not be downloaded from the current local execution environment due to DNS/network name-resolution failure. The Vercel builder did download and verify it successfully during the staging build, so the artifact is available to the build path but was not directly unpacked for source-level inspection in this session. Do not claim a source migration is done.
+
+## Final handoff snapshot — 2026-10-26
+
+- Latest known main commit at this handoff: `b4255b7827598bc09181ef81fa646eabf2668a28` (session status update).
+- Latest code-validation deployment remains staging `dpl_6WctUvRf6wCaraRy9BzgWGcJcSWP`, READY on `d5fceb5095bf83fde048ba771e0b41aea9edff5e`. Commits after that validation changed documentation/session only, not executable code.
+- Current first action for the next engineering pass: configure missing server-only Supabase service-role key in Vercel (owner action in provider UI), then run authenticated staging E2E for account creation/login/recovery/session restore/workspace bootstrap. Do not paste credentials in the agent conversation.
+- Next code epic after auth activation: reduce release-bundle dependence in small parity-tested slices; then build a genuine isolated worker/runtime with approved capabilities, durable execution evidence, process cancellation/recovery, and measurable cost per accepted outcome.
+- Commercial track runs in parallel but stays narrow: use the reported `@whiloai` social footprint to acquire conversations for one paid Revenue Operator pilot; do not launch multiple unrelated product offers. Require buyer interviews, paid pilots, accepted work, positive delivery margin and renewals before scaling.
