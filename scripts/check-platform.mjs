@@ -157,6 +157,7 @@ if (assetAnalysisStart < 0 || assetAnalysisAuthorizeAt < 0 || assetAnalysisPrior
 if (!routinesRoute.includes('This idempotency key was already used for another routine.')) failures.push('Routine idempotency keys must not be reused across unrelated routines.');
 if (!routinesRoute.includes("expectedMode = 'mission'") || !routinesRoute.includes('idempotency key was already used for a different routine action')) failures.push('Routine idempotency keys must be scoped to one execution mode.');
 if (!routinesRoute.includes('async function reserveRoutineLaunch') || !routinesRoute.includes('rpc/reserve_whilo_routine_launch') || routinesRoute.includes('const recentSince = new Date(Date.now() - 60 * 1000)')) failures.push('Routine manual launch rate limiting must use the atomic server reservation RPC.');
+if (!routinesRoute.includes('five launches per minute per user, shared across routine runs and saved-library analysis')) failures.push('Routine launch-limit copy must match the per-user shared quota.');
 if (!routinesRoute.includes("scopes.includes('computer:read')") || !routinesRoute.includes("scopes.includes('computer:control')")) failures.push('Computer routines must require explicit read and control scopes.');
 if (!routinesRoute.includes('now - lastSeen <= 5 * 60 * 1000')) failures.push('Computer routines must require a recent device heartbeat.');
 const enterpriseUi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'), 'utf8');
