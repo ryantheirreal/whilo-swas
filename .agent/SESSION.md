@@ -161,7 +161,7 @@ The GitHub release tarball could not be downloaded from the current local execut
 
 ## Final handoff snapshot — 2026-10-26
 
-- Latest known main commit at this handoff: `b4255b7827598bc09181ef81fa646eabf2668a28` (session status update).
+- Pre-handoff `main` reference before this final session update: `b4255b7827598bc09181ef81fa646eabf2668a28`. The commit that adds this handoff entry becomes the current `main` head.
 - Latest code-validation deployment remains staging `dpl_6WctUvRf6wCaraRy9BzgWGcJcSWP`, READY on `d5fceb5095bf83fde048ba771e0b41aea9edff5e`. Commits after that validation changed documentation/session only, not executable code.
 - Current first action for the next engineering pass: configure missing server-only Supabase service-role key in Vercel (owner action in provider UI), then run authenticated staging E2E for account creation/login/recovery/session restore/workspace bootstrap. Do not paste credentials in the agent conversation.
 - Next code epic after auth activation: reduce release-bundle dependence in small parity-tested slices; then build a genuine isolated worker/runtime with approved capabilities, durable execution evidence, process cancellation/recovery, and measurable cost per accepted outcome.
