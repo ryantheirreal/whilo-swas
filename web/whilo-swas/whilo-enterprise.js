@@ -1721,6 +1721,9 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
       } catch (_) {}
     }
   }
+  window.addEventListener('whilo:marketplace:open-connect', function () {
+    openPanel('connect');
+  });
   function openPanel(tab) {
     active = tab || 'work';
     veil.classList.add('open');
