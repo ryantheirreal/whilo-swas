@@ -1724,6 +1724,21 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
   window.addEventListener('whilo:marketplace:open-connect', function () {
     openPanel('connect');
   });
+  function showWorkspaceRecovery(reason) {
+    try {
+      if (!veil.classList.contains('open')) return;
+      const message = String(reason || 'Unexpected workspace error').slice(0, 160);
+      console.error('[Whilo] Recoverable workspace failure:', message);
+      view.innerHTML = '<section role="alert" style="max-width:680px;margin:28px auto;padding:22px;border:1px solid #624c32;border-radius:18px;background:#17130e;color:#f4e5cf"><div style="font-size:10px;letter-spacing:1.5px;font-weight:800;color:#e8bd7b">WHILO / RECOVERY MODE</div><h2 style="margin:10px 0;font-size:23px">Whilo recovered from an app error.</h2><p style="color:#c8b9a5;line-height:1.6;font-size:13px">The view stopped unexpectedly, but the workspace shell is still available. Retry this view or return to Work. Your saved data was not intentionally cleared.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button type="button" data-act="render-retry" style="border:1px solid #d6b582;border-radius:10px;background:#ead0a7;color:#1b160f;padding:10px 14px;font-weight:800">Retry view</button><button type="button" data-act="render-home" style="border:1px solid #574b3b;border-radius:10px;background:#242019;color:#f1e6d6;padding:10px 14px;font-weight:800">Return to Work</button></div><p style="font-size:10px;color:#a99a86;margin-top:12px">Diagnostic reference: WHILO-UI-RECOVERY. Sensitive data is not included.</p></section>';
+    } catch (_) {}
+  }
+  window.addEventListener('error', function (event) {
+    if (event && event.message && /ResizeObserver loop/i.test(event.message)) return;
+    showWorkspaceRecovery('window-error');
+  });
+  window.addEventListener('unhandledrejection', function () {
+    showWorkspaceRecovery('unhandled-promise');
+  });
   function openPanel(tab) {
     active = tab || 'work';
     veil.classList.add('open');
