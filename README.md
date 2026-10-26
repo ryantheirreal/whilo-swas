@@ -4,6 +4,9 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 
 ## Repository layout
 
+- `AGENTS.md` — mandatory coding-agent workflow, safety rules, and continuity requirements.
+- `.agent/SESSION.md` — canonical session context, verified repository/deployment snapshot, blockers, and next actions; update at each meaningful handoff.
+
 - `web/whilo-swas/` — browser app and Vercel build boundary, including the first server-side APIs.
 - `web/whilo-swas/api/` — cloud public config, authenticated mission endpoints, connector APIs, Slack OAuth, QR bridge pairing and human messaging APIs.
 - `web/whilo-swas/whilo-cloud-auth.js` — browser Supabase sign-in, session refresh and logout; passwords are never stored by Whilo.
@@ -37,7 +40,7 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 
 ## Production activation gate — partially configured, not end-to-end ready
 
-The dedicated Supabase project `whilo-prod` is active in `sa-east-1`, and its migration history contains 26 applied migrations. Do **not** replay the existing migrations against this database. The Vercel project has `SUPABASE_URL`, the public `SUPABASE_ANON_KEY`, the canonical URL, the Slack callback URL, sensitive connector-encryption and OAuth-state secrets, and `WHILO_AFFILIATE_PAYOUTS_ENABLED=false`.
+The dedicated Supabase project `whilo-prod` is documented as active in `sa-east-1`. A later environment inspection reported 32 applied migration versions, while the current repository checker expects 33 versioned SQL files. Reconcile the exact version lists against the live database before applying anything. Do **not** replay the existing migrations against this database. The Vercel project has `SUPABASE_URL`, the public `SUPABASE_ANON_KEY`, the canonical URL, the Slack callback URL, sensitive connector-encryption and OAuth-state secrets, and `WHILO_AFFILIATE_PAYOUTS_ENABLED=false`.
 
 **Blocking configuration:** Vercel still has no `SUPABASE_SERVICE_ROLE_KEY`. Server routes use this key for protected database operations, so authenticated backend workflows are not yet end-to-end functional. Add the current key from Supabase Project Settings → API Keys as a sensitive, server-only Vercel environment variable. Never expose it to browser code, commit it, or paste it into chat.
 
@@ -61,7 +64,7 @@ Desktop: `cd desktop/whilo-swas-desktop && npm install && npm run check`; packag
 
 The Vercel project root is `web/whilo-swas`; framework Vite, build command `npm run build`, output `public`, Node 24.x. Verify the latest deployment is **READY** before treating a commit as live.
 
-The base site bundle is still release-built rather than first-party source in this repository. The database exists and its 26 migrations are applied, but authenticated server APIs remain blocked until `SUPABASE_SERVICE_ROLE_KEY` is configured in Vercel. Marketplace code is present but not activated for live selling until Stripe sandbox credentials, signed webhooks and end-to-end payment/refund tests pass. The Work extension's mission planning and manual evidence review are not a production server-side autonomous worker. Do not claim a browser/desktop action executed unless a configured worker returns verifiable run evidence.
+The base site bundle is still release-built rather than first-party source in this repository. The database exists, but the exact set of applied versus pending migrations must be reconciled against the live version list. Authenticated server APIs remain blocked until `SUPABASE_SERVICE_ROLE_KEY` is configured in Vercel. Marketplace code is present but not activated for live selling until Stripe sandbox credentials, signed webhooks and end-to-end payment/refund tests pass. The Work extension's mission planning and manual evidence review are not a production server-side autonomous worker. Do not claim a browser/desktop action executed unless a configured worker returns verifiable run evidence.
 
 The desktop project remains a secure Electron shell which opens the hosted Whilo site. Its build workflow targets macOS, Windows and Linux; no installer artifacts or platform signing should be assumed until a platform build has succeeded. It does not yet provide native computer control or a remote VM by itself.
 
