@@ -1,6 +1,6 @@
 # Whilo identity, integrations and connector security
 
-Updated: 24 October 2026
+Updated: 26 October 2026
 
 ## Owner account and database
 
@@ -59,7 +59,7 @@ Copy names from `web/whilo-swas/.env.example` into Vercel's encrypted Environmen
 
 ## Current boundary — verified 26 October 2026
 
-Implemented in code and database: the dedicated `whilo-prod` Supabase project, 26 applied migrations, owner provisioning script, authenticated server API, Slack OAuth start/callback, encrypted integration storage, Twilio credential verification flow, QR pairing token issuance/claiming and bridge heartbeat identity. The membership table, base integration table, safe-view browser grants and secret columns were checked after the security migrations; browser roles cannot select `organization_members` or encrypted integration secrets, and the RLS helper functions are in the `private` schema.
+Implemented in code and database: the dedicated `whilo-prod` Supabase project, 33 migration-history entries verified on 26 October 2026, owner provisioning script, authenticated server API, Slack OAuth start/callback, encrypted integration storage, Twilio credential verification flow, QR pairing token issuance/claiming and bridge heartbeat identity. The membership table, base integration table, safe-view browser grants and secret columns were checked after the security migrations; browser roles cannot select `organization_members` or encrypted integration secrets, and the RLS helper functions are in the `private` schema.
 
 Still blocking or unverified:
 - `SUPABASE_SERVICE_ROLE_KEY` is missing from Vercel, so protected backend routes are not yet working end-to-end. Add it as a sensitive server-only variable from Supabase Project Settings → API Keys.
@@ -82,7 +82,7 @@ The first marketplace release is scoped to published declarative Pets, Bots, Ski
 - Required server env keys: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `WHILO_MARKETPLACE_ADMIN_USER_IDS`, plus all eight recurring Price IDs. Keep them out of Git and browser code.
 - The current proposed launch test prices are Free, Plus R$39.90/month, Premium R$169.90/month, Super R$399.90/month and Ultra R$999.90/month; annual prices are R$399, R$1,699, R$3,999 and R$9,999. These are pricing hypotheses, not active subscriptions.
 
-These tables and API/UI code are present, and the dedicated Supabase database has 26 applied migrations. This does **not** activate live marketplace selling: Vercel still lacks the server-only service-role key and Stripe sandbox/API/webhook secrets, Price IDs and end-to-end acceptance tests. Before launch, verify Stripe test-mode onboarding/checkout/webhooks, plus production terms, refunds/tax and seller-verification policies.
+These tables and API/UI code are present, and the dedicated Supabase database has 33 migration-history entries verified on 26 October 2026. This does **not** activate live marketplace selling: Vercel still lacks the server-only service-role key and Stripe sandbox/API/webhook secrets, Price IDs and end-to-end acceptance tests. Before launch, verify Stripe test-mode onboarding/checkout/webhooks, plus production terms, refunds/tax and seller-verification policies.
 
 
 ## Whilo Partners and affiliate commissions
