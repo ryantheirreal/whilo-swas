@@ -2,9 +2,9 @@
 
 Updated: 24 October 2026.
 
-## Current truth — 24 October 2026
+## Current truth — 26 October 2026
 
-The Store, tenant-aware marketplace schema, listing/order APIs, Stripe checkout plumbing and signed-webhook handlers exist in the repo. The dedicated Supabase project `whilo-prod` is active and has 26 applied migrations, including marketplace, entitlement/install, refund/affiliate and Willow Bucks ledger migrations. This database state must not be described as absent or have the existing migrations replayed.
+The Store, tenant-aware marketplace schema, listing/order APIs, Stripe checkout plumbing and signed-webhook handlers exist in the repo. The dedicated Supabase project `whilo-prod` is active and had 33 applied migration-history entries in a direct inspection on 26 October 2026, including marketplace, entitlement/install, refund/affiliate, Willow Bucks, OAuth-index and atomic routine-launch-budget migrations. This database state must not be described as absent or have the existing migrations replayed.
 
 This is **not yet a live multi-seller marketplace**. The Vercel server-only `SUPABASE_SERVICE_ROLE_KEY` is missing; Stripe API/webhook secrets, sandbox Price IDs and approved moderator UUID allowlists are also missing. There are no verified sandbox purchases, refunds, Connect onboarding or payouts in this release record. The marketplace UI must label sample assets as previews until the authenticated server returns actual published listings. The Pet-install RPC creates a workspace Pet record; runtime execution remains a separate gate.
 
@@ -94,7 +94,7 @@ Ask Whilo can become the display name above the chat input while the navigation 
 
 ## Release gates before public sale
 
-1. Verify the current `whilo-prod` database migration history (26 applied migrations). Never replay those migrations on the production project. Rehearse any future schema change as a new migration in a dedicated **staging** project; 009 created the marketplace schema and 010 added transactional buyer-side installations.
+1. Verify the current `whilo-prod` migration history and reconcile every migration name/reviewed SQL with the repository; a direct inspection on 26 October 2026 returned 33 applied entries. Never replay applied migrations. Never replay those migrations on the production project. Rehearse any future schema change as a new migration in a dedicated **staging** project; 009 created the marketplace schema and 010 added transactional buyer-side installations.
 2. Configure Stripe test-mode secret and webhook signing key; set a webhook route at /api/marketplace/webhook; use test-mode Connect accounts and verify onboarding, account.updated, checkout.completed, duplicate webhook, failure, refund and dispute flows.
 3. Set platform moderator user IDs server-side. New creator listings stay in review until a moderator approves them.
 4. Complete legal terms, prohibited-listing rules, IP takedown path, refund/dispute policy, privacy policy, Brazilian consumer/data/tax review and seller verification.
