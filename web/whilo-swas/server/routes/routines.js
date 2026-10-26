@@ -262,8 +262,7 @@ async function runRoutine(user, member, body) {
     if (!capable) fail(409, 'Computer routines require a paired device with explicit computer:read and computer:control scopes and a heartbeat from the last five minutes. Pairing/heartbeat alone is not remote-control authorization.');
   }
 
-  const reservationDuplicate = await reserveRoutineLaunch(user, member, routineId, member.role, idempotencyKey, 'mission', 'mission');
-  if (reservationDuplicate) return reservationDuplicate;
+
 
   if (routine.target_url) await resolvePublicHttpsTarget(routine.target_url);
   const assetRows = routine.asset_id
@@ -271,6 +270,8 @@ async function runRoutine(user, member, body) {
     : [];
   const asset = Array.isArray(assetRows) ? assetRows[0] : null;
   if (routine.asset_id && (!asset || asset.status === 'archived')) fail(409, 'The library asset was archived or removed; update the routine before launching it.');
+  const reservationDuplicate = await reserveRoutineLaunch(user, member, routineId, member.role, idempotencyKey, 'mission', 'mission');
+  if (reservationDuplicate) return reservationDuplicate;
   let inserted;
   try {
     inserted = await db('whilo_routine_runs', {
@@ -388,8 +389,7 @@ async function runAssetAnalysis(user, member, body) {
   const duplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey, 'saved_library_snapshot');
   if (duplicate) return duplicate;
 
-  const reservationDuplicate = await reserveRoutineLaunch(user, member, routineId, member.role, idempotencyKey, 'saved_library_snapshot', 'saved_library_snapshot');
-  if (reservationDuplicate) return reservationDuplicate;
+
 
   const assetRows = await db('whilo_library_assets?id=eq.' + encodeURIComponent(routine.asset_id) +
     '&organization_id=eq.' + encodeURIComponent(member.organization_id) +
@@ -402,6 +402,9 @@ async function runAssetAnalysis(user, member, body) {
   const result = analyzeLibraryRoutine(routine, asset, startedAt);
   const finishedAt = new Date();
   result.executedAt = finishedAt.toISOString();
+
+  const reservationDuplicate = await reserveRoutineLaunch(user, member, routineId, member.role, idempotencyKey, 'saved_library_snapshot', 'saved_library_snapshot');
+  if (reservationDuplicate) return reservationDuplicate;
 
   let inserted;
   try {
