@@ -122,3 +122,19 @@ Before work:
 - Reviewed the current routine launch-reservation flow, migration, platform static check, and product-contract regression test.
 - Found a user-facing rate-limit message that said “across the workspace” even though the RPC limits by organization **and user**, sharing the quota across routine runs and saved-library analysis. Correct the wording and lock the intended quota semantics with regression checks.
 - Found stale release-runbook references to the production commit and a hardcoded migration count. Refresh the runbook from the current Vercel evidence and replace the hardcoded migration count with explicit version-by-version reconciliation.
+
+
+## Follow-up changes and validation status — 2026-10-26
+
+Changes applied directly to `main` after the initial audit:
+- `63c7ec1f`: created this canonical `.agent/SESSION.md`.
+- `ced79aac`: created root `AGENTS.md` with mandatory session, architecture, security and release rules.
+- `a5417612`: corrected launch-limit wording. The rate limiter is per organization/user and the quota is shared by routine runs and saved-library analysis; it is not an organization-wide quota.
+- `59af1acf`: added product-contract regression coverage for the corrected quota wording.
+- `e542d82f`: added a static platform invariant for the same wording/semantics.
+- `3a617296`: refreshed the activation runbook with the actual latest production deployment observed and removed the hardcoded migration-count release gate.
+- `bc65401e`: linked the continuity instructions from README and replaced stale 26-migration statements with explicit version-reconciliation instructions.
+
+**Validation status:** the code changes have not yet been executed in a working checkout. A local `git clone` attempt failed because this execution environment could not resolve `github.com`; the GitHub combined status query for `bc65401e` returned an empty status list. At the last Vercel deployment query, the newest staging deployment was still the earlier `86294d6` build (`READY`) and production was still `d626e2e` (`READY`). No deployment was visible for the new follow-up commits. Do not claim these changes passed build/tests or are live until a new staging build and relevant end-to-end checks produce evidence.
+
+**Next exact action:** verify the current head of `main`, start a staging-only Vercel deployment from that commit, inspect the actual build logs and fix any failures. Then reconcile migration versions against live Supabase, configure the missing service-role secret directly in Vercel, and test auth/session/workspace bootstrap in staging. Do not promote to production before those gates pass.
