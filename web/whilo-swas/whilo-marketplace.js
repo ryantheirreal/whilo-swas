@@ -277,10 +277,10 @@
     if(iv){billingInterval=iv.getAttribute('data-interval');render();return;}
     const b=event.target.closest('[data-action]');
     if(!b)return;
-    const action=b.getAttribute('data-action'), id=b.getAttribute('data-id')||b.getAttribute('data-plan')||'', decision=b.getAttribute('data-decision')||'';
+    const action=b.getAttribute('data-action'), id=b.getAttribute('data-id')||b.getAttribute('data-plan')||'', decision=action==='plugins-save'?{title:b.getAttribute('data-title')||'',url:b.getAttribute('data-url')||'',description:b.getAttribute('data-description')||''}:(b.getAttribute('data-decision')||'');
     if(action==='close'){close();return;}
     if(action==='toggle-auth'){authMode=authMode==='signin'?'signup':'signin';render();return;}
-    if(['refresh','preview','install','buy','reload-creator','reload-library','reload-review','asset-details','submit-listing','connect-payouts','choose-plan','moderate-listing'].includes(action)){runAction(action,id,decision);}
+    if(['refresh','preview','install','buy','reload-creator','reload-library','reload-review','asset-details','submit-listing','connect-payouts','choose-plan','moderate-listing','plugins-save','plugins-refresh','plugins-connect'].includes(action)){runAction(action,id,decision);}
   });
   veil.addEventListener('submit',async function(event){
     event.preventDefault();
