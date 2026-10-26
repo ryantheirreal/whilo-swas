@@ -53,8 +53,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 31) {
-  failures.push('Expected all thirty-one versioned Supabase migrations to be present.');
+if (migrations.length < 32) {
+  failures.push('Expected all thirty-two versioned Supabase migrations to be present.');
 }
 const migrationVersions = migrations.map(file => path.basename(file).match(/^(\d{12})_/));
 if (migrationVersions.some(match => !match)) failures.push('Every SQL migration must start with a 12-digit version and underscore.');
@@ -100,6 +100,7 @@ for (const [label, pattern] of [
   ['server-only business table grants', /revoke all privileges on all tables in schema public from public, anon, authenticated/i],
   ['post-feature foreign-key index pass', /whilo_fk_/i],
   ['per-run Willow Bucks budget ceiling', /add column if not exists max_cost_wb bigint not null default 1000/i],
+  ['OAuth link foreign key indexed', /whilo_auth_oauth_transactions_link_auth_user_id_idx/i],
   ['single-use ChatGPT OAuth transactions are server only', /create table if not exists public\.whilo_auth_oauth_transactions/i],
   ['verified external identity mapping is server only', /create table if not exists public\.whilo_external_identities/i],
   ['atomic ChatGPT OAuth state consumption', /function public\.consume_whilo_siwc_transaction/i],
