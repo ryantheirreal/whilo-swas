@@ -1698,18 +1698,28 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     }
   }
 
+  let renderFailure = null;
   function render() {
-    shadow.querySelectorAll('[data-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === active); });
-    if (active === 'work') view.innerHTML = workPage();
-    if (active === 'company') view.innerHTML = companyPage();
-    if (active === 'connect') view.innerHTML = connectPage();
-    if (active === 'account') view.innerHTML = accountPage();
-    if (active === 'results') view.innerHTML = resultsPage();
-    if (active === 'chat') view.innerHTML = whiloChatPage();
-    if (active === 'messages') view.innerHTML = messagesPage();
-    if (active === 'routines') view.innerHTML = routinesPage();
-    if (active === 'credits') view.innerHTML = creditsPage();
-    if (active === 'pricing') view.innerHTML = pricingPage();
+    try {
+      shadow.querySelectorAll('[data-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === active); });
+      if (active === 'work') view.innerHTML = workPage();
+      if (active === 'company') view.innerHTML = companyPage();
+      if (active === 'connect') view.innerHTML = connectPage();
+      if (active === 'account') view.innerHTML = accountPage();
+      if (active === 'results') view.innerHTML = resultsPage();
+      if (active === 'chat') view.innerHTML = whiloChatPage();
+      if (active === 'messages') view.innerHTML = messagesPage();
+      if (active === 'routines') view.innerHTML = routinesPage();
+      if (active === 'credits') view.innerHTML = creditsPage();
+      if (active === 'pricing') view.innerHTML = pricingPage();
+      renderFailure = null;
+    } catch (error) {
+      renderFailure = error;
+      try {
+        console.error('[Whilo] Workspace render failed', error);
+        view.innerHTML = '<section role="alert" style="max-width:680px;margin:28px auto;padding:22px;border:1px solid #624c32;border-radius:18px;background:#17130e;color:#f4e5cf"><div style="font-size:10px;letter-spacing:1.5px;font-weight:800;color:#e8bd7b">WHILO / RECOVERY</div><h2 style="margin:10px 0;font-size:23px">This view could not be opened.</h2><p style="color:#c8b9a5;line-height:1.6;font-size:13px">Whilo caught a UI error instead of leaving a blank screen. Your saved workspace data has not been cleared. Retry the view or return to Work.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button type="button" data-act="render-retry" style="border:1px solid #d6b582;border-radius:10px;background:#ead0a7;color:#1b160f;padding:10px 14px;font-weight:800">Retry view</button><button type="button" data-act="render-home" style="border:1px solid #574b3b;border-radius:10px;background:#242019;color:#f1e6d6;padding:10px 14px;font-weight:800">Return to Work</button></div><p style="font-size:10px;color:#a99a86;margin-top:12px">If this repeats, refresh Whilo and share the time of the error with support. No credentials are shown here.</p></section>';
+      } catch (_) {}
+    }
   }
   function openPanel(tab) {
     active = tab || 'work';
@@ -1826,6 +1836,8 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     const action = event.target.closest('[data-act]');
     if (!action) return;
     const act = action.getAttribute('data-act'), id = action.getAttribute('data-id');
+    if (act === 'render-retry') { renderFailure = null; render(); return; }
+    if (act === 'render-home') { active = 'work'; render(); return; }
     if (act === 'close') { closePanel(); return; }
     if (act === 'chat-clear') { whiloChatMessages=[];whiloChatDraft='';whiloChatFeedback='';whiloChatPendingRoutine=null;whiloChatMode='chat';render();return; }
     if (act === 'chat-use-routines') { whiloChatMode='routines';whiloChatDraft=/^@Routines\\b/i.test(whiloChatDraft.trim())?whiloChatDraft:'@Routines '+String(whiloChatDraft||'Help me create a safe routine for my selected target. Include trigger, bounded steps, evidence, risks and approvals.');render();const input=shadow.querySelector('#whilo-chat-input');if(input)input.focus();return; }
