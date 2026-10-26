@@ -13,6 +13,8 @@ assert.ok(enterprise.includes("if (act === 'render-retry')"), 'Recovery screen c
 assert.ok(enterprise.includes("if (act === 'render-home')"), 'Recovery screen can return to the safe Work view');
 assert.ok(store.includes('data-page="plugins"'), 'Store includes a first-class Plugins top-bar tab');
 assert.ok(store.includes('function pluginsPage()'), 'Plugins tab has a discoverable catalog');
+assert.ok(store.includes("action==='plugins-save'"), 'A GitHub skill reference can be saved to the authenticated Whilo Library');
+assert.ok(store.includes("trustState:'unreviewed'"), 'Imported plugin references remain untrusted and are not executed automatically');
 assert.ok(store.includes('rel="noopener noreferrer"'), 'External GitHub links are isolated from the opener');
 assert.ok(store.includes("new CustomEvent('whilo:marketplace:open-connect')"), 'Plugin connection guidance opens the Whilo Connect surface');
 assert.ok(store.includes('https://github.com/milind-soni/OpenMausBot'), 'OpenMausBot architecture research is discoverable from Plugins');
