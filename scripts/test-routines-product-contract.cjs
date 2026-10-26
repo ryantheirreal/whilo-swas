@@ -28,6 +28,7 @@ assert.ok(api.includes('async function reserveRoutineLaunch'), 'Routine launches
 assert.ok(api.includes("rpc/reserve_whilo_routine_launch"), 'The route calls the server-only launch reservation RPC');
 assert.ok(api.includes("'mission', 'mission'"), 'Live mission launches are subject to the atomic launch budget');
 assert.ok(api.includes("'saved_library_snapshot', 'saved_library_snapshot'"), 'Saved-library analyses share the same launch budget');
+assert.ok(api.includes('five launches per minute per user, shared across routine runs and saved-library analysis'), 'Rate-limit messaging describes the actual per-user shared quota');
 assert.ok(!api.includes('const recentSince = new Date(Date.now() - 60 * 1000)'), 'No check-then-insert launch limit remains in the route');
 assert.ok(api.includes('not_started'), 'Enqueued missions are not falsely marked as executed');
 assert.ok(analysis.includes('executionMode'), 'Library analysis returns a typed, explicit execution mode');
