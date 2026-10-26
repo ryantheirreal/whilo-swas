@@ -53,8 +53,8 @@ for (const file of new Set(jsFiles)) checkJs(file);
 
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sort();
-if (migrations.length < 32) {
-  failures.push('Expected all thirty-two versioned Supabase migrations to be present.');
+if (migrations.length < 33) {
+  failures.push('Expected all thirty-three versioned Supabase migrations to be present.');
 }
 const migrationVersions = migrations.map(file => path.basename(file).match(/^(\d{12})_/));
 if (migrationVersions.some(match => !match)) failures.push('Every SQL migration must start with a 12-digit version and underscore.');
@@ -94,6 +94,11 @@ for (const [label, pattern] of [
   ['workspace library asset model', /create table if not exists public\.whilo_library_assets/i],
   ['durable approval-gated routine runs', /create table if not exists public\.whilo_routine_runs/i],
   ['database-native routine scheduler', /function private\.dispatch_due_whilo_routines/i],
+  ['atomic routine launch reservation RPC', /function public\.reserve_whilo_routine_launch/i],
+  ['concurrency-safe routine launch limit', /pg_advisory_xact_lock\(hashtextextended/i],
+  ['action-scoped routine launch idempotency', /unique \(organization_id,user_id,action_kind,idempotency_key\)/i],
+  ['scheduled missions enforce Willow Bucks budget', /'budget',coalesce\(r\.max_cost_wb,1000\)::numeric\/100\.0/i],
+  ['scheduled run preserves its WB ceiling', /'max_cost_wb',r\.max_cost_wb/i],
   ['Willow Bucks usage wallet', /create table if not exists public\.whilo_credit_wallets/i],
   ['atomic usage metering', /function public\.charge_whilo_usage/i],
   ['idempotent Willow Bucks topups', /function public\.apply_whilo_credit_purchase/i],
