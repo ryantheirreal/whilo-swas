@@ -208,6 +208,30 @@ async function findPriorRoutineRun(organizationId, routineId, userId, role, idem
   return response;
 }
 
+async function reserveRoutineLaunch(user, member, routineId, role, idempotencyKey, actionKind, expectedMode) {
+  const response = await db('rpc/reserve_whilo_routine_launch', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_organization_id: member.organization_id,
+      p_user_id: user.id,
+      p_action_kind: actionKind,
+      p_idempotency_key: idempotencyKey
+    })
+  });
+  const reservation = Array.isArray(response) ? response[0] : response;
+  if (reservation && reservation.allowed === true) return null;
+  if (reservation && reservation.duplicate === true) {
+    const prior = await findPriorRoutineRun(member.organization_id, routineId, user.id, role, idempotencyKey, expectedMode);
+    if (prior) return prior;
+    fail(409, 'This routine request is still being recorded. Retry it with the same idempotency key.');
+  }
+  if (reservation && reservation.reason === 'rate_limit') {
+    const seconds = Math.max(1, Math.min(60, Number(reservation.retry_after_seconds) || 60));
+    fail(429, 'Routine launch limit reached: five manual launches per minute across the workspace. Retry in about ' + seconds + ' seconds.');
+  }
+  fail(503, 'The routine launch could not be reserved safely. Retry with the same idempotency key.');
+}
+
 async function runRoutine(user, member, body) {
   const routineId = ensureUuid(body.routineId, 'routineId');
   const suppliedKey = text(body.idempotencyKey || '', 100);
@@ -238,10 +262,8 @@ async function runRoutine(user, member, body) {
     if (!capable) fail(409, 'Computer routines require a paired device with explicit computer:read and computer:control scopes and a heartbeat from the last five minutes. Pairing/heartbeat alone is not remote-control authorization.');
   }
 
-  const recentSince = new Date(Date.now() - 60 * 1000).toISOString();
-  const recentRuns = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
-    '&requested_by=eq.' + encodeURIComponent(user.id) + '&created_at=gte.' + encodeURIComponent(recentSince) + '&select=id&limit=10');
-  if (Array.isArray(recentRuns) && recentRuns.length >= 5) fail(429, 'Routine launch limit reached: up to five manual runs per minute. Review existing runs before retrying.');
+  const reservationDuplicate = await reserveRoutineLaunch(user, member, routineId, member.role, idempotencyKey, 'mission', 'mission');
+  if (reservationDuplicate) return reservationDuplicate;
 
   if (routine.target_url) await resolvePublicHttpsTarget(routine.target_url);
   const assetRows = routine.asset_id
@@ -366,12 +388,8 @@ async function runAssetAnalysis(user, member, body) {
   const duplicate = await findPriorRoutineRun(member.organization_id, routineId, user.id, member.role, idempotencyKey, 'saved_library_snapshot');
   if (duplicate) return duplicate;
 
-  const recentSince = new Date(Date.now() - 60 * 1000).toISOString();
-  const recentRuns = await db('whilo_routine_runs?organization_id=eq.' + encodeURIComponent(member.organization_id) +
-    '&requested_by=eq.' + encodeURIComponent(user.id) + '&created_at=gte.' + encodeURIComponent(recentSince) + '&select=id&limit=10');
-  if (Array.isArray(recentRuns) && recentRuns.length >= 5) {
-    fail(429, 'Routine launch limit reached: up to five manual runs per minute. Review existing runs before retrying.');
-  }
+  const reservationDuplicate = await reserveRoutineLaunch(user, member, routineId, member.role, idempotencyKey, 'saved_library_snapshot', 'saved_library_snapshot');
+  if (reservationDuplicate) return reservationDuplicate;
 
   const assetRows = await db('whilo_library_assets?id=eq.' + encodeURIComponent(routine.asset_id) +
     '&organization_id=eq.' + encodeURIComponent(member.organization_id) +
