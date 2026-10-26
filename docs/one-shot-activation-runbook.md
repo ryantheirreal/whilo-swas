@@ -1,14 +1,15 @@
 # Whilo production activation runbook
 
-Updated: 24 October 2026.
+Updated: 26 October 2026.
 
 ## Verified current state
 
 - Canonical production URL: https://whilo-swas.vercel.app
 - Vercel project: `whilo-swas`, linked to `ryantheirreal/whilo-swas`.
 - Supabase project: `whilo-prod` (`pnmewiqemeoqwannyjuz`), region `sa-east-1`, status `ACTIVE_HEALTHY`.
-- The Supabase migration history reports 32 applied migrations, including workspace isolation, marketplace, affiliates, Willow Bucks, refund/dispute recovery, routine scheduling, usage metering, server-only Data API grants and bounded library-asset context. Do not replay these migrations on this database.
-- Final production deployment `dpl_DGeZTGmQm5rwK9Xz7nZCDDjmscsq` is `READY`, alias `https://whilo-swas.vercel.app`, commit `a59568ee01fbc30d21b06360cca172695e98e0e3`. Its logs show 37 JavaScript files parsed, 32 SQL migrations inspected, and the Routines product-contract regression (interactive 3D, onboarding, first-party Chat, structured `@Routines` draft/save, library assets, budget and approval boundaries) passing alongside SSRF protections, library snapshots, signed sessions, BYOK model gateway, Willow Bucks checkout and refund/dispute recovery checks.
+- A previous Supabase environment inspection reported 32 applied migration versions. Treat that as a snapshot, not a permanent expected count. The repository's static checker currently expects 33 versioned SQL migration files; reconcile each version against the live migration history before any release. The latest main contains `202610250001_whilo_auth_oauth_link_fk_index.sql` and `202610261047_routine_launch_rate_limit_and_scheduler_budget.sql`; do not assume either is applied or pending without checking the live version list. Never replay an applied migration; test each pending migration against a separate staging database first.
+- Latest production deployment observed in Vercel at the start of this audit: `dpl_Dj5eXe8XGig9VNkmQdLXxZz9XGUp` is `READY`, alias `https://whilo-swas.vercel.app`, commit `d626e2e545ceff4b2987b22e5b9ea9c07fdede0b`. The older deployment `dpl_DGeZTGmQm5rwK9Xz7nZCDDjmscsq` at commit `a59568ee01fbc30d21b06360cca172695e98e0e3` is not the latest production deployment observed. The latest production build evidence is documented in `docs/SECURITY_REVIEW_RUNBOOK.md`; do not attribute its results to later commits.
+- GitHub/Vercel comparison at audit start: `main` was `86294d6d3afec01c19ff210916448d5815b4cc96`, 14 commits ahead of that production commit. The newest listed staging deployment for that main head was `READY`; an earlier staging attempt was `ERROR`. A `READY` staging state is not production readiness or proof of end-to-end auth, billing, worker, or database migration status. Re-check the current head and deployment metadata after every new commit.
 - `@Routines` now runs inside Whilo Chat through the authenticated BYOK model gateway. It returns a structured routine proposal and saves only after a separate user action; routines are created paused with `approvalPolicy=always`. This does not imply a browser/desktop execution worker is deployed.
 - Security advisor: the exposed SECURITY DEFINER view and public trigger-function execution findings were corrected. Remaining `rls_enabled_no_policy` items are INFO-level on server-only tables whose browser-role grants are revoked; verify grants and RLS together, not the warning count alone.
 - Performance advisor now shows no unindexed foreign keys after the OAuth-link foreign-key index follow-up; re-run the advisor after future schema changes. It still shows 110 unused-index INFO notices due to low observed traffic; do not drop indexes based only on this telemetry, and re-evaluate after representative production traffic.
@@ -71,7 +72,7 @@ Do not announce full production activation until all of the following are verifi
 1. The latest main commit builds and is the canonical `whilo-swas.vercel.app` deployment.
 2. `SUPABASE_SERVICE_ROLE_KEY` is configured server-side and /api/health reports the necessary booleans without exposing values.
 3. Sign-in, recovery, tenant bootstrap and essential authenticated API flows pass end-to-end tests in staging.
-4. All 31 current migrations are accounted for; database security advisors have no unresolved ERRORs/WARNs and remaining INFOs have documented rationale.
+4. Reconcile every versioned SQL migration file in Git with the live Supabase migration history; test each genuinely pending migration in a separate staging database and apply it only once. Confirm no unresolved ERROR/WARN security findings and document remaining INFO findings. Do not hardcode a migration count into the release gate.
 5. Routine snapshot unit tests, SSRF tests, syntax/static checks and build pass; live browser/desktop claims are limited to a tested worker.
 6. Stripe sandbox checkout and webhooks pass duplicate, unpaid, mismatch, refund, dispute and failure-recovery tests.
 7. Strix and Anthropic security scans are actually run and their findings are triaged.
