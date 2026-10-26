@@ -8,8 +8,8 @@ The requested owner identity is `ryantheirreal@gmail.com`. Whilo uses **Supabase
 
 The password shared in chat is short and should be replaced before production use. The bootstrap script deliberately rejects passwords shorter than 14 characters or without mixed character classes. It reads the chosen value only from a temporary environment variable, never logs it, and refuses to reset an existing account. Supabase Auth receives the credential over TLS and stores its own password hash.
 
-Prerequisites / verified current state (24 October 2026):
-1. The dedicated Supabase project is `whilo-prod` (`pnmewiqemeoqwannyjuz`), active in `sa-east-1`; its migration history contains 26 applied migrations. **Do not replay them** on this database. Future schema changes must be new versioned migrations and verified against a separate staging project where possible.
+Prerequisites / verified current state (26 October 2026):
+1. The dedicated Supabase project is `whilo-prod` (`pnmewiqemeoqwannyjuz`), active in `sa-east-1`; a direct inspection on 26 October 2026 returned 33 applied migration-history entries, including `whilo_auth_oauth_link_fk_index` and `routine_launch_rate_limit_and_scheduler_budget`. **Do not replay them** on this database; reconcile each migration name and reviewed SQL with the repository before any schema change. Future schema changes must be new versioned migrations and verified against a separate staging project where possible.
 2. Vercel already has `SUPABASE_URL`, the public `SUPABASE_ANON_KEY`, `WHILO_PUBLIC_URL`, `SLACK_REDIRECT_URI`, sensitive `WHILO_CONNECTOR_ENCRYPTION_KEY` / `WHILO_OAUTH_STATE_SECRET`, and `WHILO_AFFILIATE_PAYOUTS_ENABLED=false`.
 3. **Blocking:** `SUPABASE_SERVICE_ROLE_KEY` is missing from Vercel. Add the current service-role key from Supabase Project Settings → API Keys as a sensitive, server-only variable for the required environments. Do not send it in chat, put it in Git or expose it in browser code. The backend's protected database routes cannot work end-to-end until this is configured.
 4. Owner account creation, email confirmation/recovery and workspace bootstrap still need authenticated end-to-end verification. Use a strong temporary password from a secret manager or hidden terminal prompt for `node scripts/bootstrap-owner.mjs`; never share or log it. Verify the account/workspace and remove the temporary password from the process environment.
@@ -57,7 +57,7 @@ The pairing foundation issues a 5-minute one-time QR payload, allows a device to
 
 Copy names from `web/whilo-swas/.env.example` into Vercel's encrypted Environment Variables UI. Generate independent random values for `WHILO_CONNECTOR_ENCRYPTION_KEY` and `WHILO_OAUTH_STATE_SECRET`. Never commit real values, use a public `NEXT_PUBLIC_*` prefix for secrets, log token responses, or paste service-role keys into client scripts.
 
-## Current boundary — verified 24 October 2026
+## Current boundary — verified 26 October 2026
 
 Implemented in code and database: the dedicated `whilo-prod` Supabase project, 26 applied migrations, owner provisioning script, authenticated server API, Slack OAuth start/callback, encrypted integration storage, Twilio credential verification flow, QR pairing token issuance/claiming and bridge heartbeat identity. The membership table, base integration table, safe-view browser grants and secret columns were checked after the security migrations; browser roles cannot select `organization_members` or encrypted integration secrets, and the RLS helper functions are in the `private` schema.
 
