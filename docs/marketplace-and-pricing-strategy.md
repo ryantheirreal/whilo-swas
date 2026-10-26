@@ -1,6 +1,6 @@
 # Whilo Marketplace & plans — implementation brief
 
-Updated: 24 October 2026.
+Updated: 26 October 2026.
 
 ## Current truth — 26 October 2026
 
