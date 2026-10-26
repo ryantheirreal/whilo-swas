@@ -219,7 +219,7 @@
     saving=true;feedback='';render();
     try{
       if(action==='plugins-refresh'){feedback='Plugin sources are external GitHub repositories. Review their current state before installing; this catalog does not execute third-party code.';page='plugins';saving=false;render();return;}
-    if(action==='plugins-connect'){feedback='Open Whilo Connect from the main workspace to configure provider keys and supported integrations. External skills do not receive credentials automatically.';page='plugins';saving=false;render();return;}
+    if(action==='plugins-connect'){feedback='Opening Whilo Connect…';page='plugins';saving=false;render();veil.classList.remove('open');document.body.style.overflow='';window.dispatchEvent(new CustomEvent('whilo:marketplace:open-connect'));return;}
     if(action==='refresh'){await loadCatalog();feedback=live?'Catalog refreshed from the live server.':'Supabase is not configured; sample listings remain in preview mode.';}
       else if(action==='preview'){feedback='This is a visual sample only. It cannot be installed or purchased.';}
       else if(action==='install'){const result=await api('install-free',{listingId:id});feedback=result.detail||'Installed.';await loadCatalog();await loadLibrary();}
