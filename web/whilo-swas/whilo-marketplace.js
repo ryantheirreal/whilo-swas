@@ -146,7 +146,7 @@
     ];
     let out='<div class="hero"><div><div class="eyebrow">WHILO / PLUGIN EXPLORER</div><h2>Plugins that extend your workspace.</h2><p>Discover GitHub skills, automation playbooks and integration ecosystems. Whilo shows the source and trust boundary before you connect or import anything.</p></div><button class="btn secondary" data-action="plugins-refresh">↻ Refresh</button></div>';
     out+='<div class="notice info"><b>Safe-by-default:</b> external skills are untrusted instructions, not executable code by default. Review the repository, license, requested permissions and network access before importing. Never paste provider secrets into a skill or public repository.</div>';
-    out+='<div class="grid">'+plugins.map(function(p){return '<article class="card"><div class="card-head"><div class="asset skill">⌘</div><div style="min-width:0;flex:1"><div class="eyebrow">'+esc(p.kind)+'</div><h3>'+esc(p.title)+'</h3><div class="meta">'+esc(p.tag)+'</div></div></div><p>'+esc(p.description)+'</p><div class="card-foot"><span class="pill">External source</span><a class="btn secondary" href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer">Review on GitHub ↗</a></div></article>';}).join('')+'</div>';
+    out+='<div class="grid">'+plugins.map(function(p){return '<article class="card"><div class="card-head"><div class="asset skill">⌘</div><div style="min-width:0;flex:1"><div class="eyebrow">'+esc(p.kind)+'</div><h3>'+esc(p.title)+'</h3><div class="meta">'+esc(p.tag)+'</div></div></div><p>'+esc(p.description)+'</p><div class="card-foot"><span class="pill">External source</span><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><a class="btn secondary" href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer">Review ↗</a><button class="btn" data-action="plugins-save" data-title="'+esc(p.title)+'" data-url="'+esc(p.url)+'" data-description="'+esc(p.description)+'">Save reference</button></div></div></article>';}).join('')+'</div>';
     out+='<div class="section-title">Connect a tool inside Whilo</div><div class="card"><h3>Connectors & API credentials</h3><p>Open Whilo Connect to configure supported providers. Each connector should be server-mediated, encrypted at rest and scoped to the minimum permissions required.</p><div class="card-foot"><span class="pill">Owner-authorized</span><button class="btn" data-action="plugins-connect">Open Connect guidance</button></div></div>';
     out+='<div class="section-title">Import checklist</div><div class="card"><ol style="margin:0;padding-left:20px;color:#a7b7ca;font-size:11px;line-height:1.8"><li>Inspect the maintainer, recent commits, open security issues and license.</li><li>Read the full skill instructions before granting tools or credentials.</li><li>Start in read-only mode with a bounded test target.</li><li>Require human approval for external writes, purchases, deletes and account changes.</li><li>Keep a version, source URL, permissions manifest and rollback path for every installed plugin.</li></ol></div>';
     return out;
@@ -218,6 +218,18 @@
     if(saving)return;
     saving=true;feedback='';render();
     try{
+      if(action==='plugins-save'){
+        const title=String(decision&&decision.title||'').slice(0,100);
+        const sourceUrl=String(decision&&decision.url||'');
+        const description=String(decision&&decision.description||'').slice(0,1200);
+        if(!title||!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/.test(sourceUrl))throw new Error('Choose a valid public GitHub repository reference.');
+        const token=await getToken();
+        const response=await fetch('/api/routines',{method:'POST',cache:'no-store',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({action:'create_asset',name:title+' · GitHub reference',assetType:'template',description:description+' This is a reference only; review and approve instructions before use.',sourceUrl:sourceUrl,definition:{kind:'github_plugin_reference',sourceUrl:sourceUrl,trustState:'unreviewed',executionAllowed:false,reviewChecklist:['Verify maintainer and recent changes','Review license and security policy','Inspect requested permissions','Run read-only tests before enabling actions'],permissions:[],notes:'Reference only. Whilo does not execute third-party code from this saved record.'}})});
+        const data=await response.json().catch(function(){return {};});
+        if(!response.ok)throw new Error(data.error||'Could not save this GitHub reference to the Whilo Library.');
+        feedback='Saved to your Whilo Library as an unreviewed reference. No code was installed or executed.';
+        page='plugins';
+      }
       if(action==='plugins-refresh'){feedback='Plugin sources are external GitHub repositories. Review their current state before installing; this catalog does not execute third-party code.';page='plugins';saving=false;render();return;}
     if(action==='plugins-connect'){feedback='Opening Whilo Connect…';page='plugins';saving=false;render();veil.classList.remove('open');document.body.style.overflow='';window.dispatchEvent(new CustomEvent('whilo:marketplace:open-connect'));return;}
     if(action==='refresh'){await loadCatalog();feedback=live?'Catalog refreshed from the live server.':'Supabase is not configured; sample listings remain in preview mode.';}
