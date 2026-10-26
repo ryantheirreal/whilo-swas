@@ -48,7 +48,7 @@
   veil.setAttribute('role','dialog');
   veil.setAttribute('aria-modal','true');
   veil.setAttribute('aria-label','Whilo Marketplace');
-  veil.innerHTML = '<section class="panel"><header class="head"><div class="mark">W</div><div class="brand"><div class="eyebrow">WHILO / CREATOR ECONOMY</div><h1>Marketplace</h1><div class="sub">Discover agents. Package expertise. Earn from every verified sale.</div></div><button class="close" data-action="close" aria-label="Close">×</button></header><nav class="nav" aria-label="Marketplace"><button class="active" data-page="discover">Discover</button><button data-page="library">My Library</button><button data-page="creator">Creator Studio</button><button data-page="review">Review Queue</button><button data-page="plans">Plans</button></nav><main class="content" id="content"></main><footer class="footer"><span>20% platform commission on completed paid sales</span><span>Preview assets are not real listings.</span></footer></section>';
+  veil.innerHTML = '<section class="panel"><header class="head"><div class="mark">W</div><div class="brand"><div class="eyebrow">WHILO / CREATOR ECONOMY</div><h1>Marketplace</h1><div class="sub">Discover agents. Package expertise. Earn from every verified sale.</div></div><button class="close" data-action="close" aria-label="Close">×</button></header><nav class="nav" aria-label="Marketplace"><button class="active" data-page="discover">Discover</button><button data-page="plugins">Plugins</button><button data-page="library">My Library</button><button data-page="creator">Creator Studio</button><button data-page="review">Review Queue</button><button data-page="plans">Plans</button></nav><main class="content" id="content"></main><footer class="footer"><span>20% platform commission on completed paid sales</span><span>Preview assets are not real listings.</span></footer></section>';
   root.appendChild(veil);
   document.documentElement.appendChild(host);
   const content = veil.querySelector('#content');
@@ -135,9 +135,25 @@
     out+='<div class="section-title">Usage has to stay profitable</div><div class="grid"><article class="card"><h3>Execution credits</h3><p>Set included allocations after measuring real model, tool, browser, computer and retry costs. Alert at 70%; ask or pause before overage.</p></article><article class="card"><h3>Concurrency</h3><p>Higher tiers may unlock more active Pets, parallel Bots, team seats and scheduled routines as those systems become operational.</p></article><article class="card"><h3>Creator income stays separate</h3><p>Subscriptions fund Whilo access and usage. Marketplace sales pay creators and record Whilo’s 20% fee in a separate ledger.</p></article></div>';
     return out;
   }
+  function pluginsPage() {
+    const plugins = [
+      {title:'Anthropic Skills',kind:'Skills library',description:'Reusable task instructions and workflow patterns. Review permissions and scope before importing anything.',url:'https://github.com/anthropics/skills',tag:'Official skills repo'},
+      {title:'Vercel Agent Skills',kind:'Developer workflows',description:'Skills for agentic development and deployment workflows. Keep build/deploy permissions scoped to the task.',url:'https://github.com/vercel-labs/agent-skills',tag:'Developer tooling'},
+      {title:'Superpowers',kind:'Engineering playbooks',description:'Structured software-engineering workflows for planning, implementation and verification.',url:'https://github.com/obra/superpowers',tag:'Open-source workflow'},
+      {title:'OpenMausBot',kind:'Agent runtime research',description:'Study its per-turn capabilities, approval gates, run-state verification, device boundaries and secure computer-control patterns. Do not copy source wholesale; port concepts with license and threat-model review.',url:'https://github.com/milind-soni/OpenMausBot',tag:'Architecture reference'},
+      {title:'Composio integrations',kind:'Connected tools',description:'Explore third-party app integrations. Whilo should request least-privilege scopes and require approval for consequential writes.',url:'https://github.com/ComposioHQ',tag:'Integration ecosystem'},
+      {title:'GitHub Skills',kind:'Repository-native automation',description:'Use reviewed repository workflows to improve issues, pull requests, code review and release hygiene.',url:'https://github.com/skills',tag:'GitHub ecosystem'}
+    ];
+    let out='<div class="hero"><div><div class="eyebrow">WHILO / PLUGIN EXPLORER</div><h2>Plugins that extend your workspace.</h2><p>Discover GitHub skills, automation playbooks and integration ecosystems. Whilo shows the source and trust boundary before you connect or import anything.</p></div><button class="btn secondary" data-action="plugins-refresh">↻ Refresh</button></div>';
+    out+='<div class="notice info"><b>Safe-by-default:</b> external skills are untrusted instructions, not executable code by default. Review the repository, license, requested permissions and network access before importing. Never paste provider secrets into a skill or public repository.</div>';
+    out+='<div class="grid">'+plugins.map(function(p){return '<article class="card"><div class="card-head"><div class="asset skill">⌘</div><div style="min-width:0;flex:1"><div class="eyebrow">'+esc(p.kind)+'</div><h3>'+esc(p.title)+'</h3><div class="meta">'+esc(p.tag)+'</div></div></div><p>'+esc(p.description)+'</p><div class="card-foot"><span class="pill">External source</span><a class="btn secondary" href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer">Review on GitHub ↗</a></div></article>';}).join('')+'</div>';
+    out+='<div class="section-title">Connect a tool inside Whilo</div><div class="card"><h3>Connectors & API credentials</h3><p>Open Whilo Connect to configure supported providers. Each connector should be server-mediated, encrypted at rest and scoped to the minimum permissions required.</p><div class="card-foot"><span class="pill">Owner-authorized</span><button class="btn" data-action="plugins-connect">Open Connect guidance</button></div></div>';
+    out+='<div class="section-title">Import checklist</div><div class="card"><ol style="margin:0;padding-left:20px;color:#a7b7ca;font-size:11px;line-height:1.8"><li>Inspect the maintainer, recent commits, open security issues and license.</li><li>Read the full skill instructions before granting tools or credentials.</li><li>Start in read-only mode with a bounded test target.</li><li>Require human approval for external writes, purchases, deletes and account changes.</li><li>Keep a version, source URL, permissions manifest and rollback path for every installed plugin.</li></ol></div>';
+    return out;
+  }
   function render() {
     veil.querySelectorAll('[data-page]').forEach(function(button){button.classList.toggle('active',button.getAttribute('data-page')===page);});
-    content.innerHTML=page==='creator'?creatorPage():(page==='plans'?plansPage():(page==='library'?libraryPage():(page==='review'?reviewPage():discoverPage())));
+    content.innerHTML=page==='plugins'?pluginsPage():(page==='creator'?creatorPage():(page==='plans'?plansPage():(page==='library'?libraryPage():(page==='review'?reviewPage():discoverPage()))));
   }
   async function getToken() {
     if(!window.WhiloCloudAuth) throw new Error('Whilo cloud authentication is not loaded. Refresh the app and verify setup.');
@@ -202,7 +218,9 @@
     if(saving)return;
     saving=true;feedback='';render();
     try{
-      if(action==='refresh'){await loadCatalog();feedback=live?'Catalog refreshed from the live server.':'Supabase is not configured; sample listings remain in preview mode.';}
+      if(action==='plugins-refresh'){feedback='Plugin sources are external GitHub repositories. Review their current state before installing; this catalog does not execute third-party code.';page='plugins';saving=false;render();return;}
+    if(action==='plugins-connect'){feedback='Open Whilo Connect from the main workspace to configure provider keys and supported integrations. External skills do not receive credentials automatically.';page='plugins';saving=false;render();return;}
+    if(action==='refresh'){await loadCatalog();feedback=live?'Catalog refreshed from the live server.':'Supabase is not configured; sample listings remain in preview mode.';}
       else if(action==='preview'){feedback='This is a visual sample only. It cannot be installed or purchased.';}
       else if(action==='install'){const result=await api('install-free',{listingId:id});feedback=result.detail||'Installed.';await loadCatalog();await loadLibrary();}
       else if(action==='buy'){const result=await api('checkout',{listingId:id});if(result.checkoutUrl&&/^https:\/\/checkout\.stripe\.com\//.test(result.checkoutUrl)){window.location.assign(result.checkoutUrl);return;}throw new Error('A valid checkout URL was not returned.');}
