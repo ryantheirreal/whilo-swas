@@ -3,14 +3,100 @@
   if (window.__whiloMarketplaceLoaded) return;
   window.__whiloMarketplaceLoaded = true;
 
+  const PET_SPECIALISTS = [
+    {
+      id:'whilo-healthcare',name:'Whilo',mark:'✚',shortMarket:'Healthcare ops',market:'Healthcare operations',
+      marketSize:'US$5.3T',marketBasis:'U.S. healthcare spending in 2024; sector expenditure, not Whilo revenue or software TAM.',
+      wedge:'Revenue-cycle administration',wedgeSize:'US$50–80B outsourced U.S. revenue-cycle opportunity cited by Sequoia.',
+      summary:'Organizes non-clinical billing and payer workflows so teams can find missing evidence, triage administrative queues and prepare reviewed follow-ups.',
+      segments:['Revenue-cycle backlog','Billing evidence gaps','Payer follow-up','Denial documentation'],
+      guardrail:'Administrative support only. No diagnosis, treatment recommendation, clinical decision or unreviewed claim submission. A qualified human approves billing and payer-facing actions.',
+      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'},{label:'CMS · U.S. healthcare spending',url:'https://www.cms.gov/data-research/statistics-trends-and-reports/national-health-expenditure-data/nhe-fact-sheet'}],
+      workflows:[
+        {id:'healthcare-backlog',title:'Triage a revenue-cycle backlog',goal:'Turn a supplied queue into an evidence-backed, prioritized worklist for the revenue-cycle team.',steps:['Import an approved, minimum-necessary queue export.','Group items by status, age, payer and missing documentation.','Flag duplicates, inconsistent fields and evidence gaps with source references.','Prepare a human-reviewed follow-up queue; do not submit claims automatically.'],proof:'Every flagged item links back to its source row and explains why it needs attention.',metric:'Baseline vs. pilot: queue age, minutes per case, missing-field rate and rework.'},
+        {id:'payer-followups',title:'Prepare payer follow-ups',goal:'Draft next steps for delayed administrative cases without making coverage or clinical judgments.',steps:['Read only approved case fields and existing correspondence.','Match each case to the team’s approved follow-up checklist.','Draft a concise message and list any missing evidence.','Route each draft to an authorized billing specialist for approval.'],proof:'Draft, source evidence, owner and approval state are recorded for every case.',metric:'Measure follow-up cycle time, unanswered cases and rework against the current baseline.'},
+        {id:'denial-evidence',title:'Build a denial-evidence packet',goal:'Organize documents and administrative facts for a qualified human reviewer.',steps:['Collect only authorized records for the selected case.','Map each documented reason to the relevant source evidence.','Mark absent, conflicting or outdated evidence explicitly.','Prepare a packet and a reviewer checklist; never decide medical necessity.'],proof:'A source-linked evidence checklist with unresolved questions and reviewer sign-off.',metric:'Measure packet preparation time, completeness and reviewer corrections.'}
+      ]
+    },
+    {
+      id:'fynn-insurance',name:'Fynn',mark:'⌁',shortMarket:'Insurance',market:'Insurance brokerage',
+      marketSize:'US$140–200B',marketBasis:'Insurance-brokerage labor opportunity range in Sequoia Capital’s March 2026 opportunity map.',
+      wedge:'Commercial-lines submission and renewal operations',wedgeSize:'Start with repetitive broker work: intake, completeness checks, renewals and quote comparison.',
+      summary:'Helps broker teams assemble cleaner submissions, track renewal windows and compare carrier responses with traceable evidence.',
+      segments:['Submission intake','Renewal monitoring','Quote comparison','Broker follow-up'],
+      guardrail:'Does not bind coverage, provide unlicensed insurance advice, accept/deny a claim or send a quote without broker approval.',
+      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
+      workflows:[
+        {id:'insurance-submission',title:'Prepare a submission packet',goal:'Turn an approved intake into a completeness-checked packet for broker review.',steps:['Extract required fields from the approved intake and documents.','Compare each required field against the broker’s checklist.','Identify missing, expired or conflicting information.','Prepare a carrier-ready draft and route it to a licensed broker.'],proof:'Field-by-field completeness report with references to the source document.',metric:'Measure time to submission, missing-field rate and resubmission count.'},
+        {id:'insurance-renewal',title:'Run the renewal desk',goal:'Create a forward-looking renewal queue with clear owners and evidence.',steps:['Read the approved policy register and renewal dates.','Group expirations by time horizon, account and assigned broker.','Prepare client-information requests from approved templates.','Escalate exceptions and leave outbound messages for approval.'],proof:'Each renewal has a date, owner, status, outstanding items and next action.',metric:'Measure on-time renewal preparation, open items and admin minutes per account.'},
+        {id:'insurance-quotes',title:'Compare carrier quotes',goal:'Normalize supplied quote terms so a broker can evaluate differences.',steps:['Read the carrier quotes and policy documents provided by the broker.','Align limits, deductibles, exclusions, premiums and open questions.','Cite the page or source for every compared term.','Create a comparison table for broker review, without choosing or binding coverage.'],proof:'Every comparison field has a source or is marked unknown.',metric:'Measure comparison turnaround and corrections made by the broker.'}
+      ]
+    },
+    {
+      id:'nori-procurement',name:'Nori',mark:'⇄',shortMarket:'Procurement',market:'Supply chain & procurement',
+      marketSize:'US$200B+',marketBasis:'Supply-chain and procurement labor opportunity described by Sequoia Capital, March 2026.',
+      wedge:'Supplier discovery, RFQ comparison and long-tail procurement follow-up',wedgeSize:'Begin with work that is often skipped because manual review is too expensive.',
+      summary:'Turns scattered vendor information and purchase requests into comparable sourcing evidence, renewal reminders and exception queues.',
+      segments:['Supplier discovery','RFQ comparison','Contract and renewal watch','Spend-anomaly evidence'],
+      guardrail:'No purchase orders, supplier commitments, contract signatures or payments without explicit human approval. Evidence is not a negotiated saving.',
+      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
+      workflows:[
+        {id:'procurement-rfq',title:'Compare supplier RFQs',goal:'Prepare an apples-to-apples supplier comparison from supplied offers.',steps:['Collect approved quotes and the request specification.','Normalize price, lead time, quantity, terms and missing fields.','Flag non-comparable assumptions and quote expiry dates.','Prepare a sourced comparison for a procurement owner to decide.'],proof:'Each value is linked to its quote; gaps and assumptions remain visible.',metric:'Measure RFQ turnaround, comparison completeness and reviewer corrections.'},
+        {id:'procurement-renewals',title:'Monitor supplier renewals',goal:'Make overlooked contracts and renewal windows visible before a deadline.',steps:['Read the authorized supplier and contract register.','Find renewal dates, notice periods and unassigned owners.','Generate a weekly exception queue with source references.','Draft reminders for owner approval; do not alter contracts.'],proof:'Renewal date, notice window, source, owner and status for each exception.',metric:'Measure renewals surfaced before deadline and manual tracking time.'},
+        {id:'procurement-anomalies',title:'Surface spend exceptions',goal:'Find records worth investigating rather than claiming savings automatically.',steps:['Analyze only approved purchase and invoice exports.','Group similar suppliers, line items and periods.','Flag duplicates, price variance and unusual patterns with the matching records.','Create a review queue with confidence notes and false-positive tracking.'],proof:'Every alert includes supporting records and a plain-language reason.',metric:'Measure useful exceptions confirmed by humans, false positives and review time.'}
+      ]
+    },
+    {
+      id:'capuccino-itops',name:'Capuccino',mark:'⌘',shortMarket:'IT services',market:'IT managed services',
+      marketSize:'US$100B+',marketBasis:'IT managed-services labor opportunity described by Sequoia Capital, March 2026.',
+      wedge:'Service-desk triage, access-request preparation and monitoring summaries',wedgeSize:'Start with repeatable, reversible, evidence-rich service operations.',
+      summary:'Helps MSP and internal IT teams classify tickets, prepare access changes for approval and turn noisy monitoring into actionable queues.',
+      segments:['Service desk','Access request packs','Monitoring triage','Patch-status reporting'],
+      guardrail:'Read-only by default. No permission grants, production changes, patching, deletion or credential access without an authorized approval and verified execution adapter.',
+      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
+      workflows:[
+        {id:'it-ticket-triage',title:'Triage the service desk',goal:'Convert ticket volume into an owner-assigned queue with evidence and urgency rationale.',steps:['Read approved tickets and service-level rules.','Cluster duplicates and classify issues using the documented taxonomy.','Suggest priority and owner with a reason and source ticket.','Draft replies or escalations; a human approves customer-facing actions.'],proof:'Every classification includes a reason, ticket reference and unresolved uncertainty.',metric:'Measure time to first triage, reassignment rate and reviewer corrections.'},
+        {id:'it-access-pack',title:'Prepare an access request',goal:'Assemble the minimum required evidence for a human-approved access change.',steps:['Read the authorized request and identity context.','Check required approvals and least-privilege policy fields.','List missing manager, system-owner or expiry details.','Prepare a change ticket for an authorized operator; do not grant access.'],proof:'A complete approval checklist with an auditable requested scope.',metric:'Measure request completion time, missing approvals and rework.'},
+        {id:'it-monitoring',title:'Summarize monitoring alerts',goal:'Reduce noise in a supplied alert export without making unverified changes.',steps:['Group alerts by affected service, signature and time window.','Attach relevant runbook references and known incidents.','Separate confirmed evidence from possible correlations.','Prepare an ordered triage queue for the on-call engineer.'],proof:'Source alert IDs, runbook links, timestamps and explicit uncertainty.',metric:'Measure alert grouping precision, triage time and reopened incidents.'}
+      ]
+    },
+    {
+      id:'ollie-consulting',name:'Ollie',mark:'◎',shortMarket:'Consulting',market:'Management consulting',
+      marketSize:'US$300–400B',marketBasis:'Management-consulting labor opportunity range in Sequoia Capital’s March 2026 opportunity map.',
+      wedge:'Research, benchmarking and evidence-backed analysis',wedgeSize:'Automate structured intelligence work; keep consequential judgment with the client and accountable expert.',
+      summary:'Builds decision-ready research packs, benchmarks and consulting deliverables with explicit assumptions and cited evidence.',
+      segments:['Market research','Benchmarking','Data gathering','Deliverable quality review'],
+      guardrail:'Never invent evidence or present assumptions as facts. Strategic recommendations remain reviewable by an accountable human.',
+      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
+      workflows:[
+        {id:'consulting-market-map',title:'Build a market map',goal:'Create a sourced map of a market, buyer segments and competitors for a defined question.',steps:['Confirm geography, customer type, time window and decision question.','Collect source-backed facts and distinguish primary from secondary evidence.','Map competitors, buyer segments and open questions.','Draft conclusions with assumptions, confidence and citations for expert review.'],proof:'A source ledger and claim-to-source map accompanies the narrative.',metric:'Measure research cycle time, citation coverage and corrections after review.'},
+        {id:'consulting-benchmark',title:'Prepare a benchmark pack',goal:'Compare like-for-like operational measures without hiding mismatched definitions.',steps:['Collect approved datasets and define the metric denominator.','Normalize units, time periods and population differences.','Flag samples too small or definitions that cannot be reconciled.','Prepare a benchmark table with caveats and reviewer sign-off.'],proof:'Each metric has a definition, period, source and caveat.',metric:'Measure reproducibility, review corrections and time to decision-ready output.'},
+        {id:'consulting-deliverable-qa',title:'Audit a client deliverable',goal:'Check a report against its brief, evidence, structure and acceptance criteria.',steps:['Load the approved brief, deliverable and acceptance checklist.','Trace key claims to the referenced evidence.','Flag unsupported statements, contradictions and missing caveats.','Return an issue list with proposed fixes for the engagement owner.'],proof:'Each finding cites a page, section or evidence item and severity rationale.',metric:'Measure issues found before delivery, false positives and reviewer time.'}
+      ]
+    },
+    {
+      id:'pico-talent',name:'Pico',mark:'↗',shortMarket:'Talent',market:'Recruitment & staffing',
+      marketSize:'US$200B+',marketBasis:'Recruitment and staffing labor opportunity described by Sequoia Capital, March 2026.',
+      wedge:'Sourcing operations, recruiter administration and interview coordination',wedgeSize:'Start in high-volume workflows with explicit job criteria and human decision-makers.',
+      summary:'Maps talent pools, organizes candidate evidence and coordinates recruiting workflows while keeping hiring decisions with people.',
+      segments:['Talent market maps','Sourcing research','Interview scheduling','Recruiting operations'],
+      guardrail:'No autonomous hiring or rejection decisions, protected-trait inference or hidden candidate scoring. A qualified human reviews candidates and hiring decisions.',
+      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
+      workflows:[
+        {id:'talent-market-map',title:'Map a talent pool',goal:'Produce a sourced market map against job-related, user-approved criteria.',steps:['Confirm role requirements and criteria with the hiring owner.','Research permitted, job-relevant public or supplied sources.','Record evidence and provenance for each potential match.','Return a recruiter review queue; do not rank people by protected traits.'],proof:'Job-related criteria and source evidence are visible for every suggested profile.',metric:'Measure sourcing coverage, duplicate rate and recruiter corrections.'},
+        {id:'talent-coordination',title:'Coordinate the recruiting pipeline',goal:'Reduce scheduling and administration while leaving selection decisions to the hiring team.',steps:['Read the authorized pipeline status and interviewer availability.','Identify missing feedback, stale stages and scheduling constraints.','Draft candidate and interviewer communications from approved templates.','Route outbound communication and stage changes for human approval.'],proof:'Every proposed action has an owner, source and approval status.',metric:'Measure time in stage, scheduling cycle and administrative minutes.'},
+        {id:'talent-intake',title:'Structure a recruiter intake',goal:'Turn a hiring brief into a consistent, auditable role scorecard.',steps:['Summarize role outcomes, must-have skills and constraints from the approved brief.','Separate required qualifications from preferences and assumptions.','Draft structured, job-related interview questions and an evaluation rubric.','Ask the hiring owner to review and approve the scorecard before use.'],proof:'A role scorecard linked to the source brief with open decisions called out.',metric:'Measure intake-to-approved-scorecard time and rubric changes after review.'}
+      ]
+    }
+  ];
+
   const DEMO = [
-    {id:'sample-pipeline-scout',listing_type:'pet',title:'Pipeline Scout Pet',summary:'Research prospects, enrich a list and prepare a reviewed outreach queue.',category:'Revenue',price_minor:12900,currency:'BRL',version:'1.0.0',seller:{display_name:'Whilo Studio'},demo:true},
     {id:'sample-research-bot',listing_type:'bot',title:'Research Brief Bot',summary:'Turn a research question into a sourced brief with an evidence checklist.',category:'Research',price_minor:0,currency:'BRL',version:'1.0.0',seller:{display_name:'Whilo Studio'},demo:true},
     {id:'sample-growth-playbook',listing_type:'playbook',title:'B2B Growth Sprint',summary:'ICP, offer, creative, CRM hygiene and a weekly performance review.',category:'Marketing',price_minor:4900,currency:'BRL',version:'1.0.0',seller:{display_name:'Whilo Studio'},demo:true},
     {id:'sample-data-skill',listing_type:'skill',title:'Revenue Data Analyst',summary:'Turn supplied business data into a decision-ready report.',category:'Analytics',price_minor:0,currency:'BRL',version:'1.0.0',seller:{display_name:'Whilo Studio'},demo:true},
-    {id:'sample-ops-pet',listing_type:'pet',title:'Operations Companion',summary:'Own recurring SOP reviews, flag exceptions and prepare changes for approval.',category:'Operations',price_minor:19900,currency:'BRL',version:'1.0.0',seller:{display_name:'Whilo Studio'},demo:true},
     {id:'sample-qa-bot',listing_type:'bot',title:'QA Verifier Bot',summary:'Check deliverables against acceptance criteria and return a verification receipt.',category:'Engineering',price_minor:2900,currency:'BRL',version:'1.0.0',seller:{display_name:'Whilo Studio'},demo:true}
   ];
+
   const PLANS = [
     {id:'free',name:'Free',monthly:0,annual:0,tag:'Explore',desc:'Learn the Whilo workflow before committing.',features:['Chat and task workspace','Public marketplace browsing','Small trial allowance','Sample Pets and Bots']},
     {id:'plus',name:'Plus',monthly:39.9,annual:399,tag:'Start here',desc:'For an individual operator.',features:['Core Chat and Tasks','Bounded monthly execution budget','A few active Pets','Basic integrations']},
@@ -26,6 +112,7 @@
   const portuguese = /pt/i.test(document.documentElement.lang || '');
   let live = false, loading = false, saving = false, listings = [];
   let page = 'discover', filter = 'all', query = '', billingInterval = 'monthly', feedback = '';
+  let marketFilter = 'all', selectedPetId = '', selectedWorkflowId = '';
   let creator = {session:false,dashboard:null}, library = {session:false,installations:[],error:''}, moderation = {items:[],error:''}, authMode = 'signin';
 
   const host = document.createElement('div');
@@ -43,6 +130,7 @@
     '.section-title{font-size:12px;font-weight:850;color:#dae7f6;margin:22px 0 10px}.split{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(270px,.65fr);gap:14px;align-items:start}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.fieldgroup{display:flex;flex-direction:column;gap:6px;margin:0}.fieldgroup.full{grid-column:1/-1}label{font-size:10px;font-weight:800;color:#b0c0d4}.hint{font-size:10px;line-height:1.5;color:#8398b2}textarea{resize:vertical;min-height:75px}.checkrow{display:flex;gap:8px;align-items:flex-start;line-height:1.5;font-size:10px;color:#b1bfd1}.checkrow input{width:15px;flex:0 0 15px;margin:2px 0}.capabilities{display:grid;grid-template-columns:1fr 1fr;gap:7px}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}.stat{background:#111d2a;border:1px solid #2b3b50;padding:13px;border-radius:12px}.stat strong{font-size:20px;display:block}.stat span{font-size:10px;color:#8fa4bd}.list-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #233247}.list-main{flex:1;min-width:0}.list-main strong{display:block;font-size:12px}.list-main span{display:block;font-size:10px;color:#91a4bc;margin-top:4px}.plans{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;align-items:stretch}.plan{display:flex;flex-direction:column;gap:10px;min-width:0;padding:13px;border:1px solid #2d3d51;background:#101a28;border-radius:15px}.plan.popular{border-color:#8bdcc8;box-shadow:0 0 0 1px #8bdcc820 inset}.plan-tag{font-size:9px;letter-spacing:.1em;color:#a9e8d8;text-transform:uppercase;font-weight:900}.plan h3{margin:0;font-size:15px}.plan-desc{font-size:10px;line-height:1.45;color:#93a6be;min-height:42px}.plan-price{font-size:21px;font-weight:900;letter-spacing:-.05em}.plan-price span{font-size:9px;color:#9fb0c4;letter-spacing:0;font-weight:600}.plan ul{padding-left:14px;margin:0;display:grid;gap:7px;flex:1}.plan li{font-size:10px;color:#aabbd0;line-height:1.4}.plan .btn{width:100%}.footer{display:flex;justify-content:space-between;gap:10px;padding:11px 20px;background:#0b121d;border-top:1px solid #233146;color:#778ba3;font-size:9px}' +
     '@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.plans{grid-template-columns:repeat(3,minmax(0,1fr))}.split{grid-template-columns:1fr}}@media(max-width:680px){.veil{padding:0}.panel{height:100dvh;width:100%;border:0;border-radius:0}.head{padding:14px}.content{padding:15px 12px}.nav{padding:8px 10px}.hero{display:block}.hero h2{font-size:24px}.grid{grid-template-columns:1fr}.plans{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.fieldgroup.full{grid-column:auto}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.footer span:last-child{display:none}}@media(max-width:420px){.plans{grid-template-columns:1fr}}';
   style.textContent += "\n:host{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;color:#f5f5f5}\n.veil{background:#080808;padding:0;backdrop-filter:none;align-items:stretch;justify-content:stretch}\n.veil.open{display:flex}\n.panel{width:100%;max-width:none;height:100dvh;max-height:none;background:#090909;border:0;border-radius:0;box-shadow:none}\n.head{padding:16px 24px;background:#0b0b0b;border-color:#252525}\n.mark{background:#f5f5f5;color:#090909;border-radius:10px}\n.eyebrow{color:#a3a3a3}\nh1,.hero h2,.section-title{color:#f5f5f5}\n.sub,.hero p{color:#a3a3a3}\n.close{background:#151515;border-color:#333;color:#f5f5f5;border-radius:999px;cursor:pointer}\n.nav{background:#0b0b0b;border-color:#252525;padding:10px 24px}\n.nav button,.filter{color:#a3a3a3;border-radius:999px}\n.nav button.active,.filter.active{background:#f5f5f5;border-color:#f5f5f5;color:#090909}\n.content{background:#090909;padding:clamp(18px,2.2vw,32px)}\n.pill{background:#171717;border-color:#323232;color:#d4d4d4}\n.pill.preview,.pill.live{background:#171717;border-color:#414141;color:#e5e5e5}\n.field,input,select,textarea{background:#111;border-color:#333;color:#f5f5f5}\n.field:focus,input:focus,select:focus,textarea:focus{border-color:#a3a3a3;box-shadow:0 0 0 3px rgba(255,255,255,.08)}\n.btn{border-color:#f5f5f5;background:#f5f5f5;color:#090909}\n.btn.secondary{border-color:#383838;background:#191919;color:#eee}\n.btn.ghost{border-color:#383838;background:transparent;color:#d4d4d4}\n.card,.plan,.stat{background:#111;border-color:#292929;box-shadow:none}\n.asset,.asset.bot,.asset.skill{background:#e8e8e8;color:#111}\n.card h3,.price,.plan h3,.stat strong{color:#f5f5f5}\n.card p,.meta,.plan-desc,.plan li,.stat span,.hint{color:#a3a3a3}\n.card-foot,.list-row{border-color:#2a2a2a}\n.notice,.notice.info,.notice.success{background:#191919;border-color:#383838;color:#ddd}\n.empty{border-color:#373737;color:#a3a3a3}\n.empty strong{color:#f5f5f5}\n.plan.popular{border-color:#d4d4d4;box-shadow:0 0 0 1px rgba(255,255,255,.06) inset}\n.plan-tag{color:#e5e5e5}\n.statrow,.form,.footer{background:#0b0b0b;border-color:#252525}\n.footer{color:#777}\n@media(max-width:680px){.veil{padding:0}.panel{height:100dvh;border-radius:0}.head{padding:13px 14px}.nav{padding:8px 10px}.content{padding:16px 12px}}\n";
+  style.textContent += "\n.market-section{margin:18px 0 30px}\n.market-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:4px 0 14px;flex-wrap:wrap}\n.market-heading h2{font-size:clamp(22px,2.4vw,30px);letter-spacing:-.05em;line-height:1.1;margin:7px 0}\n.market-heading p{font-size:12px;line-height:1.65;max-width:680px;margin:0;color:#a3a3a3}\n.market-proof{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}\n.market-chip{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:39px;padding:8px 11px;border:1px solid #303030;background:#111;color:#d4d4d4;border-radius:999px;font:inherit;font-size:11px;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}\n.market-chip small{font-size:10px;color:#8f8f8f}\n.market-chip.active{background:#f5f5f5;border-color:#f5f5f5;color:#090909}\n.market-chip.active small{color:#444}\n.market-chip:hover,.market-card:hover{border-color:#777;transform:translateY(-1px)}\n.market-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}\n.market-card{display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px;border:1px solid #292929;border-radius:17px;background:linear-gradient(145deg,#141414,#0e0e0e);transition:transform .15s,border-color .15s;box-shadow:none}\n.market-card.selected{border-color:#d4d4d4;box-shadow:inset 0 0 0 1px #ffffff0a}\n.market-card-top{display:flex;align-items:flex-start;gap:11px}\n.market-avatar{flex:0 0 43px;width:43px;height:43px;border-radius:13px;display:grid;place-items:center;background:#ededed;color:#111;font-size:18px;font-weight:900}\n.market-card-top .eyebrow{font-size:9px;letter-spacing:.12em}\n.market-card h3{font-size:17px;letter-spacing:-.035em;margin:4px 0}\n.market-card .market-summary{font-size:11px;line-height:1.65;color:#aaa;margin:0}\n.market-value{padding:12px 13px;border:1px solid #2b2b2b;border-radius:12px;background:#0b0b0b}\n.market-value strong{font-size:22px;display:block;letter-spacing:-.05em;color:#f5f5f5}\n.market-value span{display:block;font-size:10px;color:#a3a3a3;line-height:1.45;margin-top:4px}\n.market-wedge{font-size:11px;line-height:1.55;color:#ddd}\n.market-wedge strong{color:#fafafa}\n.market-card .market-tags{display:flex;gap:5px;flex-wrap:wrap}\n.market-card .market-tags .pill{font-size:9px}\n.market-card .card-foot{margin-top:auto}\n.source-link{color:#d4d4d4;text-decoration:underline;text-decoration-color:#555;text-underline-offset:3px;font-size:10px}\n.source-link:hover{color:#fff;text-decoration-color:#fff}\n.pet-detail{margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.78fr);gap:18px;padding:clamp(16px,2vw,24px);border:1px solid #333;border-radius:18px;background:#0d0d0d}\n.pet-detail h3{font-size:22px;letter-spacing:-.04em;margin:8px 0}\n.pet-detail p{font-size:12px;color:#aaa;line-height:1.65}\n.pet-detail .detail-side{border-left:1px solid #292929;padding-left:18px}\n.segment-list{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0}\n.segment-list span{border:1px solid #313131;background:#161616;color:#ddd;border-radius:999px;padding:6px 9px;font-size:10px}\n.workflow-list{display:grid;gap:7px;margin:12px 0}\n.workflow-option{display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;padding:12px;border-radius:12px;border:1px solid #2d2d2d;background:#111;color:#ddd;cursor:pointer;font:inherit}\n.workflow-option.active{border-color:#e5e5e5;background:#1a1a1a}\n.workflow-option .workflow-index{flex:0 0 26px;width:26px;height:26px;border:1px solid #444;border-radius:8px;display:grid;place-items:center;font-size:10px}\n.workflow-option strong{display:block;font-size:11px;color:#f5f5f5}\n.workflow-option small{display:block;font-size:10px;color:#a3a3a3;line-height:1.5;margin-top:4px}\n.workflow-preview{padding:14px;border:1px solid #303030;border-radius:14px;background:#121212;margin-top:12px}\n.workflow-preview h4{font-size:14px;margin:3px 0 8px;letter-spacing:-.02em}\n.workflow-preview ol{padding-left:20px;margin:11px 0;display:grid;gap:8px}\n.workflow-preview li{font-size:11px;color:#d4d4d4;line-height:1.55;padding-left:2px}\n.workflow-preview .proof{padding:10px;border-left:2px solid #e5e5e5;background:#191919;font-size:11px;color:#ddd;line-height:1.6}\n.workflow-preview .metric{font-size:10px;color:#a3a3a3;line-height:1.6;margin:10px 0 0}\n.market-guardrail{padding:11px 12px;background:#181818;border:1px solid #383838;border-radius:12px;font-size:10px;color:#ddd;line-height:1.6}\n.market-source-note{font-size:10px;line-height:1.6;color:#858585;margin:12px 0 0}\n.market-empty{grid-column:1/-1;padding:24px;border:1px dashed #3a3a3a;border-radius:14px;text-align:center;color:#aaa;font-size:12px}\n@media(max-width:1000px){.market-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pet-detail{grid-template-columns:1fr}.pet-detail .detail-side{border-left:0;border-top:1px solid #292929;padding:16px 0 0}}\n@media(max-width:680px){.market-grid{grid-template-columns:1fr}.market-heading{display:block}.market-chip{flex:0 0 auto}.market-proof{flex-wrap:nowrap;overflow-x:auto;padding:2px 0 8px}.pet-detail{padding:14px}.market-card{padding:14px}}\n";
   root.appendChild(style);
   const veil = document.createElement('div');
   veil.className = 'veil';
@@ -75,14 +163,60 @@
     const btn = preview ? 'Preview only' : (act==='install'?'Install':'Buy');
     return '<article class="card"><div class="card-head"><div class="asset ' + esc(item.listing_type) + '">' + esc(ICONS[item.listing_type]||'◇') + '</div><div style="min-width:0;flex:1"><div class="eyebrow">' + esc(type) + ' · ' + esc(item.category||'General') + '</div><h3 style="margin-top:5px">' + esc(item.title) + '</h3><div class="meta">' + esc(item.seller&&item.seller.display_name||'Whilo creator') + ' · v' + esc(item.version||'1.0.0') + '</div></div></div><p>' + esc(item.summary) + '</p><div class="pills"><span class="pill ' + (preview?'preview':'live') + '">' + (preview?'Sample preview':'Published') + '</span><span class="pill">' + esc(item.license||'Proprietary') + '</span></div><div class="card-foot"><div class="price">' + esc(price) + (Number(item.price_minor||0)>0?'<small> · one-time</small>':'') + '</div><button class="btn ' + (preview?'secondary':'') + '" data-action="' + act + '" data-id="' + esc(item.id) + '"' + (saving?' disabled':'') + '>' + btn + '</button></div></article>';
   }
+  function visiblePetSpecialists() {
+    if (filter !== 'all' && filter !== 'pet') return [];
+    return PET_SPECIALISTS.filter(function(pet) {
+      const matchesMarket = marketFilter === 'all' || marketFilter === pet.id;
+      const searchable = [pet.name,pet.market,pet.shortMarket,pet.summary,pet.marketSize,pet.wedge,pet.wedgeSize].concat(pet.segments).join(' ');
+      return matchesMarket && (!query || norm(searchable).includes(norm(query)));
+    });
+  }
+  function specialistCard(pet) {
+    const selected = selectedPetId === pet.id;
+    return '<article class="market-card'+(selected?' selected':'')+'" data-pet-card="'+esc(pet.id)+'">' +
+      '<div class="market-card-top"><div class="market-avatar" aria-hidden="true">'+esc(pet.mark)+'</div><div style="min-width:0;flex:1"><div class="eyebrow">WHILO PET · '+esc(pet.market.toUpperCase())+'</div><h3>'+esc(pet.name)+'</h3><div class="meta">Industry specialist · Previewable workflow</div></div></div>' +
+      '<p class="market-summary">'+esc(pet.summary)+'</p>' +
+      '<div class="market-value"><strong>'+esc(pet.marketSize)+'</strong><span>'+esc(pet.marketBasis)+'</span></div>' +
+      '<div class="market-wedge"><strong>Initial wedge:</strong> '+esc(pet.wedge)+'</div>' +
+      '<div class="market-tags">'+pet.segments.slice(0,3).map(function(segment){return '<span class="pill">'+esc(segment)+'</span>';}).join('')+'</div>' +
+      '<div class="card-foot"><span class="meta">3 workflow blueprints</span><button class="btn'+(selected?'':' secondary')+'" type="button" data-action="pet-explore" data-id="'+esc(pet.id)+'" aria-label="Explore '+esc(pet.name)+' specialty">'+(selected?'Selected':'Explore Pet')+' ↗</button></div>' +
+      '</article>';
+  }
+  function petDetailPanel() {
+    const pet = PET_SPECIALISTS.find(function(row){return row.id===selectedPetId;});
+    if (!pet) return '';
+    const workflow = pet.workflows.find(function(row){return row.id===selectedWorkflowId;}) || null;
+    let out = '<section class="pet-detail" aria-label="'+esc(pet.name)+' specialist details"><div><div class="eyebrow">SPECIALIST PROFILE / '+esc(pet.market.toUpperCase())+'</div><h3>'+esc(pet.name)+' · '+esc(pet.market)+'</h3><p>'+esc(pet.summary)+'</p><div class="section-title">Segments this Pet serves</div><div class="segment-list">'+pet.segments.map(function(segment){return '<span>'+esc(segment)+'</span>';}).join('')+'</div><div class="section-title">Choose a workflow to preview</div><div class="workflow-list">'+pet.workflows.map(function(item,index){return '<button class="workflow-option'+(workflow&&workflow.id===item.id?' active':'')+'" type="button" data-action="pet-workflow" data-id="'+esc(pet.id)+'" data-workflow="'+esc(item.id)+'" aria-pressed="'+(workflow&&workflow.id===item.id?'true':'false')+'"><span class="workflow-index">'+String(index+1).padStart(2,'0')+'</span><span><strong>'+esc(item.title)+'</strong><small>'+esc(item.goal)+'</small></span></button>';}).join('')+'</div>';
+    if(workflow) {
+      out += '<div class="workflow-preview"><div class="eyebrow">WORKFLOW BLUEPRINT · DRAFT ONLY</div><h4>'+esc(workflow.title)+'</h4><p>'+esc(workflow.goal)+'</p><ol>'+workflow.steps.map(function(step){return '<li>'+esc(step)+'</li>';}).join('')+'</ol><div class="proof"><strong>Evidence requirement:</strong> '+esc(workflow.proof)+'</div><div class="metric"><strong>What to measure:</strong> '+esc(workflow.metric)+'</div><div class="toolbar"><button type="button" class="btn" data-action="pet-chat" data-id="'+esc(pet.id)+'" data-workflow="'+esc(workflow.id)+'">Draft this in Whilo Chat ↗</button></div><div class="hint">This creates a prompt draft in Chat. It does not run the workflow or modify external systems.</div></div>';
+    } else {
+      out += '<div class="notice info">Select one of the workflows to inspect its steps, evidence requirements, and pilot metrics.</div>';
+    }
+    out += '</div><aside class="detail-side"><div class="row"><div><div class="eyebrow">MARKET OPPORTUNITY</div><div class="price">'+esc(pet.marketSize)+'</div></div><button type="button" class="btn ghost" data-action="pet-close" aria-label="Close Pet details">×</button></div><p>'+esc(pet.marketBasis)+'</p><div class="section-title">First service wedge</div><p><strong>'+esc(pet.wedge)+'</strong></p><div class="notice info">'+esc(pet.wedgeSize)+'</div><div class="section-title">Operating boundary</div><div class="market-guardrail">'+esc(pet.guardrail)+'</div><div class="section-title">Sources</div>'+pet.sources.map(function(source){return '<p><a class="source-link" href="'+esc(source.url)+'" target="_blank" rel="noopener noreferrer">'+esc(source.label)+' ↗</a></p>';}).join('')+'<p><button type="button" class="btn secondary" data-action="pet-close">Back to markets</button></p></aside></section>';
+    return out;
+  }
+  function marketSection() {
+    const rows = visiblePetSpecialists();
+    let out = '<section class="market-section" aria-label="Industry specialist Pets"><div class="market-heading"><div><div class="eyebrow">WHILO INDUSTRY PETS · SIX VERTICALS</div><h2>One Pet. One market. One measurable workflow.</h2><p>Explore focused specialists for large service economies. Each profile pairs an industry opportunity with a narrower starting workflow, source evidence, human approval boundaries and a measurable pilot.</p><div class="market-proof"><span class="pill">Outcome-led</span><span class="pill">Evidence before claims</span><span class="pill">Human approval for consequential actions</span></div></div></div>' +
+      '<div class="market-proof" role="group" aria-label="Filter specialist market">'+
+      '<button type="button" class="market-chip'+(marketFilter==='all'?' active':'')+'" data-market="all" aria-pressed="'+(marketFilter==='all'?'true':'false')+'"><span>All markets</span><small>6 Pets</small></button>'+
+      PET_SPECIALISTS.map(function(pet){return '<button type="button" class="market-chip'+(marketFilter===pet.id?' active':'')+'" data-market="'+esc(pet.id)+'" aria-pressed="'+(marketFilter===pet.id?'true':'false')+'"><span>'+esc(pet.shortMarket)+'</span><small>'+esc(pet.marketSize)+'</small></button>';}).join('')+
+      '</div><div class="market-grid pet-grid">'+(rows.length?rows.map(specialistCard).join(''):'<div class="market-empty">No specialist matches this search. Try a market name, workflow or segment.</div>')+'</div>'+petDetailPanel()+
+      '<p class="market-source-note">Market figures are source-specific opportunity estimates or sector spending, not Whilo revenue forecasts. For healthcare, US$5.3T is total U.S. healthcare spending in 2024, while the initial outsourced revenue-cycle wedge is separately estimated by Sequoia at US$50–80B. Other service opportunity ranges follow Sequoia Capital’s March 2026 article. Always validate a narrower addressable market and buyer budget before investing.</p></section>';
+    return out;
+  }
   function discoverPage() {
-    const rows=visibleListings();
-    let out='<div class="hero"><div><div class="eyebrow">THE AGENT ECONOMY</div><h2>Buy outcomes. Sell expertise.</h2><p>Vetted, versioned Pets, task-scoped Bots, Skills and Playbooks. Each asset declares its capabilities and runs under buyer workspace policies.</p><div class="pills"><span class="pill">Pets own outcomes</span><span class="pill">Bots do bounded work</span><span class="pill">20% transparent commission</span></div></div><button class="btn secondary" data-action="refresh"' + (loading?' disabled':'') + '>↻ Refresh</button></div>'+notice();
-    out+='<div class="toolbar"><input class="field search" id="market-search" type="search" maxlength="100" value="'+esc(query)+'" placeholder="Search agents, skills and playbooks…"><div style="display:flex;gap:5px;flex-wrap:wrap">'+[['all','All'],['pet','Pets'],['bot','Bots'],['skill','Skills'],['playbook','Playbooks'],['template','Templates']].map(function(x){return '<button class="filter '+(filter===x[0]?'active':'')+'" data-filter="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div></div>';
-    if(!live) out+='<div class="notice">Preview mode: sample assets show the intended product direction, not real seller listings. Purchases and installations stay disabled until Supabase and Stripe are configured.</div>';
-    if(rows.length) out+='<div class="grid listing-grid">'+rows.map(card).join('')+'</div>';
-    else out+='<div class="empty"><strong>No published listings match.</strong><p>Try another search or filter. Creator assets appear only after moderation.</p></div>';
-    out+='<div class="section-title">A real agent marketplace, not a prompt dump</div><div class="grid"><article class="card"><div class="eyebrow">01 / TRUST</div><h3>Capability manifest</h3><p>Buyers see proposed tools, approval requirements, version, license and cost boundaries before installing.</p></article><article class="card"><div class="eyebrow">02 / QUALITY</div><h3>Verified outcomes</h3><p>Ratings should follow confirmed purchases and auditable results—not vanity stars or unverified claims.</p></article><article class="card"><div class="eyebrow">03 / CREATOR REVENUE</div><h3>20% platform take</h3><p>Creator proceeds are 80% of item price before their own taxes. Processor costs come from Whilo’s fee in v1.</p></article></div>';
+    const rows = visibleListings();
+    let out = '<div class="hero"><div><div class="eyebrow">THE AGENT ECONOMY</div><h2>Buy outcomes. Sell expertise.</h2><p>Discover industry-specialist Pets and versioned Bots, Skills and Playbooks. Each profile should declare its workflow, evidence, limits and approval requirements before work begins.</p><div class="pills"><span class="pill">Pets own vertical outcomes</span><span class="pill">Bots do bounded tasks</span><span class="pill">20% transparent commission</span></div></div><button class="btn secondary" data-action="refresh"'+(loading?' disabled':'')+'>↻ Refresh</button></div>'+notice();
+    out += '<div class="toolbar"><input class="field search" id="market-search" type="search" maxlength="100" value="'+esc(query)+'" placeholder="Search a Pet, market, workflow or asset…"><div style="display:flex;gap:5px;flex-wrap:wrap">'+[['all','All'],['pet','Pets'],['bot','Bots'],['skill','Skills'],['playbook','Playbooks'],['template','Templates']].map(function(x){return '<button class="filter '+(filter===x[0]?'active':'')+'" data-filter="'+x[0]+'" aria-pressed="'+(filter===x[0]?'true':'false')+'">'+x[1]+'</button>';}).join('')+'</div></div>';
+    if(filter==='all'||filter==='pet') out += marketSection();
+    if(filter!=='pet' || (live && rows.length)) {
+      out += '<div class="section-title">'+(filter==='all'?'Marketplace listings':filter==='bot'?'Specialist Bots':filter==='skill'?'Reusable Skills':filter==='playbook'?'Playbooks':filter==='template'?'Templates':'Published Pet listings')+'</div>';
+      if(!live) out += '<div class="notice">Preview mode: these example assets are illustrative, not real seller listings. Live purchases and installations require the configured backend, verified account and payment flow.</div>';
+      if(rows.length) out += '<div class="grid listing-grid">'+rows.map(card).join('')+'</div>';
+      else if(filter!=='all' && !(filter==='pet' && !live)) out += '<div class="empty"><strong>No published listings match.</strong><p>Try another search or filter. Creator assets appear only after moderation.</p></div>';
+    }
+    out += '<div class="section-title">A serious agent marketplace needs three things</div><div class="grid"><article class="card"><div class="eyebrow">01 / TRUST</div><h3>Capability manifest</h3><p>Buyers see proposed tools, approval requirements, version, license and cost boundaries before installing.</p></article><article class="card"><div class="eyebrow">02 / QUALITY</div><h3>Verified outcomes</h3><p>Ratings should follow confirmed purchases and auditable results—not vanity stars or unverified claims.</p></article><article class="card"><div class="eyebrow">03 / CREATOR REVENUE</div><h3>20% platform take</h3><p>Creator proceeds are 80% of item price before their own taxes. Processor costs come from Whilo’s fee in v1.</p></article></div>';
     return out;
   }
   function authCard() {
@@ -266,6 +400,11 @@
         const rows=visibleListings();
         grid.innerHTML=rows.length?rows.map(card).join(''):'<div class="empty"><strong>No matches.</strong><p>Try another keyword.</p></div>';
       }
+      const specialistGrid=content.querySelector('.pet-grid');
+      if(specialistGrid){
+        const pets=visiblePetSpecialists();
+        specialistGrid.innerHTML=pets.length?pets.map(specialistCard).join(''):'<div class="market-empty">No specialist matches this search. Try a market name, workflow or segment.</div>';
+      }
     }
   });
   veil.addEventListener('click',function(event){
@@ -281,6 +420,40 @@
     const action=b.getAttribute('data-action'), id=b.getAttribute('data-id')||b.getAttribute('data-plan')||'', decision=action==='plugins-save'?{title:b.getAttribute('data-title')||'',url:b.getAttribute('data-url')||'',description:b.getAttribute('data-description')||''}:(b.getAttribute('data-decision')||'');
     if(action==='close'){close();return;}
     if(action==='toggle-auth'){authMode=authMode==='signin'?'signup':'signin';render();return;}
+    if(action==='pet-close'){selectedPetId='';selectedWorkflowId='';render();return;}
+    if(action==='pet-explore'){
+      selectedPetId=id;
+      selectedWorkflowId='';
+      const detail=content.querySelector('.pet-detail');
+      render();
+      const next=content.querySelector('.pet-detail');
+      if(next)next.scrollIntoView({behavior:'smooth',block:'nearest'});
+      return;
+    }
+    if(action==='pet-workflow'){
+      selectedPetId=id;
+      selectedWorkflowId=b.getAttribute('data-workflow')||'';
+      render();
+      return;
+    }
+    if(action==='pet-chat'){
+      const pet=PET_SPECIALISTS.find(function(row){return row.id===id;});
+      const wfId=b.getAttribute('data-workflow')||'';
+      const workflow=pet&&pet.workflows.find(function(row){return row.id===wfId;});
+      if(!pet||!workflow){feedback='Choose a valid Pet workflow first.';render();return;}
+      const prompt='Help me plan a bounded pilot owned by Pet '+pet.name+' for '+pet.market+'. Workflow: '+workflow.title+'. Objective: '+workflow.goal+' Steps to plan: '+workflow.steps.join(' | ')+'. Required evidence: '+workflow.proof+' Pilot measures: '+workflow.metric+' Operating boundary: '+pet.guardrail+' First propose scope, required approved inputs, roles, acceptance criteria, cost ceiling, failure handling and human approvals. Separate verified facts from assumptions. Do not claim execution, contact third parties or change external systems. Ask for missing details before any action. Draft only; do not execute.';
+      close();
+      window.dispatchEvent(new CustomEvent('whilo:marketplace:plan-pet',{detail:{prompt:prompt,petId:pet.id,petName:pet.name,market:pet.market,workflow:workflow.title}}));
+      return;
+    }
+    const marketButton=event.target.closest('[data-market]');
+    if(marketButton){
+      marketFilter=marketButton.getAttribute('data-market')||'all';
+      selectedPetId='';
+      selectedWorkflowId='';
+      render();
+      return;
+    }
     if(['refresh','preview','install','buy','reload-creator','reload-library','reload-review','asset-details','submit-listing','connect-payouts','choose-plan','moderate-listing','plugins-save','plugins-refresh','plugins-connect'].includes(action)){runAction(action,id,decision);}
   });
   veil.addEventListener('submit',async function(event){
