@@ -534,7 +534,7 @@
   const vocab = {
     chat: ['chat', 'conversa', 'conversas'],
     pets: ['pets', 'bots', 'agentes'],
-    store: ['store', 'loja'],
+    store: ['store', 'loja', 'marketplace'],
     routines: ['routines', 'rotinas', 'automations', 'automacoes']
   };
   function category(el) {
