@@ -18,4 +18,37 @@ assert.ok(store.includes("trustState:'unreviewed'"), 'Imported plugin references
 assert.ok(store.includes('rel="noopener noreferrer"'), 'External GitHub links are isolated from the opener');
 assert.ok(store.includes("new CustomEvent('whilo:marketplace:open-connect')"), 'Plugin connection guidance opens the Whilo Connect surface');
 assert.ok(store.includes('https://github.com/milind-soni/OpenMausBot'), 'OpenMausBot architecture research is discoverable from Plugins');
-console.log('Whilo UI resilience and Plugins navigation tests passed.');
+
+// Specialist Pets: the marketplace must remain an interactive, sourced workflow catalog.
+const profileStart = store.indexOf('const PET_SPECIALISTS = ');
+const demoStart = store.indexOf('  const DEMO = [', profileStart);
+assert.ok(profileStart >= 0 && demoStart > profileStart, 'Marketplace declares the six specialist Pet profiles');
+const profileSource = store.slice(profileStart + 'const PET_SPECIALISTS = '.length, demoStart).trim().replace(/;\\s*$/, '');
+const specialists = Function('"use strict"; return ' + profileSource)();
+assert.equal(specialists.length, 6, 'Exactly six vertical Pets are mapped in the Marketplace');
+assert.deepEqual(specialists.map(function (pet) { return pet.name; }), ['Whilo', 'Fynn', 'Nori', 'Capuccino', 'Ollie', 'Pico'], 'Specialist names remain stable');
+assert.ok(specialists.every(function (pet) { return pet.marketSize && pet.marketStage && pet.marketBasis; }), 'Each Pet explains market size, strategic stage and sizing basis');
+assert.ok(specialists.every(function (pet) { return pet.sources.some(function (source) { return source.url === 'https://sequoiacap.com/article/services-the-new-software'; }); }), 'Every profile links to Sequoia’s source');
+assert.ok(specialists.every(function (pet) { return pet.workflows.length === 3 && pet.workflows.every(function (workflow) { return workflow.steps.length >= 3 && workflow.proof && workflow.metric; }); }), 'Each Pet exposes three evidence-backed workflow blueprints');
+assert.ok(store.includes('data-action="pet-explore"'), 'Pet cards expose a profile exploration action');
+assert.ok(store.includes('data-action="pet-workflow"'), 'Pet profiles expose selectable workflow blueprints');
+assert.ok(store.includes('data-action="pet-chat"'), 'A selected workflow can be drafted into Whilo Chat');
+assert.ok(store.includes("window.dispatchEvent(new CustomEvent('whilo:marketplace:plan-pet'"), 'Marketplace workflows send a structured draft event to Chat');
+assert.ok(enterprise.includes("window.addEventListener('whilo:marketplace:plan-pet'"), 'Whilo Chat consumes specialist workflow drafts');
+assert.ok(enterprise.includes("Whilo: { short: 'Insurance'"), 'Workspace ownership maps Whilo to insurance brokerage');
+assert.ok(enterprise.includes("Fynn: { short: 'Consulting'"), 'Workspace ownership maps Fynn to management consulting');
+assert.ok(enterprise.includes("Capuccino: { short: 'Creative ops'"), 'Workspace ownership maps Capuccino to creative operations');
+assert.ok(enterprise.includes("Ollie: { short: 'Talent'"), 'Workspace ownership maps Ollie to recruiting');
+assert.ok(enterprise.includes("Pico: { short: 'IT services'"), 'Workspace ownership maps Pico to IT managed services');
+assert.ok(enterprise.includes("specialistForDepartment(d.name)"), 'Creating a task defaults to the matching Pet for an industry department');
+assert.ok(enterprise.includes("specialistForDepartment(dept.name) || 'Whilo'"), 'Starting a department playbook assigns the appropriate Pet');
+assert.ok(store.includes('.veil{background:#080808;padding:0;backdrop-filter:none'), 'Marketplace uses the Whilo neutral fullscreen surface');
+assert.ok(!store.includes("store.insertAdjacentElement('afterend',button)"), 'Marketplace reuses the Store tab instead of injecting a duplicate tab');
+
+const petMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261028093234_pet_industry_specialties.sql'), 'utf8');
+assert.ok(petMigration.includes('CREATE OR REPLACE FUNCTION public.ensure_owner_workspace'), 'Specialist roles persist into future workspace bootstrap');
+assert.ok(petMigration.includes("AND p.purpose = s.old_purpose"), 'Migration avoids overwriting user-customized Pet purposes');
+assert.ok(petMigration.includes("AND p.policy = '{}'::jsonb"), 'Migration avoids overwriting customized Pet policies');
+assert.ok(petMigration.includes('REVOKE ALL ON FUNCTION public.ensure_owner_workspace(text) FROM public, anon, authenticated'), 'Bootstrap remains unavailable to public and authenticated roles');
+assert.ok(petMigration.includes('GRANT EXECUTE ON FUNCTION public.ensure_owner_workspace(text) TO service_role'), 'Only the server service role can execute workspace bootstrap');
+console.log('Whilo UI resilience, Plugins navigation and specialist Pet tests passed.');
