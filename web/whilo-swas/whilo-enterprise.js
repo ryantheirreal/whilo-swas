@@ -2323,7 +2323,7 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     if (act === 'remove') { state.tasks = state.tasks.filter(function (t) { return t.id !== id; }); save(); render(); return; }
     if (act === 'playbook') {
       const dept = DEPARTMENTS.find(function (d) { return d.id === id; });
-      if (dept) addTask(dept.template, dept.name, 'Whilo', 'High');
+      if (dept) addTask(dept.template, dept.name, specialistForDepartment(dept.name) || 'Whilo', 'High');
       active = 'work'; render(); return;
     }
     if (act === 'cloud-provider-google') {
