@@ -100,6 +100,9 @@ assert.ok(computerRoute.includes('member.role'), 'Computer runtime checks worksp
 assert.ok(computerRoute.includes('computer_run_rate_limited'), 'Remote browser launches are rate-limited');
 assert.ok(computerRoute.includes('computer.website_qa_completed'), 'Successful computer runs emit an audit event');
 assert.ok(computerRoute.includes('page.screenshot'), 'Remote browser captures screenshot evidence');
+assert.ok(computerRoute.includes('interactiveElements = Array.from'), 'Remote computer reports a bounded visible-element inventory');
+assert.ok(computerUi.includes('VISIBLE INTERACTIVE ELEMENTS'), 'Chat renders the browser element inventory with evidence');
+assert.ok(computerTest.includes('interactiveElements') && computerTest.includes('form/control values'), 'Computer QA tests the interaction inventory and ensures values are not exposed');
 assert.ok(computerUi.includes("['codex-local','Codex via ChatGPT · this computer']"), 'Local ChatGPT Codex option is limited to the desktop bridge');
 assert.ok(computerUi.includes("if(whiloChatProvider==='codex-local')"), 'Chat routes local Codex requests separately from hosted API providers');
 assert.ok(computerUi.includes("whiloChatCodexMode==='workspace-write'?'workspace-write':'read-only'"), 'Local Codex permission defaults to read-only and has an explicit write mode');
@@ -117,6 +120,7 @@ assert.ok(codexBridge.includes('await approveTaskAccess(mode, prompt)'), 'Every 
 assert.ok(codexBridge.includes('delete env.OPENAI_API_KEY') && codexBridge.includes('delete env.CODEX_ACCESS_TOKEN'), 'Hosted API keys and Codex access tokens are removed from child-process environment');
 assert.ok(codexBridge.includes('CODEX_HOME: codexHome'), 'Codex profile is isolated under the Whilo Desktop user-data directory');
 assert.ok(codexBridge.includes('RUN_TIMEOUT_MS = 10 * 60 * 1000'), 'Local Codex tasks have a hard timeout');
+assert.ok(codexBridge.includes("login.child.kill('SIGTERM')"), 'Desktop shutdown correctly stops the nested Codex login child process');
 assert.ok(codexPackage.scripts.check.includes('scripts/test-codex-bridge.cjs'), 'Desktop checks run the Codex bridge regression tests');
 assert.ok(codexTests.includes('workspace-write') && codexTests.includes('CODEX_ACCESS_TOKEN'), 'Codex tests cover write approval and secret isolation');
 assert.ok(openMausResearch.includes('PR #3712') && openMausResearch.includes('PR #3669') && openMausResearch.includes('PR #3691'), 'OpenMausBot research records relevant upstream PRs');
