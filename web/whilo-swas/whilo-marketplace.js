@@ -4,91 +4,409 @@
   window.__whiloMarketplaceLoaded = true;
 
   const PET_SPECIALISTS = [
-    {
-      id:'whilo-healthcare',name:'Whilo',mark:'✚',shortMarket:'Healthcare ops',market:'Healthcare operations',
-      marketSize:'US$5.3T',marketBasis:'U.S. healthcare spending in 2024; sector expenditure, not Whilo revenue or software TAM.',
-      wedge:'Revenue-cycle administration',wedgeSize:'US$50–80B outsourced U.S. revenue-cycle opportunity cited by Sequoia.',
-      summary:'Organizes non-clinical billing and payer workflows so teams can find missing evidence, triage administrative queues and prepare reviewed follow-ups.',
-      segments:['Revenue-cycle backlog','Billing evidence gaps','Payer follow-up','Denial documentation'],
-      guardrail:'Administrative support only. No diagnosis, treatment recommendation, clinical decision or unreviewed claim submission. A qualified human approves billing and payer-facing actions.',
-      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'},{label:'CMS · U.S. healthcare spending',url:'https://www.cms.gov/data-research/statistics-trends-and-reports/national-health-expenditure-data/nhe-fact-sheet'}],
-      workflows:[
-        {id:'healthcare-backlog',title:'Triage a revenue-cycle backlog',goal:'Turn a supplied queue into an evidence-backed, prioritized worklist for the revenue-cycle team.',steps:['Import an approved, minimum-necessary queue export.','Group items by status, age, payer and missing documentation.','Flag duplicates, inconsistent fields and evidence gaps with source references.','Prepare a human-reviewed follow-up queue; do not submit claims automatically.'],proof:'Every flagged item links back to its source row and explains why it needs attention.',metric:'Baseline vs. pilot: queue age, minutes per case, missing-field rate and rework.'},
-        {id:'payer-followups',title:'Prepare payer follow-ups',goal:'Draft next steps for delayed administrative cases without making coverage or clinical judgments.',steps:['Read only approved case fields and existing correspondence.','Match each case to the team’s approved follow-up checklist.','Draft a concise message and list any missing evidence.','Route each draft to an authorized billing specialist for approval.'],proof:'Draft, source evidence, owner and approval state are recorded for every case.',metric:'Measure follow-up cycle time, unanswered cases and rework against the current baseline.'},
-        {id:'denial-evidence',title:'Build a denial-evidence packet',goal:'Organize documents and administrative facts for a qualified human reviewer.',steps:['Collect only authorized records for the selected case.','Map each documented reason to the relevant source evidence.','Mark absent, conflicting or outdated evidence explicitly.','Prepare a packet and a reviewer checklist; never decide medical necessity.'],proof:'A source-linked evidence checklist with unresolved questions and reviewer sign-off.',metric:'Measure packet preparation time, completeness and reviewer corrections.'}
-      ]
-    },
-    {
-      id:'fynn-insurance',name:'Fynn',mark:'⌁',shortMarket:'Insurance',market:'Insurance brokerage',
-      marketSize:'US$140–200B',marketBasis:'Insurance-brokerage labor opportunity range in Sequoia Capital’s March 2026 opportunity map.',
-      wedge:'Commercial-lines submission and renewal operations',wedgeSize:'Start with repetitive broker work: intake, completeness checks, renewals and quote comparison.',
-      summary:'Helps broker teams assemble cleaner submissions, track renewal windows and compare carrier responses with traceable evidence.',
-      segments:['Submission intake','Renewal monitoring','Quote comparison','Broker follow-up'],
-      guardrail:'Does not bind coverage, provide unlicensed insurance advice, accept/deny a claim or send a quote without broker approval.',
-      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
-      workflows:[
-        {id:'insurance-submission',title:'Prepare a submission packet',goal:'Turn an approved intake into a completeness-checked packet for broker review.',steps:['Extract required fields from the approved intake and documents.','Compare each required field against the broker’s checklist.','Identify missing, expired or conflicting information.','Prepare a carrier-ready draft and route it to a licensed broker.'],proof:'Field-by-field completeness report with references to the source document.',metric:'Measure time to submission, missing-field rate and resubmission count.'},
-        {id:'insurance-renewal',title:'Run the renewal desk',goal:'Create a forward-looking renewal queue with clear owners and evidence.',steps:['Read the approved policy register and renewal dates.','Group expirations by time horizon, account and assigned broker.','Prepare client-information requests from approved templates.','Escalate exceptions and leave outbound messages for approval.'],proof:'Each renewal has a date, owner, status, outstanding items and next action.',metric:'Measure on-time renewal preparation, open items and admin minutes per account.'},
-        {id:'insurance-quotes',title:'Compare carrier quotes',goal:'Normalize supplied quote terms so a broker can evaluate differences.',steps:['Read the carrier quotes and policy documents provided by the broker.','Align limits, deductibles, exclusions, premiums and open questions.','Cite the page or source for every compared term.','Create a comparison table for broker review, without choosing or binding coverage.'],proof:'Every comparison field has a source or is marked unknown.',metric:'Measure comparison turnaround and corrections made by the broker.'}
-      ]
-    },
-    {
-      id:'nori-procurement',name:'Nori',mark:'⇄',shortMarket:'Procurement',market:'Supply chain & procurement',
-      marketSize:'US$200B+',marketBasis:'Supply-chain and procurement labor opportunity described by Sequoia Capital, March 2026.',
-      wedge:'Supplier discovery, RFQ comparison and long-tail procurement follow-up',wedgeSize:'Begin with work that is often skipped because manual review is too expensive.',
-      summary:'Turns scattered vendor information and purchase requests into comparable sourcing evidence, renewal reminders and exception queues.',
-      segments:['Supplier discovery','RFQ comparison','Contract and renewal watch','Spend-anomaly evidence'],
-      guardrail:'No purchase orders, supplier commitments, contract signatures or payments without explicit human approval. Evidence is not a negotiated saving.',
-      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
-      workflows:[
-        {id:'procurement-rfq',title:'Compare supplier RFQs',goal:'Prepare an apples-to-apples supplier comparison from supplied offers.',steps:['Collect approved quotes and the request specification.','Normalize price, lead time, quantity, terms and missing fields.','Flag non-comparable assumptions and quote expiry dates.','Prepare a sourced comparison for a procurement owner to decide.'],proof:'Each value is linked to its quote; gaps and assumptions remain visible.',metric:'Measure RFQ turnaround, comparison completeness and reviewer corrections.'},
-        {id:'procurement-renewals',title:'Monitor supplier renewals',goal:'Make overlooked contracts and renewal windows visible before a deadline.',steps:['Read the authorized supplier and contract register.','Find renewal dates, notice periods and unassigned owners.','Generate a weekly exception queue with source references.','Draft reminders for owner approval; do not alter contracts.'],proof:'Renewal date, notice window, source, owner and status for each exception.',metric:'Measure renewals surfaced before deadline and manual tracking time.'},
-        {id:'procurement-anomalies',title:'Surface spend exceptions',goal:'Find records worth investigating rather than claiming savings automatically.',steps:['Analyze only approved purchase and invoice exports.','Group similar suppliers, line items and periods.','Flag duplicates, price variance and unusual patterns with the matching records.','Create a review queue with confidence notes and false-positive tracking.'],proof:'Every alert includes supporting records and a plain-language reason.',metric:'Measure useful exceptions confirmed by humans, false positives and review time.'}
-      ]
-    },
-    {
-      id:'capuccino-itops',name:'Capuccino',mark:'⌘',shortMarket:'IT services',market:'IT managed services',
-      marketSize:'US$100B+',marketBasis:'IT managed-services labor opportunity described by Sequoia Capital, March 2026.',
-      wedge:'Service-desk triage, access-request preparation and monitoring summaries',wedgeSize:'Start with repeatable, reversible, evidence-rich service operations.',
-      summary:'Helps MSP and internal IT teams classify tickets, prepare access changes for approval and turn noisy monitoring into actionable queues.',
-      segments:['Service desk','Access request packs','Monitoring triage','Patch-status reporting'],
-      guardrail:'Read-only by default. No permission grants, production changes, patching, deletion or credential access without an authorized approval and verified execution adapter.',
-      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
-      workflows:[
-        {id:'it-ticket-triage',title:'Triage the service desk',goal:'Convert ticket volume into an owner-assigned queue with evidence and urgency rationale.',steps:['Read approved tickets and service-level rules.','Cluster duplicates and classify issues using the documented taxonomy.','Suggest priority and owner with a reason and source ticket.','Draft replies or escalations; a human approves customer-facing actions.'],proof:'Every classification includes a reason, ticket reference and unresolved uncertainty.',metric:'Measure time to first triage, reassignment rate and reviewer corrections.'},
-        {id:'it-access-pack',title:'Prepare an access request',goal:'Assemble the minimum required evidence for a human-approved access change.',steps:['Read the authorized request and identity context.','Check required approvals and least-privilege policy fields.','List missing manager, system-owner or expiry details.','Prepare a change ticket for an authorized operator; do not grant access.'],proof:'A complete approval checklist with an auditable requested scope.',metric:'Measure request completion time, missing approvals and rework.'},
-        {id:'it-monitoring',title:'Summarize monitoring alerts',goal:'Reduce noise in a supplied alert export without making unverified changes.',steps:['Group alerts by affected service, signature and time window.','Attach relevant runbook references and known incidents.','Separate confirmed evidence from possible correlations.','Prepare an ordered triage queue for the on-call engineer.'],proof:'Source alert IDs, runbook links, timestamps and explicit uncertainty.',metric:'Measure alert grouping precision, triage time and reopened incidents.'}
-      ]
-    },
-    {
-      id:'ollie-consulting',name:'Ollie',mark:'◎',shortMarket:'Consulting',market:'Management consulting',
-      marketSize:'US$300–400B',marketBasis:'Management-consulting labor opportunity range in Sequoia Capital’s March 2026 opportunity map.',
-      wedge:'Research, benchmarking and evidence-backed analysis',wedgeSize:'Automate structured intelligence work; keep consequential judgment with the client and accountable expert.',
-      summary:'Builds decision-ready research packs, benchmarks and consulting deliverables with explicit assumptions and cited evidence.',
-      segments:['Market research','Benchmarking','Data gathering','Deliverable quality review'],
-      guardrail:'Never invent evidence or present assumptions as facts. Strategic recommendations remain reviewable by an accountable human.',
-      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
-      workflows:[
-        {id:'consulting-market-map',title:'Build a market map',goal:'Create a sourced map of a market, buyer segments and competitors for a defined question.',steps:['Confirm geography, customer type, time window and decision question.','Collect source-backed facts and distinguish primary from secondary evidence.','Map competitors, buyer segments and open questions.','Draft conclusions with assumptions, confidence and citations for expert review.'],proof:'A source ledger and claim-to-source map accompanies the narrative.',metric:'Measure research cycle time, citation coverage and corrections after review.'},
-        {id:'consulting-benchmark',title:'Prepare a benchmark pack',goal:'Compare like-for-like operational measures without hiding mismatched definitions.',steps:['Collect approved datasets and define the metric denominator.','Normalize units, time periods and population differences.','Flag samples too small or definitions that cannot be reconciled.','Prepare a benchmark table with caveats and reviewer sign-off.'],proof:'Each metric has a definition, period, source and caveat.',metric:'Measure reproducibility, review corrections and time to decision-ready output.'},
-        {id:'consulting-deliverable-qa',title:'Audit a client deliverable',goal:'Check a report against its brief, evidence, structure and acceptance criteria.',steps:['Load the approved brief, deliverable and acceptance checklist.','Trace key claims to the referenced evidence.','Flag unsupported statements, contradictions and missing caveats.','Return an issue list with proposed fixes for the engagement owner.'],proof:'Each finding cites a page, section or evidence item and severity rationale.',metric:'Measure issues found before delivery, false positives and reviewer time.'}
-      ]
-    },
-    {
-      id:'pico-talent',name:'Pico',mark:'↗',shortMarket:'Talent',market:'Recruitment & staffing',
-      marketSize:'US$200B+',marketBasis:'Recruitment and staffing labor opportunity described by Sequoia Capital, March 2026.',
-      wedge:'Sourcing operations, recruiter administration and interview coordination',wedgeSize:'Start in high-volume workflows with explicit job criteria and human decision-makers.',
-      summary:'Maps talent pools, organizes candidate evidence and coordinates recruiting workflows while keeping hiring decisions with people.',
-      segments:['Talent market maps','Sourcing research','Interview scheduling','Recruiting operations'],
-      guardrail:'No autonomous hiring or rejection decisions, protected-trait inference or hidden candidate scoring. A qualified human reviews candidates and hiring decisions.',
-      sources:[{label:'Sequoia Capital · Services: The New Software',url:'https://sequoiacap.com/article/services-the-new-software'}],
-      workflows:[
-        {id:'talent-market-map',title:'Map a talent pool',goal:'Produce a sourced market map against job-related, user-approved criteria.',steps:['Confirm role requirements and criteria with the hiring owner.','Research permitted, job-relevant public or supplied sources.','Record evidence and provenance for each potential match.','Return a recruiter review queue; do not rank people by protected traits.'],proof:'Job-related criteria and source evidence are visible for every suggested profile.',metric:'Measure sourcing coverage, duplicate rate and recruiter corrections.'},
-        {id:'talent-coordination',title:'Coordinate the recruiting pipeline',goal:'Reduce scheduling and administration while leaving selection decisions to the hiring team.',steps:['Read the authorized pipeline status and interviewer availability.','Identify missing feedback, stale stages and scheduling constraints.','Draft candidate and interviewer communications from approved templates.','Route outbound communication and stage changes for human approval.'],proof:'Every proposed action has an owner, source and approval status.',metric:'Measure time in stage, scheduling cycle and administrative minutes.'},
-        {id:'talent-intake',title:'Structure a recruiter intake',goal:'Turn a hiring brief into a consistent, auditable role scorecard.',steps:['Summarize role outcomes, must-have skills and constraints from the approved brief.','Separate required qualifications from preferences and assumptions.','Draft structured, job-related interview questions and an evaluation rubric.','Ask the hiring owner to review and approve the scorecard before use.'],proof:'A role scorecard linked to the source brief with open decisions called out.',metric:'Measure intake-to-approved-scorecard time and rubric changes after review.'}
-      ]
-    }
-  ];
+  {
+    "id": "whilo-insurance",
+    "name": "Whilo",
+    "mark": "◈",
+    "shortMarket": "Insurance",
+    "market": "Insurance brokerage",
+    "marketSize": "US$140–200B",
+    "marketBasis": "Sequoia’s illustrative labor-opportunity range for insurance brokerage, not Whilo revenue or a forecast.",
+    "wedge": "Commercial-lines submission and renewal operations",
+    "wedgeSize": "Start with repetitive intake, completeness checks, renewals and quote comparison; broker judgment and binding remain human-approved.",
+    "summary": "A focused insurance-operations Pet that prepares cleaner submissions, tracks renewal windows and compares carrier responses with traceable evidence.",
+    "segments": [
+      "Submission intake",
+      "Renewal monitoring",
+      "Quote comparison",
+      "Broker follow-up"
+    ],
+    "guardrail": "Does not bind coverage, provide unlicensed insurance advice, accept/deny a claim or send a quote without broker approval.",
+    "sources": [
+      {
+        "label": "Sequoia Capital · Services: The New Software (5 Mar 2026)",
+        "url": "https://sequoiacap.com/article/services-the-new-software"
+      }
+    ],
+    "workflows": [
+      {
+        "id": "insurance-submission",
+        "title": "Prepare a submission packet",
+        "goal": "Turn an approved intake into a completeness-checked packet for broker review.",
+        "steps": [
+          "Extract required fields from the approved intake and documents.",
+          "Compare each required field against the broker’s checklist.",
+          "Identify missing, expired or conflicting information.",
+          "Prepare a carrier-ready draft and route it to a licensed broker."
+        ],
+        "proof": "Field-by-field completeness report with references to the source document.",
+        "metric": "Measure time to submission, missing-field rate and resubmission count."
+      },
+      {
+        "id": "insurance-renewal",
+        "title": "Run the renewal desk",
+        "goal": "Create a forward-looking renewal queue with clear owners and evidence.",
+        "steps": [
+          "Read the approved policy register and renewal dates.",
+          "Group expirations by time horizon, account and assigned broker.",
+          "Prepare client-information requests from approved templates.",
+          "Escalate exceptions and leave outbound messages for approval."
+        ],
+        "proof": "Each renewal has a date, owner, status, outstanding items and next action.",
+        "metric": "Measure on-time renewal preparation, open items and admin minutes per account."
+      },
+      {
+        "id": "insurance-quotes",
+        "title": "Compare carrier quotes",
+        "goal": "Normalize supplied quote terms so a broker can evaluate differences.",
+        "steps": [
+          "Read the carrier quotes and policy documents provided by the broker.",
+          "Align limits, deductibles, exclusions, premiums and open questions.",
+          "Cite the page or source for every compared term.",
+          "Create a comparison table for broker review, without choosing or binding coverage."
+        ],
+        "proof": "Every comparison field has a source or is marked unknown.",
+        "metric": "Measure comparison turnaround and corrections made by the broker."
+      }
+    ],
+    "marketStage": "AUTOPILOT WEDGE · STANDARDIZED, OFTEN OUTSOURCED"
+  },
+  {
+    "id": "fynn-consulting",
+    "name": "Fynn",
+    "mark": "⌁",
+    "shortMarket": "Consulting",
+    "market": "Management consulting",
+    "marketSize": "US$300–400B",
+    "marketBasis": "Sequoia’s illustrative management-consulting labor-opportunity range; the article notes that much of the market is judgment-heavy.",
+    "wedge": "Research, benchmarking and evidence-backed analysis",
+    "wedgeSize": "Automate structured intelligence work first; keep strategic judgment with the client and accountable expert.",
+    "summary": "A research-led Pet that builds decision-ready market maps, benchmarks and consulting work products with explicit assumptions and cited evidence.",
+    "segments": [
+      "Market research",
+      "Benchmarking",
+      "Data gathering",
+      "Deliverable quality review"
+    ],
+    "guardrail": "Never invent evidence or present assumptions as facts. Strategic recommendations remain reviewable by an accountable human.",
+    "sources": [
+      {
+        "label": "Sequoia Capital · Services: The New Software (5 Mar 2026)",
+        "url": "https://sequoiacap.com/article/services-the-new-software"
+      }
+    ],
+    "workflows": [
+      {
+        "id": "consulting-market-map",
+        "title": "Build a market map",
+        "goal": "Create a sourced map of a market, buyer segments and competitors for a defined question.",
+        "steps": [
+          "Confirm geography, customer type, time window and decision question.",
+          "Collect source-backed facts and distinguish primary from secondary evidence.",
+          "Map competitors, buyer segments and open questions.",
+          "Draft conclusions with assumptions, confidence and citations for expert review."
+        ],
+        "proof": "A source ledger and claim-to-source map accompanies the narrative.",
+        "metric": "Measure research cycle time, citation coverage and corrections after review."
+      },
+      {
+        "id": "consulting-benchmark",
+        "title": "Prepare a benchmark pack",
+        "goal": "Compare like-for-like operational measures without hiding mismatched definitions.",
+        "steps": [
+          "Collect approved datasets and define the metric denominator.",
+          "Normalize units, time periods and population differences.",
+          "Flag samples too small or definitions that cannot be reconciled.",
+          "Prepare a benchmark table with caveats and reviewer sign-off."
+        ],
+        "proof": "Each metric has a definition, period, source and caveat.",
+        "metric": "Measure reproducibility, review corrections and time to decision-ready output."
+      },
+      {
+        "id": "consulting-deliverable-qa",
+        "title": "Audit a client deliverable",
+        "goal": "Check a report against its brief, evidence, structure and acceptance criteria.",
+        "steps": [
+          "Load the approved brief, deliverable and acceptance checklist.",
+          "Trace key claims to the referenced evidence.",
+          "Flag unsupported statements, contradictions and missing caveats.",
+          "Return an issue list with proposed fixes for the engagement owner."
+        ],
+        "proof": "Each finding cites a page, section or evidence item and severity rationale.",
+        "metric": "Measure issues found before delivery, false positives and reviewer time."
+      }
+    ],
+    "marketStage": "COPILOT → AUTOPILOT · INTELLIGENCE FIRST"
+  },
+  {
+    "id": "nori-procurement",
+    "name": "Nori",
+    "mark": "⇄",
+    "shortMarket": "Procurement",
+    "market": "Supply chain & procurement",
+    "marketSize": "US$200B+",
+    "marketBasis": "Sequoia’s illustrative supply-chain and procurement labor-opportunity figure; the article emphasizes neglected long-tail supplier work.",
+    "wedge": "Supplier discovery, RFQ comparison and long-tail procurement follow-up",
+    "wedgeSize": "Start with work too small to justify manual review; quantify verified exceptions before claiming savings.",
+    "summary": "An operations Pet that turns scattered supplier data and purchase requests into sourced comparisons, renewal alerts and an actionable exception queue.",
+    "segments": [
+      "Supplier discovery",
+      "RFQ comparison",
+      "Contract and renewal watch",
+      "Spend-anomaly evidence"
+    ],
+    "guardrail": "No purchase orders, supplier commitments, contract signatures or payments without explicit human approval. Evidence is not a negotiated saving.",
+    "sources": [
+      {
+        "label": "Sequoia Capital · Services: The New Software (5 Mar 2026)",
+        "url": "https://sequoiacap.com/article/services-the-new-software"
+      }
+    ],
+    "workflows": [
+      {
+        "id": "procurement-rfq",
+        "title": "Compare supplier RFQs",
+        "goal": "Prepare an apples-to-apples supplier comparison from supplied offers.",
+        "steps": [
+          "Collect approved quotes and the request specification.",
+          "Normalize price, lead time, quantity, terms and missing fields.",
+          "Flag non-comparable assumptions and quote expiry dates.",
+          "Prepare a sourced comparison for a procurement owner to decide."
+        ],
+        "proof": "Each value is linked to its quote; gaps and assumptions remain visible.",
+        "metric": "Measure RFQ turnaround, comparison completeness and reviewer corrections."
+      },
+      {
+        "id": "procurement-renewals",
+        "title": "Monitor supplier renewals",
+        "goal": "Make overlooked contracts and renewal windows visible before a deadline.",
+        "steps": [
+          "Read the authorized supplier and contract register.",
+          "Find renewal dates, notice periods and unassigned owners.",
+          "Generate a weekly exception queue with source references.",
+          "Draft reminders for owner approval; do not alter contracts."
+        ],
+        "proof": "Renewal date, notice window, source, owner and status for each exception.",
+        "metric": "Measure renewals surfaced before deadline and manual tracking time."
+      },
+      {
+        "id": "procurement-anomalies",
+        "title": "Surface spend exceptions",
+        "goal": "Find records worth investigating rather than claiming savings automatically.",
+        "steps": [
+          "Analyze only approved purchase and invoice exports.",
+          "Group similar suppliers, line items and periods.",
+          "Flag duplicates, price variance and unusual patterns with the matching records.",
+          "Create a review queue with confidence notes and false-positive tracking."
+        ],
+        "proof": "Every alert includes supporting records and a plain-language reason.",
+        "metric": "Measure useful exceptions confirmed by humans, false positives and review time."
+      }
+    ],
+    "marketStage": "NEXT WAVE · OVERLOOKED LONG-TAIL WORK"
+  },
+  {
+    "id": "capuccino-creative",
+    "name": "Capuccino",
+    "mark": "✎",
+    "shortMarket": "Advertising",
+    "market": "Advertising & creative operations",
+    "marketStage": "WATCH · KEEP CREATIVE JUDGMENT HUMAN",
+    "marketSize": "US$100B+",
+    "marketBasis": "Sequoia’s published opportunity-map illustration labels advertising at US$100B+; this is a broad labor-opportunity estimate, not a standalone Whilo TAM. The article places advertising among judgment-heavy work.",
+    "wedge": "Creative intelligence, campaign operations and performance learning",
+    "wedgeSize": "Begin with research, structured creative production and measurement; do not pretend to replace brand strategy or taste.",
+    "summary": "A communications-first Pet for turning audience research and campaign data into traceable briefs, creative variants and human-reviewed experiments.",
+    "segments": [
+      "Audience research",
+      "Creative briefs",
+      "Variant production",
+      "Performance learning"
+    ],
+    "guardrail": "A human approves brand positioning, factual claims, regulated-category content, ad targeting, budgets and publication. Never fabricate customer proof or report an unrun experiment as a result.",
+    "sources": [
+      {
+        "label": "Sequoia Capital · Services: The New Software (5 Mar 2026)",
+        "url": "https://sequoiacap.com/article/services-the-new-software"
+      }
+    ],
+    "workflows": [
+      {
+        "id": "creative-brief",
+        "title": "Build a source-backed creative brief",
+        "goal": "Turn an approved business objective and audience evidence into a structured brief for human creative direction.",
+        "steps": [
+          "Confirm the offer, audience, geography, channel and prohibited claims.",
+          "Separate customer evidence from hypotheses and assumptions.",
+          "Draft message angles, objections, proof requirements and creative formats.",
+          "Route the brief to a responsible marketer for review before production."
+        ],
+        "proof": "Every factual claim is linked to supplied evidence or clearly marked as a hypothesis.",
+        "metric": "Measure brief approval time, evidence coverage and changes requested by the creative lead."
+      },
+      {
+        "id": "creative-variants",
+        "title": "Prepare a controlled creative batch",
+        "goal": "Create a testable set of ad variants while keeping each variant traceable to a hypothesis.",
+        "steps": [
+          "Use the approved brief and existing brand guidelines.",
+          "Generate a small set of distinct hooks, structures and CTAs within stated constraints.",
+          "Check claims, consistency, accessibility and policy requirements against a checklist.",
+          "Export drafts for human approval; do not publish, spend or claim lift automatically."
+        ],
+        "proof": "Each variant records its hypothesis, source brief, claim checks and approval state.",
+        "metric": "Measure production time, approval rate and performance only after the experiment has actually run."
+      },
+      {
+        "id": "creative-learning",
+        "title": "Turn campaign data into learning",
+        "goal": "Produce an honest readout from a supplied and sufficiently labeled campaign export.",
+        "steps": [
+          "Verify date range, spend, attribution window and denominator definitions.",
+          "Compare results only across reasonably comparable audiences and placements.",
+          "Separate observed facts from likely causes; flag sample and attribution limitations.",
+          "Propose the next controlled test for a marketer to approve."
+        ],
+        "proof": "A reproducible report with source rows, definitions, caveats and no invented lift.",
+        "metric": "Measure analysis cycle time, decision usefulness and the share of conclusions later confirmed."
+      }
+    ]
+  },
+  {
+    "id": "ollie-talent",
+    "name": "Ollie",
+    "mark": "◎",
+    "shortMarket": "Talent",
+    "market": "Recruitment & staffing",
+    "marketSize": "US$200B+",
+    "marketBasis": "Sequoia’s illustrative recruitment-and-staffing labor-opportunity figure; the article highlights standardized, high-volume roles as a narrower entry wedge.",
+    "wedge": "Sourcing operations, recruiter administration and interview coordination",
+    "wedgeSize": "Start with job-related, high-volume workflows; preserve human control over selection, rejection and final hiring.",
+    "summary": "An analysis-led recruiting Pet that organizes sourcing evidence, keeps pipelines moving and coordinates interviews without automating consequential hiring decisions.",
+    "segments": [
+      "Talent market maps",
+      "Sourcing research",
+      "Interview scheduling",
+      "Recruiting operations"
+    ],
+    "guardrail": "No autonomous hiring or rejection decisions, protected-trait inference or hidden candidate scoring. A qualified human reviews candidates and hiring decisions.",
+    "sources": [
+      {
+        "label": "Sequoia Capital · Services: The New Software (5 Mar 2026)",
+        "url": "https://sequoiacap.com/article/services-the-new-software"
+      }
+    ],
+    "workflows": [
+      {
+        "id": "talent-market-map",
+        "title": "Map a talent pool",
+        "goal": "Produce a sourced market map against job-related, user-approved criteria.",
+        "steps": [
+          "Confirm role requirements and criteria with the hiring owner.",
+          "Research permitted, job-relevant public or supplied sources.",
+          "Record evidence and provenance for each potential match.",
+          "Return a recruiter review queue; do not rank people by protected traits."
+        ],
+        "proof": "Job-related criteria and source evidence are visible for every suggested profile.",
+        "metric": "Measure sourcing coverage, duplicate rate and recruiter corrections."
+      },
+      {
+        "id": "talent-coordination",
+        "title": "Coordinate the recruiting pipeline",
+        "goal": "Reduce scheduling and administration while leaving selection decisions to the hiring team.",
+        "steps": [
+          "Read the authorized pipeline status and interviewer availability.",
+          "Identify missing feedback, stale stages and scheduling constraints.",
+          "Draft candidate and interviewer communications from approved templates.",
+          "Route outbound communication and stage changes for human approval."
+        ],
+        "proof": "Every proposed action has an owner, source and approval status.",
+        "metric": "Measure time in stage, scheduling cycle and administrative minutes."
+      },
+      {
+        "id": "talent-intake",
+        "title": "Structure a recruiter intake",
+        "goal": "Turn a hiring brief into a consistent, auditable role scorecard.",
+        "steps": [
+          "Summarize role outcomes, must-have skills and constraints from the approved brief.",
+          "Separate required qualifications from preferences and assumptions.",
+          "Draft structured, job-related interview questions and an evaluation rubric.",
+          "Ask the hiring owner to review and approve the scorecard before use."
+        ],
+        "proof": "A role scorecard linked to the source brief with open decisions called out.",
+        "metric": "Measure intake-to-approved-scorecard time and rubric changes after review."
+      }
+    ],
+    "marketStage": "WATCH · START WITH HIGH-VOLUME MATCHING"
+  },
+  {
+    "id": "pico-itops",
+    "name": "Pico",
+    "mark": "⌘",
+    "shortMarket": "IT services",
+    "market": "IT managed services",
+    "marketSize": "US$100B+",
+    "marketBasis": "Sequoia’s illustrative IT-managed-services labor-opportunity estimate; the article calls out repeatable work such as monitoring, patching and user provisioning.",
+    "wedge": "Service-desk triage, access-request preparation and monitoring summaries",
+    "wedgeSize": "Start read-only, with evidence-backed triage and approval-ready work before any production-changing automation.",
+    "summary": "An engineering-first Pet that turns service-desk and monitoring noise into well-scoped tickets, least-privilege request packets and verifiable next steps.",
+    "segments": [
+      "Service desk",
+      "Access request packs",
+      "Monitoring triage",
+      "Patch-status reporting"
+    ],
+    "guardrail": "Read-only by default. No permission grants, production changes, patching, deletion or credential access without an authorized approval and verified execution adapter.",
+    "sources": [
+      {
+        "label": "Sequoia Capital · Services: The New Software (5 Mar 2026)",
+        "url": "https://sequoiacap.com/article/services-the-new-software"
+      }
+    ],
+    "workflows": [
+      {
+        "id": "it-ticket-triage",
+        "title": "Triage the service desk",
+        "goal": "Convert ticket volume into an owner-assigned queue with evidence and urgency rationale.",
+        "steps": [
+          "Read approved tickets and service-level rules.",
+          "Cluster duplicates and classify issues using the documented taxonomy.",
+          "Suggest priority and owner with a reason and source ticket.",
+          "Draft replies or escalations; a human approves customer-facing actions."
+        ],
+        "proof": "Every classification includes a reason, ticket reference and unresolved uncertainty.",
+        "metric": "Measure time to first triage, reassignment rate and reviewer corrections."
+      },
+      {
+        "id": "it-access-pack",
+        "title": "Prepare an access request",
+        "goal": "Assemble the minimum required evidence for a human-approved access change.",
+        "steps": [
+          "Read the authorized request and identity context.",
+          "Check required approvals and least-privilege policy fields.",
+          "List missing manager, system-owner or expiry details.",
+          "Prepare a change ticket for an authorized operator; do not grant access."
+        ],
+        "proof": "A complete approval checklist with an auditable requested scope.",
+        "metric": "Measure request completion time, missing approvals and rework."
+      },
+      {
+        "id": "it-monitoring",
+        "title": "Summarize monitoring alerts",
+        "goal": "Reduce noise in a supplied alert export without making unverified changes.",
+        "steps": [
+          "Group alerts by affected service, signature and time window.",
+          "Attach relevant runbook references and known incidents.",
+          "Separate confirmed evidence from possible correlations.",
+          "Prepare an ordered triage queue for the on-call engineer."
+        ],
+        "proof": "Source alert IDs, runbook links, timestamps and explicit uncertainty.",
+        "metric": "Measure alert grouping precision, triage time and reopened incidents."
+      }
+    ],
+    "marketStage": "AUTOPILOT WEDGE · REPEATABLE SERVICE OPERATIONS"
+  }
+];
 
   const DEMO = [
     {id:'sample-research-bot',listing_type:'bot',title:'Research Brief Bot',summary:'Turn a research question into a sourced brief with an evidence checklist.',category:'Research',price_minor:0,currency:'BRL',version:'1.0.0',seller:{display_name:'Whilo Studio'},demo:true},
@@ -177,6 +495,7 @@
       '<div class="market-card-top"><div class="market-avatar" aria-hidden="true">'+esc(pet.mark)+'</div><div style="min-width:0;flex:1"><div class="eyebrow">WHILO PET · '+esc(pet.market.toUpperCase())+'</div><h3>'+esc(pet.name)+'</h3><div class="meta">Industry specialist · Previewable workflow</div></div></div>' +
       '<p class="market-summary">'+esc(pet.summary)+'</p>' +
       '<div class="market-value"><strong>'+esc(pet.marketSize)+'</strong><span>'+esc(pet.marketBasis)+'</span></div>' +
+      '<div class="market-tags"><span class="pill">'+esc(pet.marketStage)+'</span></div>' +
       '<div class="market-wedge"><strong>Initial wedge:</strong> '+esc(pet.wedge)+'</div>' +
       '<div class="market-tags">'+pet.segments.slice(0,3).map(function(segment){return '<span class="pill">'+esc(segment)+'</span>';}).join('')+'</div>' +
       '<div class="card-foot"><span class="meta">3 workflow blueprints</span><button class="btn'+(selected?'':' secondary')+'" type="button" data-action="pet-explore" data-id="'+esc(pet.id)+'" aria-label="Explore '+esc(pet.name)+' specialty">'+(selected?'Selected':'Explore Pet')+' ↗</button></div>' +
@@ -202,7 +521,7 @@
       '<button type="button" class="market-chip'+(marketFilter==='all'?' active':'')+'" data-market="all" aria-pressed="'+(marketFilter==='all'?'true':'false')+'"><span>All markets</span><small>6 Pets</small></button>'+
       PET_SPECIALISTS.map(function(pet){return '<button type="button" class="market-chip'+(marketFilter===pet.id?' active':'')+'" data-market="'+esc(pet.id)+'" aria-pressed="'+(marketFilter===pet.id?'true':'false')+'"><span>'+esc(pet.shortMarket)+'</span><small>'+esc(pet.marketSize)+'</small></button>';}).join('')+
       '</div><div class="market-grid pet-grid">'+(rows.length?rows.map(specialistCard).join(''):'<div class="market-empty">No specialist matches this search. Try a market name, workflow or segment.</div>')+'</div>'+petDetailPanel()+
-      '<p class="market-source-note">Market figures are source-specific opportunity estimates or sector spending, not Whilo revenue forecasts. For healthcare, US$5.3T is total U.S. healthcare spending in 2024, while the initial outsourced revenue-cycle wedge is separately estimated by Sequoia at US$50–80B. Other service opportunity ranges follow Sequoia Capital’s March 2026 article. Always validate a narrower addressable market and buyer budget before investing.</p></section>';
+      '<p class="market-source-note">Market sizes are broad, illustrative opportunity-map estimates—not Whilo revenue forecasts or the amount this product can capture. Sequoia explicitly recommends starting with an outsourced, intelligence-heavy wedge where a buyer already pays for the work, then expanding toward judgment-heavy work only as evidence, distribution and controls improve. The advertising figure is shown in the published opportunity-map illustration and is described here as a broad labor opportunity. Validate a narrower segment, buyer and paid pilot before investing.</p></section>';
     return out;
   }
   function discoverPage() {
