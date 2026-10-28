@@ -477,8 +477,19 @@ function createCodexBridge(options = {}) {
   }
   function dispose() {
     disposed = true;
-    if (loginChild) { try { loginChild.kill('SIGTERM'); } catch (_) {} loginChild = null; }
-    if (activeRun && activeRun.child) { try { activeRun.child.kill('SIGTERM'); } catch (_) {} activeRun = null; }
+    if (loginChild) {
+      const login = loginChild;
+      loginChild = null;
+      login.settled = true;
+      clearTimeout(login.timer);
+      try { login.child.kill('SIGTERM'); } catch (_) {}
+    }
+    if (activeRun && activeRun.child) {
+      const run = activeRun;
+      activeRun = null;
+      run.timedOut = true;
+      try { run.child.kill('SIGTERM'); } catch (_) {}
+    }
   }
 
   return Object.freeze({
