@@ -70,6 +70,8 @@
     { id: 'twilio', name: 'SMS via Twilio', detail: 'Verify tenant-owned API credentials; no message is sent during setup', icon: '✉', action: 'connect-twilio', button: 'Configure SMS' },
     { id: 'gemini-api', name: 'Gemini Developer API', detail: 'Bring your own API key; encrypted at rest and billed by Google API usage', icon: '✦', action: 'connect-gemini-api', button: 'Connect API key' },
     { id: 'openai-api', name: 'OpenAI Developer API', detail: 'Bring your own API key; Responses API with provider-side API billing', icon: '◎', action: 'connect-openai-api', button: 'Connect API key' },
+    { id: 'anthropic-api', name: 'Anthropic API', detail: 'Bring your own API key; Claude models via the Messages API', icon: '◈', action: 'connect-anthropic-api', button: 'Connect API key' },
+    { id: 'openrouter-api', name: 'OpenRouter', detail: 'One API key for models across many providers; live catalog and provider billing', icon: '⇄', action: 'connect-openrouter-api', button: 'Connect API key' },
     { id: 'imessage-bridge', name: 'iMessage via Mac Bridge', detail: 'One-time QR device pairing; native message transport is a separate release gate', icon: '⌘', action: 'pair-imessage', button: 'Pair Mac (QR)' },
     { id: 'github', name: 'GitHub', detail: 'Repositories, issues and pull requests', icon: '⌘', action: 'connect-setup', button: 'Plan setup' },
     { id: 'gmail', name: 'Gmail & Calendar', detail: 'Research, drafts and calendar preparation', icon: '✉', action: 'connect-setup', button: 'Plan setup' },
@@ -812,7 +814,14 @@
   function accountPage() {
     return '<div class="hero"><div><h2 class="h2">Your Whilo account</h2><p class="muted">Manage identity, access and your Whilo Partners growth profile.</p></div></div>' + cloudAuthCard() + affiliateHubPage();
   }
-  function modelProviderLabel(provider) { return provider === 'openai-api' ? 'OpenAI API' : 'Gemini Developer API'; }
+  function modelProviderLabel(provider) {
+    return ({
+      'gemini-api':'Gemini Developer API',
+      'openai-api':'OpenAI Developer API',
+      'anthropic-api':'Anthropic API',
+      'openrouter-api':'OpenRouter'
+    })[provider] || 'AI provider';
+  }
 
   async function loadModelCatalog(provider) {
     modelLabLoading = true;
@@ -866,13 +875,18 @@
     out += '</div>';
 
     if (showModelKeyForm) {
-      const gemini = modelKeyProvider === 'gemini-api';
-      out += '<div class="card" style="margin-top:16px"><h3>Connect ' + modelProviderLabel(modelKeyProvider) + '</h3><p class="muted">The key is verified against the official model catalog, encrypted server-side and never returned to the browser. Only workspace owners and admins can change shared provider credentials. This uses Developer API billing, not a consumer ChatGPT/Gemini subscription.</p>' +
-        '<form id="connect-model-key-form"><input type="hidden" name="provider" value="' + esc(modelKeyProvider) + '"><div class="fieldgroup"><label class="label" for="whilo-model-api-key">API key</label><input class="field" id="whilo-model-api-key" name="apiKey" type="password" required minlength="20" maxlength="512" autocomplete="new-password" spellcheck="false" placeholder="' + (gemini ? 'Google AI Studio API key' : 'OpenAI project API key') + '"></div><div class="actions"><button class="btn" type="submit"' + (connectorBusy ? ' disabled' : '') + '>Verify & encrypt key</button><button class="btn secondary" type="button" data-act="cancel-model-key">Cancel</button></div></form></div>';
+      const keyPlaceholder = ({
+        'gemini-api':'Google AI Studio API key',
+        'openai-api':'OpenAI project API key',
+        'anthropic-api':'Anthropic Console API key',
+        'openrouter-api':'OpenRouter API key'
+      })[modelKeyProvider] || 'Provider API key';
+      out += '<div class="card" style="margin-top:16px"><h3>Connect ' + modelProviderLabel(modelKeyProvider) + '</h3><p class="muted">The key is verified against the provider model catalog, encrypted server-side and never returned to the browser. Only workspace owners and admins can change shared provider credentials. Usage is billed by the provider API account, not a consumer subscription.</p>' +
+        '<form id="connect-model-key-form"><input type="hidden" name="provider" value="' + esc(modelKeyProvider) + '"><div class="fieldgroup"><label class="label" for="whilo-model-api-key">API key</label><input class="field" id="whilo-model-api-key" name="apiKey" type="password" required minlength="20" maxlength="512" autocomplete="new-password" spellcheck="false" placeholder="' + esc(keyPlaceholder) + '"></div><div class="actions"><button class="btn" type="submit"' + (connectorBusy ? ' disabled' : '') + '>Verify & encrypt key</button><button class="btn secondary" type="button" data-act="cancel-model-key">Cancel</button></div></form></div>';
     }
 
     out += '<section class="card" style="margin-top:16px"><div class="row" style="align-items:flex-start"><div><h3>BYOK Model Console</h3><p class="muted">Test models that your connected Developer API key can access. Whilo lists only live models returned by the provider; provider costs and quotas are kept separate from Willow Bucks.</p></div></div>' +
-      '<div class="fieldgroup"><label class="label" for="whilo-model-provider">Provider</label><select class="field" id="whilo-model-provider"><option value="gemini-api"' + (modelLabProvider === 'gemini-api' ? ' selected' : '') + '>Gemini Developer API</option><option value="openai-api"' + (modelLabProvider === 'openai-api' ? ' selected' : '') + '>OpenAI Developer API</option></select></div>' +
+      '<div class="fieldgroup"><label class="label" for="whilo-model-provider">Provider</label><select class="field" id="whilo-model-provider">'+[['gemini-api','Gemini Developer API'],['openai-api','OpenAI Developer API'],['anthropic-api','Anthropic API'],['openrouter-api','OpenRouter']].map(function(p){return '<option value="'+p[0]+'"'+(modelLabProvider===p[0]?' selected':'')+'>'+p[1]+'</option>';}).join('')+'</select></div>' +
       '<div class="actions"><button class="btn secondary" type="button" data-act="load-model-catalog"' + (modelLabLoading ? ' disabled' : '') + '>' + (modelLabLoading ? 'Loading models…' : 'Refresh available models') + '</button></div>' +
       (modelLabFeedback ? '<div class="notice" role="status" style="margin-top:10px">' + esc(modelLabFeedback) + '</div>' : '') +
       (modelLabModels.length ? '<form id="model-playground-form" style="display:grid;gap:12px;margin-top:14px"><div class="fieldgroup"><label class="label" for="whilo-model-selection">Available model</label><select class="field" name="model" id="whilo-model-selection" required>' + modelLabModels.map(function(m){return '<option value="' + esc(m.id) + '"' + (modelLabSelected === m.id ? ' selected' : '') + '>' + esc(m.name) + '</option>';}).join('') + '</select></div><div class="fieldgroup"><label class="label" for="whilo-model-prompt">Prompt</label><textarea class="field" id="whilo-model-prompt" name="prompt" rows="5" maxlength="15000" required placeholder="Give the model a bounded task. No browser or computer actions run from this console.">' + esc(modelLabPrompt) + '</textarea></div><div class="actions"><button class="btn" type="submit"' + (modelLabBusy ? ' disabled' : '') + '>' + (modelLabBusy ? 'Running…' : 'Run model test') + '</button></div></form>' : '<p class="muted" style="margin-top:12px">Connect an API key above, then refresh the model catalog to test a live model.</p>') +
@@ -1640,7 +1654,7 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     out+='<div class="hero"><div><div class="eyebrow">WHILO / FIRST-PARTY CHAT</div><h2 class="h2">Chat that can prepare real Whilo routines.</h2><p class="muted">Ask normal questions, or start with <code>@Routines</code>. Routine mode proposes a structured draft using your selected target; saving calls the Whilo Routines API, leaves the routine paused, and never claims it executed.</p></div><button class="btn secondary" data-act="chat-clear">New chat</button></div>';
     out+='<div class="routine-note"><b>'+ (whiloChatMode==='routines'?'@Routines mode is active':'Routine builder is available') +'</b><p>Provider usage is billed directly by your connected OpenAI/Gemini API account, not from Willow Bucks. Whilo does not send a request until you press Send.</p><div class="whilo-chat-toolbar"><button class="btn secondary" data-act="chat-use-routines">@Routines</button>'+(whiloChatMode==='routines'?'<button class="btn secondary" data-act="chat-exit-routines">Exit routine mode</button>':'')+'<button class="btn secondary" data-act="chat-to-routines">Open Routines</button></div></div>';
     if(whiloChatFeedback)out+='<div class="notice" role="status">'+esc(whiloChatFeedback)+'</div>';
-    out+='<div class="whilo-chat-layout"><section class="whilo-chat-shell"><div class="whilo-chat-toolbar"><label for="whilo-chat-provider">Provider</label><select class="field" id="whilo-chat-provider"><option value="gemini-api"'+(whiloChatProvider==='gemini-api'?' selected':'')+'>Gemini Developer API</option><option value="openai-api"'+(whiloChatProvider==='openai-api'?' selected':'')+'>OpenAI Developer API</option></select><label for="whilo-chat-model">Model</label><select class="field" id="whilo-chat-model"'+(whiloChatModelLoading?' disabled':'')+'>'+modelOptions+'</select><button class="btn secondary" type="button" data-act="chat-refresh-models"'+(whiloChatModelLoading?' disabled':'')+'>Refresh models</button></div>';
+    out+='<div class="whilo-chat-layout"><section class="whilo-chat-shell"><div class="whilo-chat-toolbar"><label for="whilo-chat-provider">Provider</label><select class="field" id="whilo-chat-provider">'+[['gemini-api','Gemini Developer API'],['openai-api','OpenAI Developer API'],['anthropic-api','Anthropic API'],['openrouter-api','OpenRouter']].map(function(p){return '<option value="'+p[0]+'"'+(whiloChatProvider===p[0]?' selected':'')+'>'+p[1]+'</option>';}).join('')+'</select><label for="whilo-chat-model">Model</label><select class="field" id="whilo-chat-model"'+(whiloChatModelLoading?' disabled':'')+'>'+modelOptions+'</select><button class="btn secondary" type="button" data-act="chat-refresh-models"'+(whiloChatModelLoading?' disabled':'')+'>Refresh models</button></div>';
     if(whiloChatModelFeedback)out+='<div class="notice" role="status">'+esc(whiloChatModelFeedback)+'</div>';
     out+='<div class="whilo-chat-feed" aria-live="polite" aria-relevant="additions text">';
     out+=whiloChatMessages.length?whiloChatMessages.map(function(m){return '<article class="whilo-chat-msg '+(m.role==='user'?'user':'assistant')+'"><div class="whilo-chat-role">'+(m.role==='user'?'You':'Whilo'+(m.mode==='routines'?' · @Routines':''))+'</div><div>'+esc(m.text)+'</div></article>';}).join(''):'<div class="routine-empty"><b>What should Whilo help you accomplish?</b><p>Example: <code>@Routines Create a daily review of my sales dashboard and report metric changes, missing sources and next actions.</code></p></div>';
@@ -2403,8 +2417,15 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     }
     if (act === 'connect-twilio') { showTwilioForm = true; showModelKeyForm = false; render(); return; }
     if (act === 'cancel-twilio') { showTwilioForm = false; render(); return; }
-    if (act === 'connect-gemini-api' || act === 'connect-openai-api') {
-      showModelKeyForm = true; showTwilioForm = false; modelKeyProvider = act === 'connect-openai-api' ? 'openai-api' : 'gemini-api'; connectorFeedback = ''; render(); return;
+    if (['connect-gemini-api','connect-openai-api','connect-anthropic-api','connect-openrouter-api'].includes(act)) {
+      showModelKeyForm = true; showTwilioForm = false;
+      modelKeyProvider = ({
+        'connect-gemini-api':'gemini-api',
+        'connect-openai-api':'openai-api',
+        'connect-anthropic-api':'anthropic-api',
+        'connect-openrouter-api':'openrouter-api'
+      })[act];
+      connectorFeedback = ''; render(); return;
     }
     if (act === 'cancel-model-key') { showModelKeyForm = false; render(); return; }
     if (act === 'load-model-catalog') { loadModelCatalog(modelLabProvider); return; }
@@ -2621,11 +2642,12 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
       const fd = new FormData(form);
       const apiKey = String(fd.get('apiKey') || '');
       const provider = String(fd.get('provider') || '');
-      if (!['gemini-api','openai-api'].includes(provider) || !apiKey) return;
+      if (!['gemini-api','openai-api','anthropic-api','openrouter-api'].includes(provider) || !apiKey) return;
       connectorBusy = true;
       connectorFeedback = 'Verifying provider access and encrypting the key…';
       render();
-      whiloApi('/api/connectors', { method:'POST', body:JSON.stringify({ action: provider === 'gemini-api' ? 'connect_gemini_api' : 'connect_openai_api', apiKey: apiKey }) })
+      const action = ({'gemini-api':'connect_gemini_api','openai-api':'connect_openai_api','anthropic-api':'connect_anthropic_api','openrouter-api':'connect_openrouter_api'})[provider];
+      whiloApi('/api/connectors', { method:'POST', body:JSON.stringify({ action: action, apiKey: apiKey }) })
         .then(function(data) {
           form.reset();
           showModelKeyForm = false;
@@ -2697,7 +2719,8 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
       if (assignedPet && ownerSelect) ownerSelect.value = assignedPet;
     }
     if(target&&target.id==='whilo-chat-provider'){
-      whiloChatProvider=target.value==='openai-api'?'openai-api':'gemini-api';
+      if(!['gemini-api','openai-api','anthropic-api','openrouter-api'].includes(target.value))return;
+      whiloChatProvider=target.value;
       whiloChatModels=[];whiloChatSelectedModel='';whiloChatModelFeedback='';
       whiloChatLoadModels(true);render();return;
     }
@@ -2713,7 +2736,8 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     if(target&&target.id==='whilo-chat-schedule-time'){whiloChatScheduleTime=target.value||'09:00';return;}
     if(target&&target.id==='whilo-chat-budget'){whiloChatMaxCostWB=Number(target.value||1000);return;}
     if(target && target.id==='whilo-model-provider') {
-      modelLabProvider=target.value==='openai-api'?'openai-api':'gemini-api';
+      if(!['gemini-api','openai-api','anthropic-api','openrouter-api'].includes(target.value))return;
+      modelLabProvider=target.value;
       modelLabModels=[]; modelLabSelected=''; modelLabResult=''; modelLabFeedback='';
       render();
     }
