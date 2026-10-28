@@ -198,6 +198,7 @@ function createCodexBridge(options = {}) {
   }
   async function chooseWorkspace() {
     if (disposed) throw new Error('The local Codex bridge is shutting down.');
+    if (activeRun) throw Object.assign(new Error('Stop the active Codex task before changing its workspace.'), { code: 'codex_task_busy' });
     if (!dialog || typeof dialog.showOpenDialog !== 'function') throw new Error('The desktop folder picker is not available.');
     const result = await dialog.showOpenDialog(options.getWindow ? options.getWindow() : undefined, {
       title: 'Choose a Git workspace for Codex',
@@ -260,7 +261,7 @@ function createCodexBridge(options = {}) {
       message: writeMode
         ? 'Allow Codex to edit files in this Git workspace?'
         : 'Allow Codex to read this Git workspace for this task?',
-      detail: 'Workspace: ' + selectedWorkspace + '\nMode: ' + (writeMode ? 'Workspace write' : 'Read only') + '\n\nTask: ' + sanitizeOutput(prompt, 420) + '\n\nWhilo uses the official local Codex CLI. Your ChatGPT session stays on this computer and is not sent to Whilo servers. Only the selected workspace is granted to this task.',
+      detail: 'Workspace: ' + selectedWorkspace + '\nMode: ' + (writeMode ? 'Workspace write' : 'Read only') + '\n\nTask: ' + sanitizeOutput(prompt, 420) + '\n\nWhilo uses the official local Codex CLI. Your ChatGPT session stays on this computer and is not sent to Whilo servers. The selected repository is the working directory; write access is bounded by the selected Codex sandbox mode. Task and repository content that Codex reads is sent to OpenAI through the official Codex service.',
       buttons: [writeMode ? 'Allow file edits' : 'Run read-only task', 'Cancel'],
       defaultId: 1,
       cancelId: 1,
@@ -388,6 +389,11 @@ function createCodexBridge(options = {}) {
     return { stopped: true };
   }
   function startLogin() {
+    if (activeRun) {
+      const error = new Error('Stop the active Codex task before changing the ChatGPT sign-in session.');
+      error.code = 'codex_task_busy';
+      throw error;
+    }
     if (loginChild) {
       const error = new Error('A ChatGPT sign-in is already in progress.');
       error.code = 'codex_login_busy';
@@ -455,6 +461,7 @@ function createCodexBridge(options = {}) {
     return { started: true, authMode: 'chatgpt_device_code' };
   }
   async function logout() {
+    if (activeRun) throw Object.assign(new Error('Stop the active Codex task before signing out.'), { code: 'codex_task_busy' });
     if (loginChild) cancelLogin();
     const binary = requireExecutable();
     const result = await runProbe(binary, ['logout'], selectedWorkspace || (app && app.getPath ? app.getPath('home') : os.homedir()));
