@@ -1395,6 +1395,9 @@
   let creditsData = null, creditsLoading = false, creditsBusy = false, creditsFeedback = '';
   let whiloChatMessages = [], whiloChatDraft = '', whiloChatBusy = false, whiloChatFeedback = '';
   let computerQaBusy = false, computerQaFeedback = '', computerQaResult = null;
+  let whiloChatCodexStatus = null, whiloChatCodexLoading = false, whiloChatCodexBusy = false;
+  let whiloChatCodexRunning = false, whiloChatCodexMode = 'read-only', whiloChatCodexFeedback = '';
+  let whiloChatCodexEvents = [], whiloChatCodexBound = false;
   let whiloChatProvider = 'gemini-api', whiloChatModels = [], whiloChatSelectedModel = '', whiloChatModelLoading = false, whiloChatModelFeedback = '', whiloChatModelPromise = null;
   let whiloChatMode = 'chat', whiloChatPendingRoutine = null, whiloChatRoutineSaving = false;
   let whiloChatTargetKind = 'library_asset', whiloChatAssetId = '', whiloChatTargetUrl = '', whiloChatRuntimeMode = 'browser';
@@ -1585,11 +1588,142 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
   }
 
 
+  function whiloNativeCodexBridge() {
+    const desktop = window.whiloDesktop;
+    return desktop && desktop.isDesktop === true && desktop.codex ? desktop.codex : null;
+  }
+  function whiloChatBindCodexEvents() {
+    const bridge = whiloNativeCodexBridge();
+    if (!bridge || whiloChatCodexBound || typeof bridge.onEvent !== 'function') return;
+    whiloChatCodexBound = true;
+    bridge.onEvent(function(item) {
+      if (!item || typeof item.type !== 'string') return;
+      const message = String(item.message || '').slice(0, 700);
+      if (item.type === 'login-output' && message) {
+        whiloChatCodexEvents.push({ type:'login', message:message });
+      } else if (item.type === 'run-progress' && message) {
+        whiloChatCodexEvents.push({ type:'run', message:message });
+      } else if (item.type === 'workspace-selected') {
+        whiloChatCodexStatus = Object.assign({}, whiloChatCodexStatus || {}, { workspace:String(item.workspace || '') });
+        whiloChatCodexFeedback = 'Git workspace selected: ' + String(item.workspace || 'repository') + '.';
+      } else if (item.type === 'login-started') {
+        whiloChatCodexFeedback = message || 'Complete ChatGPT device sign-in in your browser.';
+      } else if (item.type === 'login-finished') {
+        whiloChatCodexFeedback = message || (item.ok ? 'ChatGPT connected through Codex.' : 'ChatGPT sign-in did not complete.');
+        if (whiloChatProvider === 'codex-local') whiloChatLoadModels(true);
+      } else if (item.type === 'run-complete') {
+        whiloChatCodexFeedback = 'Local Codex reported a completed run. Review the result in Chat.';
+      }
+      if (whiloChatCodexEvents.length > 8) whiloChatCodexEvents = whiloChatCodexEvents.slice(-8);
+      if (active === 'chat' && whiloChatProvider === 'codex-local') render();
+    });
+  }
+  async function whiloChatRefreshCodexStatus() {
+    const bridge = whiloNativeCodexBridge();
+    if (!bridge) {
+      whiloChatCodexStatus = null;
+      whiloChatCodexFeedback = 'Codex using ChatGPT is available only in the Whilo Desktop app.';
+      return null;
+    }
+    whiloChatCodexLoading = true;
+    try {
+      whiloChatCodexStatus = await bridge.status();
+      whiloChatCodexFeedback = whiloChatCodexStatus && whiloChatCodexStatus.loggedIn
+        ? 'Official Codex CLI connected with ChatGPT on this computer.'
+        : String(whiloChatCodexStatus && (whiloChatCodexStatus.error || whiloChatCodexStatus.message) || 'Install Codex CLI and connect ChatGPT to continue.');
+      return whiloChatCodexStatus;
+    } catch (error) {
+      whiloChatCodexFeedback = error && error.message ? error.message : 'Codex status could not be checked.';
+      return null;
+    } finally {
+      whiloChatCodexLoading = false;
+      if (active === 'chat' && whiloChatProvider === 'codex-local') render();
+    }
+  }
+  async function whiloChatCodexAction(action) {
+    const bridge = whiloNativeCodexBridge();
+    if (!bridge) {
+      whiloChatCodexFeedback = 'This action requires Whilo Desktop on the computer where Codex should run.';
+      render();
+      return;
+    }
+    if (whiloChatCodexBusy) return;
+    whiloChatCodexBusy = true;
+    whiloChatCodexFeedback = action === 'login' ? 'Starting official Codex device-code OAuth…'
+      : action === 'workspace' ? 'Choose a local Git repository…'
+      : action === 'logout' ? 'Signing out of this Whilo Desktop Codex profile…'
+      : action === 'cancel-login' ? 'Cancelling ChatGPT sign-in…'
+      : action === 'cancel-run' ? 'Stopping the local Codex task…'
+      : 'Checking the local Codex session…';
+    render();
+    try {
+      if (action === 'login') {
+        await bridge.startLogin();
+      } else if (action === 'workspace') {
+        const choice = await bridge.chooseWorkspace();
+        if (!choice.cancelled) {
+          whiloChatCodexStatus = Object.assign({}, whiloChatCodexStatus || {}, { workspace:choice.workspace || '' });
+          whiloChatCodexFeedback = 'Git workspace selected: ' + String(choice.workspace || 'repository') + '.';
+        } else whiloChatCodexFeedback = 'Workspace selection cancelled.';
+      } else if (action === 'logout') {
+        whiloChatCodexStatus = await bridge.logout();
+        whiloChatCodexFeedback = 'Codex signed out of this Whilo Desktop profile.';
+        if (whiloChatProvider === 'codex-local') await whiloChatLoadModels(true);
+      } else if (action === 'cancel-login') {
+        const result = await bridge.cancelLogin();
+        whiloChatCodexFeedback = result && result.stopped ? 'ChatGPT sign-in cancelled.' : 'No device sign-in was running.';
+      } else if (action === 'cancel-run') {
+        const result = await bridge.cancelRun();
+        whiloChatCodexFeedback = result && result.stopped ? 'Stop requested for the active Codex task.' : 'No local Codex task was running.';
+      } else {
+        await whiloChatRefreshCodexStatus();
+      }
+    } catch (error) {
+      whiloChatCodexFeedback = error && error.message ? error.message : 'The local Codex operation failed.';
+    } finally {
+      whiloChatCodexBusy = false;
+      if (active === 'chat' && whiloChatProvider === 'codex-local') render();
+    }
+  }
+
   function whiloChatLoadModels(force) {
     if (!cloudAuthSession) return Promise.resolve([]);
     if (whiloChatModelPromise) return whiloChatModelPromise;
     if (!force && whiloChatModels.length) return Promise.resolve(whiloChatModels);
     whiloChatModelLoading=true;whiloChatModelFeedback='';
+    if (whiloChatProvider === 'codex-local') {
+      const bridge = whiloNativeCodexBridge();
+      if (!bridge) {
+        whiloChatModels=[];whiloChatSelectedModel='';
+        whiloChatModelFeedback='Connect ChatGPT through the Codex CLI inside Whilo Desktop. This provider is not available in the browser.';
+        whiloChatModelLoading=false;
+        return Promise.resolve([]);
+      }
+      whiloChatBindCodexEvents();
+      whiloChatModelPromise=bridge.status()
+        .then(function(status) {
+          whiloChatCodexStatus=status||null;
+          if(status&&status.available) {
+            whiloChatModels=[{id:'codex-local',name:'Codex CLI · ChatGPT (local)'}];
+            whiloChatSelectedModel='codex-local';
+            whiloChatModelFeedback=status.loggedIn
+              ? 'ChatGPT is connected through the official local Codex CLI. Usage limits come from your ChatGPT plan.'
+              : String(status.error||'Connect ChatGPT below to use Codex.');
+          } else {
+            whiloChatModels=[];whiloChatSelectedModel='';
+            whiloChatModelFeedback=String(status&&status.error||'Install the official Codex CLI first.');
+          }
+          whiloChatCodexFeedback=whiloChatModelFeedback;
+          return whiloChatModels;
+        })
+        .catch(function(error) {
+          whiloChatModels=[];whiloChatSelectedModel='';
+          whiloChatModelFeedback=error&&error.message?error.message:'Local Codex status could not be checked.';
+          return [];
+        })
+        .finally(function(){whiloChatModelLoading=false;whiloChatModelPromise=null;if(active==='chat')render();});
+      return whiloChatModelPromise;
+    }
     whiloChatModelPromise=whiloApi('/api/model-gateway?provider='+encodeURIComponent(whiloChatProvider),{method:'GET'})
       .then(function(data){
         whiloChatModels=Array.isArray(data.models)?data.models:[];
