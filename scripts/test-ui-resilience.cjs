@@ -33,6 +33,16 @@ assert.ok(specialists.every(function (pet) { return pet.workflows.length === 3 &
 assert.ok(store.includes('data-action="pet-explore"'), 'Pet cards expose a profile exploration action');
 assert.ok(store.includes('data-action="pet-workflow"'), 'Pet profiles expose selectable workflow blueprints');
 assert.ok(store.includes('data-action="pet-chat"'), 'A selected workflow can be drafted into Whilo Chat');
+assert.ok(store.includes('class="pilot-calculator"'), 'Pet workflows expose an interactive pilot capacity estimator');
+assert.ok(store.includes('data-pilot-input="pilot-cases"'), 'Pilot estimator accepts monthly case volume');
+assert.ok(store.includes('data-pilot-input="pilot-minutes"'), 'Pilot estimator accepts baseline time per case');
+assert.ok(store.includes('data-pilot-input="pilot-hourly"'), 'Pilot estimator accepts loaded labor cost');
+assert.ok(store.includes('data-pilot-input="pilot-reduction"'), 'Pilot estimator accepts the expected time reduction');
+assert.ok(store.includes('data-pilot-input="pilot-monthly-cost"'), 'Pilot estimator accepts a modeled monthly service cost');
+assert.ok(store.includes("event.target.hasAttribute('data-pilot-input')"), 'Pilot assumptions update estimates interactively without rerendering the form');
+assert.ok(store.includes('not a savings guarantee'), 'Pilot estimate is explicitly not presented as guaranteed savings');
+assert.ok(store.includes('Labor capacity value · not cash savings'), 'Capacity value is distinguished from cash savings');
+assert.ok(store.includes('Capacity value / service cost'), 'Pilot estimator compares potential capacity value to modeled cost');
 assert.ok(store.includes("marketFilter === 'autopilot'"), 'Autopilot market filter is functional');
 assert.ok(store.includes("marketFilter === 'next-wave'"), 'Next-wave market filter is functional');
 assert.ok(store.includes("marketFilter === 'judgment-heavy'"), 'Judgment-heavy market filter is functional');
