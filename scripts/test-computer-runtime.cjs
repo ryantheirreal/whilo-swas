@@ -135,13 +135,20 @@ global.fetch=async function(url,options) {
   if(parsed.hostname==='test-project.supabase.co' && parsed.pathname==='/rest/v1/organization_members') {
     return response(200,[{organization_id:orgId,role}]);
   }
+  if(parsed.hostname==='test-project.supabase.co' && parsed.pathname==='/rest/v1/rpc/reserve_computer_qa_launch' && method==='POST') {
+    const reservation=JSON.parse(options.body);
+    assert.equal(reservation.p_organization_id,orgId);
+    assert.equal(reservation.p_actor_id,userId);
+    assert.equal(reservation.p_target_host,'example.com');
+    return response(200,[{allowed:!rateLimited,used:rateLimited?3:1}]);
+  }
   if(parsed.hostname==='test-project.supabase.co' && parsed.pathname==='/rest/v1/audit_events') {
     if(method==='POST') {
       const record=JSON.parse(options.body);
       auditActions.push(record.action);
       return response(201,[]);
     }
-    return response(200,rateLimited?[{id:1},{id:2},{id:3}]:[]);
+    return response(200,[]);
   }
   if(parsed.hostname==='api.browserbase.com' && parsed.pathname==='/v1/sessions' && method==='POST') {
     browserbaseCalls += 1;
@@ -204,6 +211,7 @@ async function main() {
   assert.ok(!JSON.stringify(result.data).includes('wss://browserbase.invalid'));
   assert.ok(auditActions.includes('computer.website_qa_started'));
   assert.ok(auditActions.includes('computer.website_qa_completed'));
+  assert.ok(outbound.some(request => request.url.includes('/rpc/reserve_computer_qa_launch')), 'launch rate limit is reserved atomically in Supabase');
 
   rateLimited=true;
   const limited=await invoke(handler,'POST','/api/computer',{url:'https://example.com/pricing'});
