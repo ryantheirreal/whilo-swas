@@ -163,6 +163,26 @@ if (!routinesRoute.includes('five launches per minute per user, shared across ro
 if (!routinesRoute.includes("scopes.includes('computer:read')") || !routinesRoute.includes("scopes.includes('computer:control')")) failures.push('Computer routines must require explicit read and control scopes.');
 if (!routinesRoute.includes('now - lastSeen <= 5 * 60 * 1000')) failures.push('Computer routines must require a recent device heartbeat.');
 const enterpriseUi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'), 'utf8');
+const legalMarketplace = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-marketplace.js'), 'utf8');
+const legalProductBrief = fs.readFileSync(path.join(root, 'docs', 'leis-legalops-product.md'), 'utf8');
+if (!legalMarketplace.includes("https://github.com/ctresb/leis") ||
+    !legalMarketplace.includes("plugins-legal-draft") ||
+    !legalMarketplace.includes('data-workflow="contract"') ||
+    !legalMarketplace.includes('data-workflow="review"') ||
+    !legalMarketplace.includes('data-workflow="research"') ||
+    !legalMarketplace.includes('live searchable law database')) {
+  failures.push('Leis Legal Desk must expose the requested source, three unsent legal workflows, and honest live-indexing limits.');
+}
+if (!enterpriseUi.includes("whilo:marketplace:plan-legal") ||
+    !enterpriseUi.includes('Whilo has not queried the repository live') ||
+    !enterpriseUi.includes('qualified Brazilian lawyer must review')) {
+  failures.push('Leis Legal Desk Chat handoff must disclose source retrieval limits and require lawyer review.');
+}
+if (!legalProductBrief.includes('Gate 2 — Source retrieval (not implemented)') ||
+    !legalProductBrief.includes('R$497/month per office') ||
+    !legalProductBrief.includes('source version/hash')) {
+  failures.push('Leis Legal Desk documentation must distinguish the pricing hypothesis from shipped retrieval capability.');
+}
 for (const [label, pattern] of [
   ['library-target routine playbooks', /const ROUTINE_TEMPLATES/],
   ['visible chat entrypoint for @Routines', /Build in Chat @Routines/],
