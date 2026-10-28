@@ -33,6 +33,15 @@ assert.ok(specialists.every(function (pet) { return pet.workflows.length === 3 &
 assert.ok(store.includes('data-action="pet-explore"'), 'Pet cards expose a profile exploration action');
 assert.ok(store.includes('data-action="pet-workflow"'), 'Pet profiles expose selectable workflow blueprints');
 assert.ok(store.includes('data-action="pet-chat"'), 'A selected workflow can be drafted into Whilo Chat');
+assert.ok(store.includes("marketFilter === 'autopilot'"), 'Autopilot market filter is functional');
+assert.ok(store.includes("marketFilter === 'next-wave'"), 'Next-wave market filter is functional');
+assert.ok(store.includes("marketFilter === 'judgment-heavy'"), 'Judgment-heavy market filter is functional');
+assert.ok(store.includes('data-market="autopilot"'), 'Autopilot filter control is visible');
+assert.ok(store.includes('data-market="next-wave"'), 'Next-wave filter control is visible');
+assert.ok(store.includes('data-market="judgment-heavy"'), 'Judgment-heavy filter control is visible');
+assert.equal(specialists.filter(function (pet) { return /autopilot wedge/i.test(pet.marketStage); }).length, 2, 'Two Pets target an autopilot wedge');
+assert.equal(specialists.filter(function (pet) { return /next wave/i.test(pet.marketStage); }).length, 1, 'One Pet is categorized as next wave');
+assert.equal(specialists.filter(function (pet) { return /copilot|watch/i.test(pet.marketStage); }).length, 3, 'Three Pets are categorized as judgment-heavy / watch');
 assert.ok(store.includes("window.dispatchEvent(new CustomEvent('whilo:marketplace:plan-pet'"), 'Marketplace workflows send a structured draft event to Chat');
 assert.ok(enterprise.includes("window.addEventListener('whilo:marketplace:plan-pet'"), 'Whilo Chat consumes specialist workflow drafts');
 assert.ok(enterprise.includes("Whilo: { short: 'Insurance'"), 'Workspace ownership maps Whilo to insurance brokerage');
