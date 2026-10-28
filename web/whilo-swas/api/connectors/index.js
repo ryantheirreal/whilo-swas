@@ -9,6 +9,8 @@ const CATALOG = [
   { id: 'twilio', name: 'SMS via Twilio', category: 'Messaging', method: 'API key', capabilities: ['Verify provider credentials', 'Messaging Service required before sending'], status: 'available' },
   { id: 'gemini-api', name: 'Gemini Developer API', category: 'AI models', method: 'Encrypted API key (BYOK)', capabilities: ['Dynamic model discovery', 'Provider-side API quotas and billing'], status: 'available' },
   { id: 'openai-api', name: 'OpenAI API', category: 'AI models', method: 'Encrypted API key (BYOK)', capabilities: ['Dynamic model discovery', 'Responses API with store=false'], status: 'available' },
+  { id: 'anthropic-api', name: 'Anthropic API', category: 'AI models', method: 'Encrypted API key (BYOK)', capabilities: ['Live model discovery', 'Messages API'], status: 'available' },
+  { id: 'openrouter-api', name: 'OpenRouter', category: 'AI models', method: 'Encrypted API key (BYOK)', capabilities: ['Live catalog across model providers', 'OpenAI-compatible chat completions'], status: 'available' },
   { id: 'imessage-bridge', name: 'iMessage via Mac Bridge', category: 'Messaging', method: 'Pair a user-owned macOS bridge', capabilities: ['Pairing foundation only', 'Requires the native bridge runtime'], status: 'bridge_required' },
   { id: 'github', name: 'GitHub', category: 'Engineering', method: 'OAuth / GitHub App', capabilities: ['Repository and issue workflows'], status: 'planned' },
   { id: 'gmail', name: 'Gmail & Calendar', category: 'Email & calendar', method: 'Google OAuth', capabilities: ['Read and draft; send requires approval'], status: 'planned' },
@@ -48,20 +50,41 @@ module.exports = async function handler(req, res) {
     }
 
     const body = await readJson(req);
-    if (body.action === 'connect_gemini_api' || body.action === 'connect_openai_api') {
+    const providerActions = {
+      connect_gemini_api: 'gemini-api',
+      connect_openai_api: 'openai-api',
+      connect_anthropic_api: 'anthropic-api',
+      connect_openrouter_api: 'openrouter-api'
+    };
+    if (providerActions[body.action]) {
       if (!['owner','admin'].includes(member.role)) return send(res,403,{error:'Only a workspace owner or admin can change shared AI provider credentials.'});
-      const isGemini = body.action === 'connect_gemini_api';
-      const provider = isGemini ? 'gemini-api' : 'openai-api';
+      const provider = providerActions[body.action];
       const apiKey = String(body.apiKey || '').trim();
-      if (apiKey.length < 20 || apiKey.length > 512 || /\\s/.test(apiKey)) {
+      if (apiKey.length < 20 || apiKey.length > 512 || /\s/.test(apiKey)) {
         return send(res,400,{error:'Enter a valid API key without whitespace.'});
       }
-      const url = isGemini
-        ? 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1'
-        : 'https://api.openai.com/v1/models';
+      const specs = {
+        'gemini-api': {
+          name:'Gemini Developer API', url:'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1',
+          headers:{'x-goog-api-key':apiKey}, kind:'gemini_api_key', scopes:['models:list','models:generateContent']
+        },
+        'openai-api': {
+          name:'OpenAI Developer API', url:'https://api.openai.com/v1/models',
+          headers:{Authorization:'Bearer '+apiKey}, kind:'openai_api_key', scopes:['models:list','responses:create']
+        },
+        'anthropic-api': {
+          name:'Anthropic API', url:'https://api.anthropic.com/v1/models?limit=1',
+          headers:{'x-api-key':apiKey,'anthropic-version':'2023-06-01'}, kind:'anthropic_api_key', scopes:['models:list','messages:create']
+        },
+        'openrouter-api': {
+          name:'OpenRouter', url:'https://openrouter.ai/api/v1/models?output_modalities=text',
+          headers:{Authorization:'Bearer '+apiKey,'HTTP-Referer':'https://whilo-swas.vercel.app','X-Title':'Whilo'}, kind:'openrouter_api_key', scopes:['models:list','chat:completions']
+        }
+      };
+      const spec=specs[provider];
       let response;
       try {
-        response = await fetch(url,{headers:Object.assign({Accept:'application/json'},isGemini?{'x-goog-api-key':apiKey}:{Authorization:'Bearer '+apiKey}),cache:'no-store',signal:AbortSignal.timeout(10000)});
+        response = await fetch(spec.url,{headers:Object.assign({Accept:'application/json'},spec.headers),cache:'no-store',signal:AbortSignal.timeout(10000)});
       } catch (_) {
         return send(res,502,{error:'The provider could not be reached. No credential was saved.'});
       }
@@ -70,22 +93,24 @@ module.exports = async function handler(req, res) {
       if (!response.ok) return send(res,502,{error:'The provider did not verify the key. Check API access and retry.'});
       let providerData={};
       try { providerData=await response.json(); } catch (_) { return send(res,502,{error:'The provider returned an unreadable response. No credential was saved.'}); }
-      const validModels = isGemini ? Array.isArray(providerData.models) : Array.isArray(providerData.data);
+      const validModels = provider === 'gemini-api'
+        ? Array.isArray(providerData.models)
+        : Array.isArray(providerData.data);
       if (!validModels) return send(res,502,{error:'The provider key could not be verified against its model catalog.'});
-      const encrypted=encryptPayload({kind:isGemini?'gemini_api_key':'openai_api_key',apiKey});
+      const encrypted=encryptPayload({kind:spec.kind,apiKey});
       const now=new Date().toISOString();
       await db('integration_connections?on_conflict=organization_id,provider,external_account_id',{
         method:'POST',
         headers:{Prefer:'resolution=merge-duplicates,return=minimal'},
         body:JSON.stringify(Object.assign({
           organization_id:orgId,provider,status:'connected',external_account_id:'default',
-          external_account_name:isGemini?'Gemini Developer API':'OpenAI API',
-          scopes:isGemini?['models:list','models:generateContent']:['models:list','responses:create'],
+          external_account_name:spec.name,
+          scopes:spec.scopes,
           metadata:{verified_at:now,credential_type:'provider_api_key'},created_by:user.id,connected_at:now,revoked_at:null
         },encrypted))
       });
       await audit(orgId,user.id,'connector.connected','integration_connection',provider,'success',{provider,method:'provider_api_key'});
-      return send(res,200,{ok:true,provider,status:'connected',detail:'API key verified and encrypted. Usage is charged by this provider API account; Whilo does not use the consumer subscription quota.'});
+      return send(res,200,{ok:true,provider,status:'connected',detail:'API key verified and encrypted. Usage is billed by the selected provider account; Whilo does not use consumer-plan inference quotas.'});
     }
     if (body.action === 'connect_twilio') {
       const accountSid = String(body.accountSid || '').trim();
