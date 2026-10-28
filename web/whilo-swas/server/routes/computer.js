@@ -160,6 +160,20 @@ async function inspectWithBrowser(session, targetUrl, targetOrigin, chromium) {
         const images = Array.from(document.images).filter(visible);
         const buttons = Array.from(document.querySelectorAll('button,[role="button"]')).filter(visible);
         const controls = Array.from(document.querySelectorAll('input:not([type="hidden"]),select,textarea,[contenteditable="true"]')).filter(visible);
+        const interactiveElements = Array.from(new Set(Array.from(document.querySelectorAll('a[href],button,[role="button"],input:not([type="hidden"]),select,textarea,[contenteditable="true"]')).filter(visible))).slice(0,40).map(function(element,index) {
+          const label = String(element.getAttribute('aria-label') || element.getAttribute('title') || element.innerText || element.textContent || element.getAttribute('placeholder') || element.getAttribute('name') || '').replace(/\s+/g,' ').trim().slice(0,100);
+          const tag = String(element.tagName || '').toLowerCase();
+          const role = String(element.getAttribute('role') || (tag === 'a' ? 'link' : tag === 'button' ? 'button' : tag === 'input' ? 'input' : tag)).toLowerCase().slice(0,30);
+          let path = null;
+          const href = element.getAttribute('href');
+          if (href) {
+            try {
+              const link = new URL(href, location.href);
+              path = link.origin === location.origin ? link.pathname.slice(0,120) : '[external link blocked by QA policy]';
+            } catch (_) { path = '[invalid link]'; }
+          }
+          return { index:index+1, role:role, label:label || '(unlabeled)', path:path };
+        });
         const named = function(element) {
           if (element.getAttribute('aria-label') || element.getAttribute('aria-labelledby') || element.title) return true;
           if (element.labels && element.labels.length) return true;
@@ -178,6 +192,7 @@ async function inspectWithBrowser(session, targetUrl, targetOrigin, chromium) {
           h1Count: document.querySelectorAll('h1').length,
           mainLandmarkCount: document.querySelectorAll('main,[role="main"]').length,
           linkCount: Array.from(document.querySelectorAll('a[href]')).filter(visible).length,
+          interactiveElements: interactiveElements,
           buttonCount: buttons.length,
           unnamedButtonCount: buttons.filter(function(element) { return !named(element); }).length,
           formControlCount: controls.length,
@@ -195,7 +210,7 @@ async function inspectWithBrowser(session, targetUrl, targetOrigin, chromium) {
     } catch (_) {
       snapshot = {
         title: '', languagePresent: false, descriptionPresent: false, h1Count: 0,
-        mainLandmarkCount: 0, linkCount: 0, buttonCount: 0, unnamedButtonCount: 0,
+        mainLandmarkCount: 0, linkCount: 0, interactiveElements: [], buttonCount: 0, unnamedButtonCount: 0,
         formControlCount: 0, unlabeledControlCount: 0, imageCount: 0,
         imagesMissingAlt: 0, formCount: 0, duplicateIdCount: 0, horizontalOverflow: false,
         viewport: { width: 1280, height: 800 }
