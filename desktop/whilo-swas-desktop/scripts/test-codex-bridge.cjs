@@ -73,23 +73,23 @@ async function main() {
       calls.push({ command, args: args.slice(), options, child });
       if (args[0] === 'login' && args[1] === 'status') {
         queueMicrotask(() => {
-          child.stdout.write(authenticated ? 'Logged in using ChatGPT\\n' : 'Not logged in\\n');
+          child.stdout.write(authenticated ? 'Logged in using ChatGPT\n' : 'Not logged in\n');
           child.emit('close', authenticated ? 0 : 1);
         });
       } else if (args[0] === 'login' && args[1] === '--device-auth') {
         deviceLoginChild = child;
-        queueMicrotask(() => child.stdout.write('Open https://auth.openai.com/codex/device\\n'));
+        queueMicrotask(() => child.stdout.write('Open https://auth.openai.com/codex/device\n'));
       } else if (args[0] === 'exec') {
         queueMicrotask(() => {
-          child.stdout.write(JSON.stringify({ type:'thread.started', thread_id:'fake-thread' }) + '\\n');
-          child.stdout.write(JSON.stringify({ type:'item.completed', item:{ type:'agent_message', text:'Codex test completed.' } }) + '\\n');
-          child.stdout.write(JSON.stringify({ type:'turn.completed' }) + '\\n');
+          child.stdout.write(JSON.stringify({ type:'thread.started', thread_id:'fake-thread' }) + '\n');
+          child.stdout.write(JSON.stringify({ type:'item.completed', item:{ type:'agent_message', text:'Codex test completed.' } }) + '\n');
+          child.stdout.write(JSON.stringify({ type:'turn.completed' }) + '\n');
           child.emit('close', 0);
         });
       } else if (args[0] === 'logout') {
         queueMicrotask(() => {
           authenticated = false;
-          child.stdout.write('Logged out\\n');
+          child.stdout.write('Logged out\n');
           child.emit('close', 0);
         });
       } else {
