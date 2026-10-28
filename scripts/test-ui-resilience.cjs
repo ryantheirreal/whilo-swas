@@ -155,8 +155,8 @@ assert.ok(enterprise.includes("whilo:marketplace:plan-legal"), 'Legal workflow l
 assert.ok(enterprise.includes('Whilo has not queried the repository live'), 'Chat tells the user when repository retrieval has not occurred');
 assert.ok(enterprise.includes('qualified Brazilian lawyer must review'), 'Chat preserves the lawyer review gate');
 assert.ok(legalProduct.includes('Gate 2 — Source retrieval (not implemented)'), 'Product brief does not claim live corpus retrieval is shipped');
-assert.ok(legalProduct.includes('Founding pilot at R$497/month per office'), 'Product brief records the pricing experiment');
+assert.ok(legalProduct.includes('R$497/month per office for a founding pilot'), 'Product brief records the pricing experiment');
 assert.ok(legalProduct.includes('OAB rules'), 'Product brief requires review of Brazilian legal-sector marketing rules');
-assert.ok(legalProduct.includes('Retrieved timestamp') && legalProduct.includes('text hash'), 'Product roadmap requires versioned source evidence');
+assert.ok(legalProduct.includes('retrieved timestamp') && legalProduct.includes('text hash'), 'Product roadmap requires versioned source evidence');
 
 console.log('Whilo UI resilience, provider adapters, remote Computer QA and local ChatGPT Codex tests passed.');
