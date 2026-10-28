@@ -74,14 +74,7 @@ async function browserbaseCreateSession(apiKey, projectId, orgId, userId, hostna
   }
   return { id: data.id, connectUrl: data.connectUrl };
 }
-async function inspectWithBrowser(session, targetUrl, targetOrigin) {
-  let chromium;
-  try {
-    ({ chromium } = require('playwright-core'));
-  } catch (_) {
-    fail(503, 'browser_runtime_dependency_missing', 'The remote browser runtime dependency is missing from this deployment. Redeploy the latest Whilo build.');
-  }
-
+async function inspectWithBrowser(session, targetUrl, targetOrigin, chromium) {
   let browser;
   let context;
   let page;
@@ -307,9 +300,15 @@ module.exports = async function computerRoute(req, res) {
       hostname:targetHost, runtime:'browserbase', mode:'read_only', purpose:'website_qa'
     });
 
+    let chromium;
+    try {
+      ({ chromium } = require('playwright-core'));
+    } catch (_) {
+      fail(503, 'browser_runtime_dependency_missing', 'The remote browser runtime dependency is missing from this deployment. Redeploy the latest Whilo build.');
+    }
     const session = await browserbaseCreateSession(apiKey,projectId,organizationId,actorId,targetHost);
     sessionId = session.id;
-    const result = await inspectWithBrowser(session,target,target);
+    const result = await inspectWithBrowser(session,target,parsedTarget.origin,chromium);
     await audit(organizationId,actorId,'computer.website_qa_completed','browserbase_session',sessionId,'success',{
       hostname:targetHost, http_status:result.status, findings:result.findings.length,
       runtime:'browserbase', mode:'read_only', duration_ms:result.durationMs
