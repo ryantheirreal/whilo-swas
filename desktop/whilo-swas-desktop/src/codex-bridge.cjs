@@ -162,12 +162,9 @@ function createCodexBridge(options = {}) {
         settle(reject, Object.assign(new Error('Codex CLI could not be started.'), { code: 'codex_spawn_failed' }));
         return;
       }
-      const push = (target, chunk) => {
-        target.value += String(chunk || '');
-        if (target.value.length > 16000) target.value = target.value.slice(-16000);
-      };
-      child.stdout && child.stdout.on('data', chunk => push({ get value(){return stdout;}, set value(v){stdout=v;} }, chunk));
-      child.stderr && child.stderr.on('data', chunk => push({ get value(){return stderr;}, set value(v){stderr=v;} }, chunk));
+      const append = (current, chunk) => (current + String(chunk || '')).slice(-16000);
+      child.stdout && child.stdout.on('data', chunk => { stdout = append(stdout, chunk); });
+      child.stderr && child.stderr.on('data', chunk => { stderr = append(stderr, chunk); });
       child.once('error', () => settle(reject, Object.assign(new Error('Codex CLI could not be started.'), { code: 'codex_spawn_failed' })));
       child.once('close', code => settle(resolve, { code: Number.isInteger(code) ? code : 1, stdout, stderr }));
     });
@@ -349,11 +346,20 @@ function createCodexBridge(options = {}) {
       });
     });
   }
+  function finishLogin(login, payload) {
+    if (!login || login.settled) return;
+    login.settled = true;
+    clearTimeout(login.timer);
+    if (loginChild === login) loginChild = null;
+    event('login-finished', payload);
+  }
   function cancelLogin() {
     if (!loginChild) return { stopped: false };
-    const child = loginChild;
+    const login = loginChild;
     loginChild = null;
-    try { child.kill('SIGTERM'); } catch (_) {}
+    login.settled = true;
+    clearTimeout(login.timer);
+    try { login.child.kill('SIGTERM'); } catch (_) {}
     event('login-finished', { ok: false, cancelled: true, message: 'ChatGPT device sign-in was cancelled.' });
     return { stopped: true };
   }
@@ -372,9 +378,15 @@ function createCodexBridge(options = {}) {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
     });
-    loginChild = child;
+    const login = { child, timer: null, settled: false };
+    loginChild = login;
     let carry = '';
     let loginBytes = 0;
+    login.timer = setTimeout(() => {
+      if (loginChild !== login || login.settled) return;
+      try { child.kill('SIGTERM'); } catch (_) {}
+      finishLogin(login, { ok: false, timedOut: true, message: 'ChatGPT device sign-in timed out after 5 minutes. Start again and finish the approval in your browser.' });
+    }, LOGIN_TIMEOUT_MS);
     event('login-started', { message: 'Starting the official Codex device-code flow. Complete the approval in your browser.' });
     const onOutput = chunk => {
       loginBytes += Buffer.byteLength(String(chunk || ''), 'utf8');
@@ -393,23 +405,24 @@ function createCodexBridge(options = {}) {
     child.stdout && child.stdout.on('data', onOutput);
     child.stderr && child.stderr.on('data', onOutput);
     child.once('error', () => {
-      if (loginChild === child) loginChild = null;
-      event('login-finished', { ok: false, message: 'Codex could not start the device-code login.' });
+      finishLogin(login, { ok: false, message: 'Codex could not start the device-code login.' });
     });
     child.once('close', async code => {
-      if (loginChild === child) loginChild = null;
+      if (login.settled) return;
+      clearTimeout(login.timer);
+      if (loginChild === login) loginChild = null;
       const tail = sanitizeLoginLine(carry);
       if (tail) event('login-output', { message: tail });
       if (code === 0) {
         const result = await status();
-        event('login-finished', {
+        finishLogin(login, {
           ok: result.loggedIn,
           message: result.loggedIn
             ? 'ChatGPT OAuth completed. Codex is connected on this computer.'
             : 'Codex finished the login process, but ChatGPT sign-in could not be verified.'
         });
       } else {
-        event('login-finished', {
+        finishLogin(login, {
           ok: false,
           message: code === null ? 'Codex sign-in was stopped.' : 'Codex device sign-in failed. Enable device-code login in your ChatGPT security settings or workspace permissions, then retry.'
         });
