@@ -23,7 +23,7 @@ assert.ok(store.includes('https://github.com/milind-soni/OpenMausBot'), 'OpenMau
 const profileStart = store.indexOf('const PET_SPECIALISTS = ');
 const demoStart = store.indexOf('  const DEMO = [', profileStart);
 assert.ok(profileStart >= 0 && demoStart > profileStart, 'Marketplace declares the six specialist Pet profiles');
-const profileSource = store.slice(profileStart + 'const PET_SPECIALISTS = '.length, demoStart).trim().replace(/;\\s*$/, '');
+const profileSource = store.slice(profileStart + 'const PET_SPECIALISTS = '.length, demoStart).trim().replace(/;\s*$/, '');
 const specialists = Function('"use strict"; return ' + profileSource)();
 assert.equal(specialists.length, 6, 'Exactly six vertical Pets are mapped in the Marketplace');
 assert.deepEqual(specialists.map(function (pet) { return pet.name; }), ['Whilo', 'Fynn', 'Nori', 'Capuccino', 'Ollie', 'Pico'], 'Specialist names remain stable');
