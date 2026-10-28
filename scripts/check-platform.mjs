@@ -208,8 +208,8 @@ if (!modelGatewayRoute.includes("https://generativelanguage.googleapis.com/v1bet
     !modelGatewayRoute.includes("https://api.openai.com/v1/responses") ||
     !modelGatewayRoute.includes("https://api.anthropic.com/v1/messages") ||
     !modelGatewayRoute.includes("https://openrouter.ai/api/v1/chat/completions") ||
-    !modelGatewayRoute.includes("kind:'anthropic_api_key'") ||
-    !modelGatewayRoute.includes("kind:'openrouter_api_key'") ||
+    !modelGatewayRoute.includes("'anthropic-api':'anthropic_api_key'") ||
+    !modelGatewayRoute.includes("'openrouter-api':'openrouter_api_key'") ||
     !modelGatewayRoute.includes('store:false') ||
     !modelGatewayRoute.includes('Math.min(2048') ||
     !modelGatewayRoute.includes('provider_quota_or_rate_limit')) failures.push('BYOK model gateway must support Gemini, OpenAI, Anthropic and OpenRouter with bounded requests and quota-aware errors.');
