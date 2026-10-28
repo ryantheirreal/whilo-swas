@@ -56,8 +56,8 @@ const migrations = walk(migrationsDir).filter(file => file.endsWith('.sql')).sor
 if (migrations.length < 33) {
   failures.push('Expected all thirty-three versioned Supabase migrations to be present.');
 }
-const migrationVersions = migrations.map(file => path.basename(file).match(/^(\d{12})_/));
-if (migrationVersions.some(match => !match)) failures.push('Every SQL migration must start with a 12-digit version and underscore.');
+const migrationVersions = migrations.map(file => path.basename(file).match(/^(\d{12,14})_/));
+if (migrationVersions.some(match => !match)) failures.push('Every SQL migration must start with a 12- or 14-digit version and underscore.');
 const versionValues = migrationVersions.filter(Boolean).map(match => match[1]);
 if (new Set(versionValues).size !== versionValues.length) failures.push('Supabase migration version prefixes must be unique.');
 const allSql = migrations.map(file => fs.readFileSync(file, 'utf8')).join('\n');
