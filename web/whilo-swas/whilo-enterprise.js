@@ -805,7 +805,7 @@
     return out;
   }
   function companyPage() {
-    let out = '<div class="hero"><div><h2 class="h2">Company operating model</h2><p class="muted">One shared operating layer across departments. Start with work that is repeatable, already outsourced and easy to verify; expand into higher-judgement work after quality and controls are proven.</p></div></div><div class="notice">These are playbooks and task templates, not autonomous departments yet. Creating a task adds it to this browser’s Work queue. Production execution needs connected tools, a durable backend and approval policies.</div><div class="grid">';
+    let out = '<div class="hero"><div><h2 class="h2">Company operating model</h2><p class="muted">Six industry-specialist Pets, each mapped to a distinct service market: Whilo (insurance), Fynn (consulting), Nori (procurement), Capuccino (creative operations), Ollie (recruiting) and Pico (IT services). Start with a narrow, measurable workflow; expand only after evidence, quality and controls are proven.</p></div></div><div class="notice">These are playbooks and task templates, not autonomous departments yet. Creating a task adds it to this browser’s Work queue. Production execution needs connected tools, a durable backend and approval policies.</div><div class="grid">';
     out += DEPARTMENTS.map(function (d) { return '<article class="card"><div class="eyebrow">' + esc(d.id) + '</div><h3>' + esc(d.name) + '</h3><p>' + esc(d.subtitle) + '</p><div class="actions"><button class="btn secondary" data-act="playbook" data-id="' + esc(d.id) + '">Start playbook</button></div></article>'; }).join('');
     return out + '</div><div class="sectionlabel">Workforce architecture</div><div class="grid"><article class="card"><div class="eyebrow">Persistent agent</div><h3>Pets own outcomes</h3><p>A Pet keeps its role, user-approved memory, skills, policy and scorecard across jobs. It is the accountable lead that plans, delegates and handles exceptions.</p></article><article class="card"><div class="eyebrow">Ephemeral specialist</div><h3>Bots execute bounded tasks</h3><p>A Pet can spawn Browser Researcher, Computer Operator, Analyst, CRM Operator, Writer, Coder or QA Verifier Bots. Each gets a narrow task contract, scoped tools, a budget and an output schema.</p></article><article class="card"><div class="eyebrow">Quality control</div><h3>Verifier checks the receipt</h3><p>A separate verification step checks evidence and acceptance criteria. More agents are used only when specialization or safe parallelism improves the expected outcome.</p></article></div><div class="sectionlabel">Expansion principle</div><div class="card"><h3>Outcome before headcount replacement</h3><p>Each workflow needs a named owner, source systems, acceptance criteria, exception handling, an approval threshold and a measurable result before it is allowed to run unattended.</p></div>';
   }
@@ -2323,7 +2323,11 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     if (act === 'remove') { state.tasks = state.tasks.filter(function (t) { return t.id !== id; }); save(); render(); return; }
     if (act === 'playbook') {
       const dept = DEPARTMENTS.find(function (d) { return d.id === id; });
-      if (dept) addTask(dept.template, dept.name, specialistForDepartment(dept.name) || 'Whilo', 'High');
+      if (dept) {
+        const assignedPet = specialistForDepartment(dept.name) || 'Whilo';
+        addTask(dept.template, dept.name, assignedPet, 'High');
+        cloudMissionsFeedback = 'Playbook prepared for ' + assignedPet + ' · ' + (PET_SPECIALTIES[assignedPet] ? PET_SPECIALTIES[assignedPet].market : dept.name) + '. Review the task before execution; no external work is implied.';
+      }
       active = 'work'; render(); return;
     }
     if (act === 'cloud-provider-google') {
