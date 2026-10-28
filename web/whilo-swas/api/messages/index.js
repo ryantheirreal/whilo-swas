@@ -20,7 +20,8 @@ const MESSAGE_ROUTES = Object.freeze({
   'chatgpt-auth-start': require('../../server/routes/chatgpt-auth').start,
   'chatgpt-auth-callback': require('../../server/routes/chatgpt-auth').callback,
   'chatgpt-auth-link-start': require('../../server/routes/chatgpt-auth').linkStart,
-  'model-gateway': require('../../server/routes/model-gateway')
+  'model-gateway': require('../../server/routes/model-gateway'),
+  computer: require('../../server/routes/computer')
 });
 
 function inFilter(values) { return 'in.(' + values.map(String).join(',') + ')'; }
