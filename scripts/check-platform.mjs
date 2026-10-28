@@ -41,6 +41,8 @@ const jsFiles = [
   ...walk(path.join(root, 'web', 'whilo-swas', 'server', 'routes')).filter(file => file.endsWith('.js')),
   ...walk(path.join(root, 'web', 'whilo-swas', 'server', 'security')).filter(file => file.endsWith('.js')),
   ...walk(path.join(root, 'scripts')).filter(file => (file.endsWith('.mjs') || file.endsWith('.js')) && !file.endsWith('check-platform.mjs')),
+  ...walk(path.join(root, 'desktop', 'whilo-swas-desktop', 'src')).filter(file => file.endsWith('.cjs')),
+  ...walk(path.join(root, 'desktop', 'whilo-swas-desktop', 'scripts')).filter(file => file.endsWith('.cjs')),
   path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'),
   path.join(root, 'web', 'whilo-swas', 'whilo-marketplace.js'),
   path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'),
@@ -199,6 +201,12 @@ const computerRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'serv
 const messagesApi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'api', 'messages', 'index.js'), 'utf8');
 const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'vercel.json'), 'utf8'));
 const browserRuntimePackage = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'package.json'), 'utf8'));
+const desktopRoot = path.join(root, 'desktop', 'whilo-swas-desktop');
+const desktopMain = fs.readFileSync(path.join(desktopRoot, 'src', 'main.cjs'), 'utf8');
+const desktopPreload = fs.readFileSync(path.join(desktopRoot, 'src', 'preload.cjs'), 'utf8');
+const desktopCodexBridge = fs.readFileSync(path.join(desktopRoot, 'src', 'codex-bridge.cjs'), 'utf8');
+const desktopPackage = JSON.parse(fs.readFileSync(path.join(desktopRoot, 'package.json'), 'utf8'));
+const desktopCodexTests = fs.readFileSync(path.join(desktopRoot, 'scripts', 'test-codex-bridge.cjs'), 'utf8');
 const cloudAuthClient = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'), 'utf8');
 if (!chatgptAuthRoute.includes('consume_whilo_siwc_transaction') || !chatgptAuthRoute.includes('crypto.verify(') || !chatgptAuthRoute.includes('claims.nonce !== nonce')) failures.push('ChatGPT identity sign-in must consume state once and verify OIDC signature/nonce.');
 if (!chatgptAuthRoute.includes("scope', 'openid profile email") || chatgptAuthRoute.includes('chatgpt.tokens.use.direct')) failures.push('Hosted Whilo ChatGPT OAuth must remain identity-only until OpenAI approves consumer-plan inference.');
@@ -228,6 +236,23 @@ if (!computerRoute.includes('resolvePublicHttpsTarget') ||
     !computerRoute.includes('page.screenshot')) failures.push('Computer QA must validate public targets, block cross-origin traffic, rate-limit launches and return screenshot evidence.');
 if (!messagesApi.includes("computer: require('../../server/routes/computer')") ||
     !vercelConfig.rewrites.some(rewrite => rewrite.source === '/api/computer' && rewrite.destination === '/api/messages?route=computer')) failures.push('Computer QA must be reachable through the consolidated server route without adding a Vercel function entrypoint.');
+if (!desktopMain.includes('assertTrustedIpcSender') ||
+    !desktopMain.includes('frameUrl.origin !== appUrl.origin') ||
+    !desktopMain.includes('frame !== event.sender.mainFrame') ||
+    !desktopMain.includes('"whilo:codex:run":')) failures.push('Local Codex IPC must validate the configured origin, main frame and explicit run handler.');
+if (!desktopPreload.includes('contextBridge.exposeInMainWorld("whiloDesktop"') ||
+    desktopPreload.includes('exposeInMainWorld("ipcRenderer"')) failures.push('The desktop must expose only the narrow context-isolated bridge, not raw ipcRenderer.');
+if (!desktopCodexBridge.includes("['login', '--device-auth']") ||
+    !desktopCodexBridge.includes("['exec', '--json', '--ephemeral', '--sandbox', mode, prompt]") ||
+    !desktopCodexBridge.includes('await approveTaskAccess(mode, prompt)') ||
+    !desktopCodexBridge.includes('LOGIN_TIMEOUT_MS') ||
+    !desktopCodexBridge.includes('RUN_TIMEOUT_MS')) failures.push('Local Codex must use official device login, ephemeral sandboxed tasks, native approval and hard timeouts.');
+if (!desktopCodexBridge.includes('delete env.OPENAI_API_KEY') ||
+    !desktopCodexBridge.includes('delete env.CODEX_ACCESS_TOKEN') ||
+    !desktopCodexBridge.includes('CODEX_HOME: codexHome')) failures.push('Codex session isolation must remove API keys and keep the CLI profile in Whilo user data.');
+if (!desktopPackage.scripts.check.includes('scripts/test-codex-bridge.cjs') ||
+    !desktopCodexTests.includes('workspace-write') ||
+    !desktopCodexTests.includes('CODEX_ACCESS_TOKEN')) failures.push('Desktop checks must run the local Codex OAuth, sandbox and secret-isolation regression tests.');
 if (browserRuntimePackage.dependencies?.['playwright-core'] !== '1.64.1') failures.push('The remote computer runtime must use an exact Playwright Core version pin.');
 if (!enterpriseUi.includes('data-act="chat-run-computer-qa"') || !enterpriseUi.includes('computerQaResult.screenshotDataUrl')) failures.push('Chat must expose the read-only remote computer QA action and screenshot receipt.');
 if (!enterpriseUi.includes('BYOK Model Console') || !enterpriseUi.includes('connect-model-key-form') ||
