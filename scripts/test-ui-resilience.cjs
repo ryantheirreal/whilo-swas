@@ -14,6 +14,12 @@ const messagesApi = fs.readFileSync(path.join(root, 'web/whilo-swas/api/messages
 const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'web/whilo-swas/vercel.json'), 'utf8'));
 const packageConfig = JSON.parse(fs.readFileSync(path.join(root, 'web/whilo-swas/package.json'), 'utf8'));
 const envExample = fs.readFileSync(path.join(root, 'web/whilo-swas/.env.example'), 'utf8');
+const desktopMain = fs.readFileSync(path.join(root, 'desktop/whilo-swas-desktop/src/main.cjs'), 'utf8');
+const desktopPreload = fs.readFileSync(path.join(root, 'desktop/whilo-swas-desktop/src/preload.cjs'), 'utf8');
+const codexBridge = fs.readFileSync(path.join(root, 'desktop/whilo-swas-desktop/src/codex-bridge.cjs'), 'utf8');
+const codexPackage = JSON.parse(fs.readFileSync(path.join(root, 'desktop/whilo-swas-desktop/package.json'), 'utf8'));
+const codexTests = fs.readFileSync(path.join(root, 'desktop/whilo-swas-desktop/scripts/test-codex-bridge.cjs'), 'utf8');
+const openMausResearch = fs.readFileSync(path.join(root, 'docs/openmausbot-adaptations-2026-10-28.md'), 'utf8');
 
 assert.ok(enterprise.includes('function showWorkspaceRecovery(reason)'), 'Global recovery UI is available for unexpected runtime errors');
 assert.ok(enterprise.includes("window.addEventListener('unhandledrejection'"), 'Unhandled async errors cannot silently leave the workspace blank');
@@ -94,6 +100,28 @@ assert.ok(computerRoute.includes('member.role'), 'Computer runtime checks worksp
 assert.ok(computerRoute.includes('computer_run_rate_limited'), 'Remote browser launches are rate-limited');
 assert.ok(computerRoute.includes('computer.website_qa_completed'), 'Successful computer runs emit an audit event');
 assert.ok(computerRoute.includes('page.screenshot'), 'Remote browser captures screenshot evidence');
+assert.ok(computerUi.includes("['codex-local','Codex via ChatGPT · this computer']"), 'Local ChatGPT Codex option is limited to the desktop bridge');
+assert.ok(computerUi.includes("if(whiloChatProvider==='codex-local')"), 'Chat routes local Codex requests separately from hosted API providers');
+assert.ok(computerUi.includes("whiloChatCodexMode==='workspace-write'?'workspace-write':'read-only'"), 'Local Codex permission defaults to read-only and has an explicit write mode');
+assert.ok(computerUi.includes('choose a repository you are allowed to share with that service'), 'The Codex panel explains that task and project content is sent to OpenAI');
+assert.ok(desktopMain.includes('assertTrustedIpcSender'), 'The desktop main process validates the sender for every local Codex IPC call');
+assert.ok(desktopMain.includes('frameUrl.origin !== appUrl.origin'), 'Local Codex IPC is restricted to the configured Whilo origin');
+assert.ok(desktopMain.includes('event.senderFrame !== event.sender.mainFrame'), 'Local Codex IPC rejects iframe callers');
+assert.ok(desktopMain.includes('ipcMain.handle("whilo:codex:run"'), 'Codex tasks use a main-process IPC handler');
+assert.ok(desktopPreload.includes('contextBridge.exposeInMainWorld("whiloDesktop"'), 'Only an explicit desktop bridge is exposed to the renderer');
+assert.ok(!desktopPreload.includes('exposeInMainWorld("ipcRenderer"'), 'Raw ipcRenderer is not exposed to the renderer');
+assert.ok(desktopPreload.includes('cancelRun: () => invokeCodex("whilo:codex:run-cancel")'), 'The desktop UI can cancel a local task');
+assert.ok(codexBridge.includes("['exec', '--json', '--ephemeral', '--sandbox', mode, prompt]"), 'Local Codex uses ephemeral JSON events and a bounded sandbox mode');
+assert.ok(codexBridge.includes("['login', '--device-auth']"), 'ChatGPT OAuth uses the official Codex device-code login');
+assert.ok(codexBridge.includes('await approveTaskAccess(mode, prompt)'), 'Every local task requires a native confirmation');
+assert.ok(codexBridge.includes('delete env.OPENAI_API_KEY') && codexBridge.includes('delete env.CODEX_ACCESS_TOKEN'), 'Hosted API keys and Codex access tokens are removed from child-process environment');
+assert.ok(codexBridge.includes('CODEX_HOME: codexHome'), 'Codex profile is isolated under the Whilo Desktop user-data directory');
+assert.ok(codexBridge.includes('RUN_TIMEOUT_MS = 10 * 60 * 1000'), 'Local Codex tasks have a hard timeout');
+assert.ok(codexPackage.scripts.check.includes('scripts/test-codex-bridge.cjs'), 'Desktop checks run the Codex bridge regression tests');
+assert.ok(codexTests.includes('workspace-write') && codexTests.includes('CODEX_ACCESS_TOKEN'), 'Codex tests cover write approval and secret isolation');
+assert.ok(openMausResearch.includes('PR #3712') && openMausResearch.includes('PR #3669') && openMausResearch.includes('PR #3691'), 'OpenMausBot research records relevant upstream PRs');
+assert.ok(openMausResearch.includes('two distinct paths'), 'The implementation notes distinguish website identity OAuth from local Codex authentication');
+
 assert.ok(messagesApi.includes("computer: require('../../server/routes/computer')"), 'Computer runtime is registered in the consolidated API function');
 assert.ok(vercelConfig.rewrites.some(function (rewrite) { return rewrite.source === '/api/computer' && rewrite.destination === '/api/messages?route=computer'; }), 'Computer API path is routed through the consolidated endpoint');
 assert.equal(packageConfig.dependencies['playwright-core'],'1.64.1','Remote browser dependency is pinned to an exact version');
@@ -107,4 +135,4 @@ assert.ok(petMigration.includes("AND p.purpose = s.old_purpose"), 'Migration avo
 assert.ok(petMigration.includes("AND p.policy = '{}'::jsonb"), 'Migration avoids overwriting customized Pet policies');
 assert.ok(petMigration.includes('REVOKE ALL ON FUNCTION public.ensure_owner_workspace(text) FROM public, anon, authenticated'), 'Bootstrap remains unavailable to public and authenticated roles');
 assert.ok(petMigration.includes('GRANT EXECUTE ON FUNCTION public.ensure_owner_workspace(text) TO service_role'), 'Only the server service role can execute workspace bootstrap');
-console.log('Whilo UI resilience, specialist Pets, provider adapters and remote Computer QA tests passed.');
+console.log('Whilo UI resilience, provider adapters, remote Computer QA and local ChatGPT Codex tests passed.');
