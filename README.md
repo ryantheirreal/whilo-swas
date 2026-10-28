@@ -22,10 +22,13 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 - `docs/human-messages-product-architecture.md` — Telegram/Matrix/Zulip research and Messages architecture.
 - `docs/database-platform-evaluation-2026-10-22.md` — decision matrix across 27 database platforms.
 - `docs/marketplace-and-pricing-strategy.md` — plan pricing, creator economy and 20% commission strategy.
+- `docs/leis-legalops-product.md` — Leis Legal Desk product scope, commercial hypothesis, source verification and lawyer-review gates.
 
 ## Product model
 
 **Chat** is the command surface. **Pets** are persistent agents with a role, user-approved memory and policy. **Bots** are task-scoped specialists spawned for bounded work. **Marketplace** distributes vetted Pets, Bots, Skills, Playbooks and Templates. **Rotinas** schedules repeatable work. **Work, Company, Connect and Results** provide the operating layer.
+
+**Leis Legal Desk** is a Marketplace pilot entry for Brazilian law firms: contract-draft, agreement-review and legal-research prompts open as unsent Chat drafts. The `ctresb/leis` repository is currently a source reference, not a live-indexed legal database; all legal output remains a draft for qualified lawyer review.
 
 ## New platform foundations
 
