@@ -166,3 +166,35 @@ The GitHub release tarball could not be downloaded from the current local execut
 - Current first action for the next engineering pass: configure missing server-only Supabase service-role key in Vercel (owner action in provider UI), then run authenticated staging E2E for account creation/login/recovery/session restore/workspace bootstrap. Do not paste credentials in the agent conversation.
 - Next code epic after auth activation: reduce release-bundle dependence in small parity-tested slices; then build a genuine isolated worker/runtime with approved capabilities, durable execution evidence, process cancellation/recovery, and measurable cost per accepted outcome.
 - Commercial track runs in parallel but stays narrow: use the reported `@whiloai` social footprint to acquire conversations for one paid Revenue Operator pilot; do not launch multiple unrelated product offers. Require buyer interviews, paid pilots, accepted work, positive delivery margin and renewals before scaling.
+
+
+## Leis Legal Desk — handoff 2026-10-28
+
+### Product and code changes
+
+- Added the **Leis Legal Desk** entry to the Whilo Plugins Marketplace, anchored to https://github.com/ctresb/leis.
+- The card has three Chat draft workflows: contract drafting, agreement review/redline preparation, and legal research with a source ledger. It also has **Save source** so an authenticated user can save the repository reference to the Whilo Library.
+- Clicking a legal workflow dispatches the Marketplace event and opens Chat with an **unsent draft**. It does not run the workflow, sign or send contracts, file a document, contact counterparties, or write to external systems.
+- Each prompt is Brazilian-Portuguese-first, asks for jurisdiction/as-of date and missing facts, prohibits invented statutes/articles/citations, and requires a qualified Brazilian lawyer to review before reliance or external use.
+- The UI explicitly says the source repository is **not queried or indexed live** in this MVP. The R$497/month/office founding-pilot figure is a pricing hypothesis; there is no checkout or entitlement tied to it.
+- Added docs/leis-legalops-product.md with target ICP, first contract-focused wedge, legal/data protection boundaries, pilot/pricing hypotheses, source-retrieval roadmap, and go-to-market proof plan.
+- Updated README.md and extended scripts/test-ui-resilience.cjs and scripts/check-platform.mjs with source, workflow, limitation and review-gate checks.
+
+### Source review
+
+- The actual README in ctresb/leis describes Brazilian legislation converted to Markdown from official sources, with structured metadata and links. It explicitly warns that conversion/OCR can contain errors, the corpus has gaps, and the repository does not replace publication in the Diário Oficial.
+- The repository's LICENSE file declares MIT. Do not infer that every data asset has an identical licence; preserve applicable notices for code and verify source provenance per document.
+- Public reference inspected: https://github.com/ctresb/leis and https://github.com/ctresb/leis/blob/main/LICENSE.
+- Legal-sector product positioning must be software assisting a lawyer, not an automated law firm or a replacement for professional legal judgment. Before public marketing, have Brazilian counsel review OAB rules, terms, privacy and client-data handling.
+
+### Validation status and limitations
+
+- Static syntax parsing passed for whilo-marketplace.js, whilo-enterprise.js and test-ui-resilience.cjs using the available code-mode parser.
+- Eleven source-level invariants were checked in the live GitHub file contents: repository link, all three workflows, Save source, live-index disclosure, unsent Chat handoff, lawyer-review message, product brief and README linkage.
+- **The full Node test suite has not been executed in a local/runtime checkout.** The assertions were added/updated, but no claim of passing npm run check is authorized until the actual command runs.
+- **No new Vercel deployment or live production UI smoke test is verified.** Do not say the legal agent is deployed, billing-ready, or connected to a live legal corpus.
+- Not implemented yet: live dataset ingestion/indexing, official-source verification at query time, versioned citation ledger, reliable DOCX generation, secure contract document lifecycle, and checkout/usage entitlements.
+
+### Next exact engineering action
+
+Build a separate, bounded legal-source retrieval service before advertising legal research as source-backed: retrieve source files with their repository revision/path, original official source URL, retrieved timestamp and content hash; confirm current text/status against official sources; mark OCR uncertainty and corpus gaps; and evaluate retrieval using a lawyer-reviewed set of questions. Add legal-source golden tests that fail on invented citations or stale/unknown status. Only then build secure document upload/DOCX output with version history and explicit lawyer approval, followed by sandbox billing tests. Start customer discovery with small Brazilian law firms handling repeat B2B service/SaaS agreements; treat R$497/month as a hypothesis until paid pilots and renewals validate it.
