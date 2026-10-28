@@ -248,6 +248,29 @@ function createCodexBridge(options = {}) {
       event('run-progress', { phase: 'finishing', message: 'Codex is finalizing the result.' });
     }
   }
+  async function approveTaskAccess(mode, prompt) {
+    if (!dialog || typeof dialog.showMessageBox !== 'function') {
+      throw Object.assign(new Error('A native Whilo permission dialog is required before local Codex can access files.'), { code: 'codex_native_approval_unavailable' });
+    }
+    const writeMode = mode === 'workspace-write';
+    const owner = options.getWindow ? options.getWindow() : undefined;
+    const result = await dialog.showMessageBox(owner, {
+      type: 'warning',
+      title: writeMode ? 'Approve Codex file edits' : 'Approve local Codex task',
+      message: writeMode
+        ? 'Allow Codex to edit files in this Git workspace?'
+        : 'Allow Codex to read this Git workspace for this task?',
+      detail: 'Workspace: ' + selectedWorkspace + '\nMode: ' + (writeMode ? 'Workspace write' : 'Read only') + '\n\nTask: ' + sanitizeOutput(prompt, 420) + '\n\nWhilo uses the official local Codex CLI. Your ChatGPT session stays on this computer and is not sent to Whilo servers. Only the selected workspace is granted to this task.',
+      buttons: [writeMode ? 'Allow file edits' : 'Run read-only task', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true
+    });
+    if (!result || result.response !== 0) {
+      throw Object.assign(new Error('Local Codex access was not approved; no task was started.'), { code: 'codex_approval_denied' });
+    }
+  }
+
   async function runTask(input = {}) {
     if (activeRun) {
       const error = new Error('A local Codex task is already running. Stop it or wait until it finishes.');
@@ -272,6 +295,7 @@ function createCodexBridge(options = {}) {
       error.code = 'codex_chatgpt_login_required';
       throw error;
     }
+    await approveTaskAccess(mode, prompt);
     const binary = requireExecutable();
     const args = ['exec', '--json', '--ephemeral', '--sandbox', mode, prompt];
     const child = spawn(binary, args, {
