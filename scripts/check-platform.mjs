@@ -232,7 +232,8 @@ if (!computerRoute.includes('resolvePublicHttpsTarget') ||
     !computerRoute.includes("allowedDomains: [hostname]") ||
     !computerRoute.includes('computer_run_rate_limited') ||
     !computerRoute.includes('computer.website_qa_completed') ||
-    !computerRoute.includes('page.screenshot')) failures.push('Computer QA must validate public targets, block cross-origin traffic, rate-limit launches and return screenshot evidence.');
+    !computerRoute.includes('interactiveElements = Array.from') ||
+    !computerRoute.includes('page.screenshot')) failures.push('Computer QA must validate public targets, block cross-origin traffic, rate-limit launches, return screenshot evidence and expose a redacted element inventory.');
 if (!messagesApi.includes("computer: require('../../server/routes/computer')") ||
     !vercelConfig.rewrites.some(rewrite => rewrite.source === '/api/computer' && rewrite.destination === '/api/messages?route=computer')) failures.push('Computer QA must be reachable through the consolidated server route without adding a Vercel function entrypoint.');
 if (!desktopMain.includes('assertTrustedIpcSender') ||
@@ -244,8 +245,9 @@ if (!desktopPreload.includes('contextBridge.exposeInMainWorld("whiloDesktop"') |
 if (!desktopCodexBridge.includes("['login', '--device-auth']") ||
     !desktopCodexBridge.includes("['exec', '--json', '--ephemeral', '--sandbox', mode, prompt]") ||
     !desktopCodexBridge.includes('await approveTaskAccess(mode, prompt)') ||
+    !desktopCodexBridge.includes("login.child.kill('SIGTERM')") ||
     !desktopCodexBridge.includes('LOGIN_TIMEOUT_MS') ||
-    !desktopCodexBridge.includes('RUN_TIMEOUT_MS')) failures.push('Local Codex must use official device login, ephemeral sandboxed tasks, native approval and hard timeouts.');
+    !desktopCodexBridge.includes('RUN_TIMEOUT_MS')) failures.push('Local Codex must use official device login, ephemeral sandboxed tasks, native approval, correct shutdown cleanup and hard timeouts.');
 if (!desktopCodexBridge.includes('delete env.OPENAI_API_KEY') ||
     !desktopCodexBridge.includes('delete env.CODEX_ACCESS_TOKEN') ||
     !desktopCodexBridge.includes('CODEX_HOME: codexHome')) failures.push('Codex session isolation must remove API keys and keep the CLI profile in Whilo user data.');
