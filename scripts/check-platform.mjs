@@ -195,6 +195,10 @@ const affiliateRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'ser
 const chatgptAuthRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'chatgpt-auth.js'), 'utf8');
 const modelGatewayRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'model-gateway.js'), 'utf8');
 const connectorsRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'api', 'connectors', 'index.js'), 'utf8');
+const computerRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'computer.js'), 'utf8');
+const messagesApi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'api', 'messages', 'index.js'), 'utf8');
+const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'vercel.json'), 'utf8'));
+const browserRuntimePackage = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'package.json'), 'utf8'));
 const cloudAuthClient = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'), 'utf8');
 if (!chatgptAuthRoute.includes('consume_whilo_siwc_transaction') || !chatgptAuthRoute.includes('crypto.verify(') || !chatgptAuthRoute.includes('claims.nonce !== nonce')) failures.push('ChatGPT identity sign-in must consume state once and verify OIDC signature/nonce.');
 if (!chatgptAuthRoute.includes("scope', 'openid profile email") || chatgptAuthRoute.includes('chatgpt.tokens.use.direct')) failures.push('Hosted Whilo ChatGPT OAuth must remain identity-only until OpenAI approves consumer-plan inference.');
@@ -202,13 +206,30 @@ if (!chatgptAuthRoute.includes('browser_session_hash') || !chatgptAuthRoute.incl
 if (!cloudAuthClient.includes('signInWithProvider') || !cloudAuthClient.includes('code_verifier:pending.verifier') || !cloudAuthClient.includes('window.history.replaceState')) failures.push('Google sign-in must use PKCE and remove callback credentials from the address bar.');
 if (!modelGatewayRoute.includes("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100") ||
     !modelGatewayRoute.includes("https://api.openai.com/v1/responses") ||
+    !modelGatewayRoute.includes("https://api.anthropic.com/v1/messages") ||
+    !modelGatewayRoute.includes("https://openrouter.ai/api/v1/chat/completions") ||
+    !modelGatewayRoute.includes("kind:'anthropic_api_key'") ||
+    !modelGatewayRoute.includes("kind:'openrouter_api_key'") ||
     !modelGatewayRoute.includes('store:false') ||
     !modelGatewayRoute.includes('Math.min(2048') ||
-    !modelGatewayRoute.includes('provider_quota_or_rate_limit')) failures.push('BYOK model gateway must use official API endpoints, no-store requests, bounded output and quota-aware errors.');
+    !modelGatewayRoute.includes('provider_quota_or_rate_limit')) failures.push('BYOK model gateway must support Gemini, OpenAI, Anthropic and OpenRouter with bounded requests and quota-aware errors.');
 if (modelGatewayRoute.includes('chatgpt.tokens.use.direct') || modelGatewayRoute.includes('antigravity')) failures.push('Hosted model gateway must not impersonate consumer-plan or Antigravity clients.');
-if (!connectorsRoute.includes("action === 'connect_gemini_api'") || !connectorsRoute.includes("action === 'connect_openai_api'") ||
-    !connectorsRoute.includes("encryptPayload({kind:isGemini?'gemini_api_key':'openai_api_key'") ||
-    !connectorsRoute.includes("['owner','admin'].includes(member.role)")) failures.push('BYOK provider keys must be verified, encrypted at rest and restricted to workspace owners/admins.');
+if (!connectorsRoute.includes("connect_gemini_api: 'gemini-api'") ||
+    !connectorsRoute.includes("connect_openai_api: 'openai-api'") ||
+    !connectorsRoute.includes("connect_anthropic_api: 'anthropic-api'") ||
+    !connectorsRoute.includes("connect_openrouter_api: 'openrouter-api'") ||
+    !connectorsRoute.includes('encryptPayload({kind:spec.kind,apiKey})') ||
+    !connectorsRoute.includes("['owner','admin'].includes(member.role)")) failures.push('BYOK provider keys must verify Gemini/OpenAI/Anthropic/OpenRouter, encrypt keys at rest and restrict shared credentials to owners/admins.');
+if (!computerRoute.includes('resolvePublicHttpsTarget') ||
+    !computerRoute.includes("parsed.origin === targetOrigin") ||
+    !computerRoute.includes("allowedDomains: [hostname]") ||
+    !computerRoute.includes('computer_run_rate_limited') ||
+    !computerRoute.includes('computer.website_qa_completed') ||
+    !computerRoute.includes('page.screenshot')) failures.push('Computer QA must validate public targets, block cross-origin traffic, rate-limit launches and return screenshot evidence.');
+if (!messagesApi.includes("computer: require('../../server/routes/computer')") ||
+    !vercelConfig.rewrites.some(rewrite => rewrite.source === '/api/computer' && rewrite.destination === '/api/messages?route=computer')) failures.push('Computer QA must be reachable through the consolidated server route without adding a Vercel function entrypoint.');
+if (browserRuntimePackage.dependencies?.['playwright-core'] !== '1.64.1') failures.push('The remote computer runtime must use an exact Playwright Core version pin.');
+if (!enterpriseUi.includes('data-act="chat-run-computer-qa"') || !enterpriseUi.includes('computerQaResult.screenshotDataUrl')) failures.push('Chat must expose the read-only remote computer QA action and screenshot receipt.');
 if (!enterpriseUi.includes('BYOK Model Console') || !enterpriseUi.includes('connect-model-key-form') ||
     !enterpriseUi.includes('model-playground-form')) failures.push('The Connect screen must include secure provider-key setup and a live-model console.');
 const marketplaceRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'marketplace.js'), 'utf8');
