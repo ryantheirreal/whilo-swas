@@ -199,7 +199,6 @@ const modelGatewayRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', '
 const connectorsRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'api', 'connectors', 'index.js'), 'utf8');
 const computerRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'computer.js'), 'utf8');
 const messagesApi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'api', 'messages', 'index.js'), 'utf8');
-const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'vercel.json'), 'utf8'));
 const browserRuntimePackage = JSON.parse(fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'package.json'), 'utf8'));
 const desktopRoot = path.join(root, 'desktop', 'whilo-swas-desktop');
 const desktopMain = fs.readFileSync(path.join(desktopRoot, 'src', 'main.cjs'), 'utf8');
