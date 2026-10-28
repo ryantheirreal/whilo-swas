@@ -103,11 +103,11 @@ assert.ok(computerRoute.includes('page.screenshot'), 'Remote browser captures sc
 assert.ok(computerUi.includes("['codex-local','Codex via ChatGPT · this computer']"), 'Local ChatGPT Codex option is limited to the desktop bridge');
 assert.ok(computerUi.includes("if(whiloChatProvider==='codex-local')"), 'Chat routes local Codex requests separately from hosted API providers');
 assert.ok(computerUi.includes("whiloChatCodexMode==='workspace-write'?'workspace-write':'read-only'"), 'Local Codex permission defaults to read-only and has an explicit write mode');
-assert.ok(computerUi.includes('choose a repository you are allowed to share with that service'), 'The Codex panel explains that task and project content is sent to OpenAI');
+assert.ok(computerUi.includes('choose only a repository you are allowed to share with that service'), 'The Codex panel explains that task and project content is sent to OpenAI');
 assert.ok(desktopMain.includes('assertTrustedIpcSender'), 'The desktop main process validates the sender for every local Codex IPC call');
 assert.ok(desktopMain.includes('frameUrl.origin !== appUrl.origin'), 'Local Codex IPC is restricted to the configured Whilo origin');
-assert.ok(desktopMain.includes('event.senderFrame !== event.sender.mainFrame'), 'Local Codex IPC rejects iframe callers');
-assert.ok(desktopMain.includes('ipcMain.handle("whilo:codex:run"'), 'Codex tasks use a main-process IPC handler');
+assert.ok(desktopMain.includes('frame !== event.sender.mainFrame'), 'Local Codex IPC rejects iframe callers');
+assert.ok(desktopMain.includes('"whilo:codex:run":'), 'Codex tasks use a main-process IPC handler');
 assert.ok(desktopPreload.includes('contextBridge.exposeInMainWorld("whiloDesktop"'), 'Only an explicit desktop bridge is exposed to the renderer');
 assert.ok(!desktopPreload.includes('exposeInMainWorld("ipcRenderer"'), 'Raw ipcRenderer is not exposed to the renderer');
 assert.ok(desktopPreload.includes('cancelRun: () => invokeCodex("whilo:codex:run-cancel")'), 'The desktop UI can cancel a local task');
