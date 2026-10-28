@@ -42,6 +42,10 @@
       "destination": "/api/messages?route=model-gateway"
     },
     {
+      "source": "/api/computer",
+      "destination": "/api/messages?route=computer"
+    },
+    {
       "source": "/api/auth/chatgpt/callback",
       "destination": "/api/messages?route=chatgpt-auth-callback"
     },
