@@ -1394,6 +1394,7 @@
   let routineData = null, routineLoading = false, routineBusy = false, routineFeedback = '', routineTourStep = 0;
   let creditsData = null, creditsLoading = false, creditsBusy = false, creditsFeedback = '';
   let whiloChatMessages = [], whiloChatDraft = '', whiloChatBusy = false, whiloChatFeedback = '';
+  let computerQaBusy = false, computerQaFeedback = '', computerQaResult = null;
   let whiloChatProvider = 'gemini-api', whiloChatModels = [], whiloChatSelectedModel = '', whiloChatModelLoading = false, whiloChatModelFeedback = '', whiloChatModelPromise = null;
   let whiloChatMode = 'chat', whiloChatPendingRoutine = null, whiloChatRoutineSaving = false;
   let whiloChatTargetKind = 'library_asset', whiloChatAssetId = '', whiloChatTargetUrl = '', whiloChatRuntimeMode = 'browser';
@@ -1664,6 +1665,20 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     out+='<label for="whilo-chat-target-kind">Target type</label><select class="field" id="whilo-chat-target-kind">'+targetOptions+'</select>';
     out+='<label for="whilo-chat-asset">Library asset</label><select class="field" id="whilo-chat-asset"><option value="">Choose an asset</option>'+assets.map(function(a){return '<option value="'+esc(a.id)+'"'+(a.id===whiloChatAssetId?' selected':'')+'>'+esc(a.name)+' · '+esc(a.asset_type)+'</option>';}).join('')+'</select>';
     out+='<label for="whilo-chat-target-url">Target URL (public HTTPS only)</label><input class="field" id="whilo-chat-target-url" type="url" maxlength="2048" placeholder="https://example.com or API endpoint" value="'+esc(whiloChatTargetUrl)+'">';
+    out+='<section class="whilo-computer-qa" style="margin:10px 0 14px;padding:12px;border:1px solid #2e3642;border-radius:12px;background:rgba(255,255,255,.02)"><div class="eyebrow">REMOTE COMPUTER / BROWSER QA</div><p class="whilo-chat-muted">Runs an isolated, short-lived browser against this public HTTPS site. It checks layout/accessibility signals, failed requests and JavaScript errors, then returns a screenshot. It does not submit forms or change site data.</p><button class="btn secondary" type="button" data-act="chat-run-computer-qa"'+(computerQaBusy?' disabled':'')+'>'+(computerQaBusy?'Inspecting site…':'Run read-only browser QA')+'</button>';
+    if(computerQaFeedback) out+='<div class="notice" role="status" style="margin-top:9px">'+esc(computerQaFeedback)+'</div>';
+    if(computerQaResult && computerQaResult.ok) {
+      const qa = computerQaResult;
+      const qaFindings = Array.isArray(qa.findings) ? qa.findings.slice(0,20) : [];
+      const shot = typeof qa.screenshotDataUrl === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(qa.screenshotDataUrl) ? qa.screenshotDataUrl : '';
+      out+='<div style="margin-top:12px"><div class="row"><div><div class="eyebrow">INSPECTION RESULT</div><h4 style="margin:5px 0">'+esc(qa.title||'Untitled page')+'</h4></div><span class="pill">'+(qa.status==null?'HTTP unverified':'HTTP '+Number(qa.status))+'</span></div><p class="whilo-chat-muted">'+Number(qa.durationMs||0)+' ms · '+qaFindings.length+' finding(s) · run '+esc(String(qa.sessionId||'').slice(0,12))+'</p>';
+      if(qaFindings.length) out+='<ul style="padding-left:18px;margin:8px 0">'+qaFindings.map(function(item){return '<li style="margin:6px 0;font-size:11px;color:#d7dfeb"><b>'+esc(String(item.severity||'info').toUpperCase())+' · '+esc(item.code||'finding')+'</b><br>'+esc(item.detail||'Review this item.')+'</li>';}).join('')+'</ul>';
+      else out+='<div class="notice">No configured QA signals were detected in this pass. This is not a full security audit or proof that every workflow works.</div>';
+      if(shot) out+='<img src="'+shot+'" alt="Screenshot captured by Whilo remote browser QA" loading="lazy" style="display:block;width:100%;height:auto;margin-top:10px;border-radius:10px;border:1px solid #343d4a">';
+      out+='<p class="whilo-chat-muted">Only the selected HTTPS origin was allowed; third-party requests were blocked. Screenshot and findings are returned for this view, not saved as an asset.</p></div>';
+    }
+    out+='</section>';
+
     out+='<label for="whilo-chat-runtime">Runtime mode</label><select class="field" id="whilo-chat-runtime"><option value="browser"'+(whiloChatRuntimeMode==='browser'?' selected':'')+'>Browser (plan/evidence)</option><option value="api"'+(whiloChatRuntimeMode==='api'?' selected':'')+'>API (approval-gated)</option><option value="desktop"'+(whiloChatRuntimeMode==='desktop'?' selected':'')+'>Desktop (paired worker required)</option><option value="hybrid"'+(whiloChatRuntimeMode==='hybrid'?' selected':'')+'>Hybrid</option></select>';
     out+='<label for="whilo-chat-schedule">Schedule</label><select class="field" id="whilo-chat-schedule">'+scheduleOptions+'</select>';
     out+='<label for="whilo-chat-schedule-time">Run time (São Paulo)</label><input class="field" id="whilo-chat-schedule-time" type="time" value="'+esc(whiloChatScheduleTime)+'">';
@@ -1917,6 +1932,36 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     const action = event.target.closest('[data-act]');
     if (!action) return;
     const act = action.getAttribute('data-act'), id = action.getAttribute('data-id');
+    if (act === 'chat-run-computer-qa') {
+      if (computerQaBusy) return;
+      const targetUrl = String(whiloChatTargetUrl || '').trim();
+      if (!targetUrl) {
+        computerQaFeedback = 'Enter a public HTTPS URL above, then start the read-only browser QA.';
+        computerQaResult = null;
+        render();
+        return;
+      }
+      computerQaBusy = true;
+      computerQaFeedback = 'Preparing an isolated remote browser. The site is not being modified.';
+      computerQaResult = null;
+      render();
+      whiloApi('/api/computer', { method:'POST', body:JSON.stringify({url:targetUrl}) })
+        .then(function(data) {
+          computerQaResult = data && data.ok ? data : null;
+          computerQaFeedback = data && data.ok
+            ? 'Inspection completed. Review the evidence below; no forms were submitted and no data was changed.'
+            : (data && data.error ? String(data.error) : 'The browser inspection could not be verified.');
+        })
+        .catch(function(error) {
+          computerQaResult = null;
+          computerQaFeedback = error && error.message ? error.message : 'The remote browser inspection failed. Check runtime configuration and retry.';
+        })
+        .finally(function() {
+          computerQaBusy = false;
+          if (active === 'chat') render();
+        });
+      return;
+    }
     if (act === 'render-retry') { renderFailure = null; render(); return; }
     if (act === 'render-home') { active = 'work'; render(); return; }
     if (act === 'close') { closePanel(); return; }
