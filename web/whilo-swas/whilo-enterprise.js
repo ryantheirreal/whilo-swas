@@ -1483,6 +1483,26 @@
       }
     }, 80);
   });
+  window.addEventListener('whilo:marketplace:plan-legal', function(event) {
+    const detail = event && event.detail ? event.detail : {};
+    const workflow = String(detail.workflow || 'contract');
+    if (!['contract','review','research'].includes(workflow)) return;
+    const prompt = String(detail.prompt || '').trim().slice(0, 9000);
+    if (!prompt || detail.sourceUrl !== 'https://github.com/ctresb/leis') return;
+    whiloChatDraft = prompt;
+    whiloChatMode = 'chat';
+    whiloChatPendingRoutine = null;
+    const label = workflow === 'contract' ? 'contract draft' : workflow === 'review' ? 'contract review' : 'legal research';
+    whiloChatFeedback = 'Leis Legal Desk · ' + label + ' prepared as an unsent draft. Whilo has not queried the repository live. Verify current text in the official source; a qualified Brazilian lawyer must review before reliance or external use.';
+    openPanel('chat');
+    window.setTimeout(function() {
+      const input = shadow.querySelector('#whilo-chat-input');
+      if (input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    }, 80);
+  });
 
   function routineAssetOptions(assets) {
     return '<option value="">Choose a library asset</option>'+(Array.isArray(assets)?assets.filter(function(a){return a.status!=='archived';}):[]).map(function(a){
