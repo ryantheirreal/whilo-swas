@@ -484,8 +484,13 @@
   function visiblePetSpecialists() {
     if (filter !== 'all' && filter !== 'pet') return [];
     return PET_SPECIALISTS.filter(function(pet) {
-      const matchesMarket = marketFilter === 'all' || marketFilter === pet.id;
-      const searchable = [pet.name,pet.market,pet.shortMarket,pet.summary,pet.marketSize,pet.wedge,pet.wedgeSize].concat(pet.segments).join(' ');
+      const stage = norm(pet.marketStage || '');
+      const matchesMarket = marketFilter === 'all' ||
+        marketFilter === pet.id ||
+        (marketFilter === 'autopilot' && stage.includes('autopilot wedge')) ||
+        (marketFilter === 'next-wave' && stage.includes('next wave')) ||
+        (marketFilter === 'judgment-heavy' && (stage.includes('copilot') || stage.includes('watch')));
+      const searchable = [pet.name,pet.market,pet.shortMarket,pet.marketStage,pet.summary,pet.marketSize,pet.wedge,pet.wedgeSize].concat(pet.segments).join(' ');
       return matchesMarket && (!query || norm(searchable).includes(norm(query)));
     });
   }
@@ -517,8 +522,11 @@
   function marketSection() {
     const rows = visiblePetSpecialists();
     let out = '<section class="market-section" aria-label="Industry specialist Pets"><div class="market-heading"><div><div class="eyebrow">WHILO INDUSTRY PETS · SIX VERTICALS</div><h2>One Pet. One market. One measurable workflow.</h2><p>Explore focused specialists for large service economies. Each profile pairs an industry opportunity with a narrower starting workflow, source evidence, human approval boundaries and a measurable pilot.</p><div class="market-proof"><span class="pill">Outcome-led</span><span class="pill">Evidence before claims</span><span class="pill">Human approval for consequential actions</span></div></div></div>' +
-      '<div class="market-proof" role="group" aria-label="Filter specialist market">'+
+      '<div class="market-proof" role="group" aria-label="Filter by Sequoia opportunity stage">'+
       '<button type="button" class="market-chip'+(marketFilter==='all'?' active':'')+'" data-market="all" aria-pressed="'+(marketFilter==='all'?'true':'false')+'"><span>All markets</span><small>6 Pets</small></button>'+
+      '<button type="button" class="market-chip'+(marketFilter==='autopilot'?' active':'')+'" data-market="autopilot" aria-pressed="'+(marketFilter==='autopilot'?'true':'false')+'"><span>Autopilot wedge</span><small>2 markets</small></button>'+
+      '<button type="button" class="market-chip'+(marketFilter==='next-wave'?' active':'')+'" data-market="next-wave" aria-pressed="'+(marketFilter==='next-wave'?'true':'false')+'"><span>Next wave</span><small>1 market</small></button>'+
+      '<button type="button" class="market-chip'+(marketFilter==='judgment-heavy'?' active':'')+'" data-market="judgment-heavy" aria-pressed="'+(marketFilter==='judgment-heavy'?'true':'false')+'"><span>Judgment-heavy</span><small>3 markets</small></button>'+
       PET_SPECIALISTS.map(function(pet){return '<button type="button" class="market-chip'+(marketFilter===pet.id?' active':'')+'" data-market="'+esc(pet.id)+'" aria-pressed="'+(marketFilter===pet.id?'true':'false')+'"><span>'+esc(pet.shortMarket)+'</span><small>'+esc(pet.marketSize)+'</small></button>';}).join('')+
       '</div><div class="market-grid pet-grid">'+(rows.length?rows.map(specialistCard).join(''):'<div class="market-empty">No specialist matches this search. Try a market name, workflow or segment.</div>')+'</div>'+petDetailPanel()+
       '<p class="market-source-note">Market sizes are broad, illustrative opportunity-map estimates—not Whilo revenue forecasts or the amount this product can capture. Sequoia explicitly recommends starting with an outsourced, intelligence-heavy wedge where a buyer already pays for the work, then expanding toward judgment-heavy work only as evidence, distribution and controls improve. The advertising figure is shown in the published opportunity-map illustration and is described here as a broad labor opportunity. Validate a narrower segment, buyer and paid pilot before investing.</p></section>';
