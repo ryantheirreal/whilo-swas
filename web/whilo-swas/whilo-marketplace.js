@@ -425,12 +425,15 @@
   const TYPES = {pet:'Pet',bot:'Bot',skill:'Skill',playbook:'Playbook',template:'Template'};
   const ICONS = {pet:'◉',bot:'✳',skill:'⌘',playbook:'▤',template:'▧'};
   const money = function (cents) { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((Number(cents)||0)/100); };
+  const usd = function (amount) { return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Number(amount)||0); };
+  const quantity = function (amount) { return new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(Number(amount)||0); };
   const esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); };
   const norm = function (v) { return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); };
   const portuguese = /pt/i.test(document.documentElement.lang || '');
   let live = false, loading = false, saving = false, listings = [];
   let page = 'discover', filter = 'all', query = '', billingInterval = 'monthly', feedback = '';
   let marketFilter = 'all', selectedPetId = '', selectedWorkflowId = '';
+  let pilotCases = 300, pilotMinutes = 12, pilotHourly = 35, pilotReduction = 40, pilotMonthlyCost = 500;
   let creator = {session:false,dashboard:null}, library = {session:false,installations:[],error:''}, moderation = {items:[],error:''}, authMode = 'signin';
 
   const host = document.createElement('div');
@@ -449,6 +452,7 @@
     '@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.plans{grid-template-columns:repeat(3,minmax(0,1fr))}.split{grid-template-columns:1fr}}@media(max-width:680px){.veil{padding:0}.panel{height:100dvh;width:100%;border:0;border-radius:0}.head{padding:14px}.content{padding:15px 12px}.nav{padding:8px 10px}.hero{display:block}.hero h2{font-size:24px}.grid{grid-template-columns:1fr}.plans{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.fieldgroup.full{grid-column:auto}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.footer span:last-child{display:none}}@media(max-width:420px){.plans{grid-template-columns:1fr}}';
   style.textContent += "\n:host{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;color:#f5f5f5}\n.veil{background:#080808;padding:0;backdrop-filter:none;align-items:stretch;justify-content:stretch}\n.veil.open{display:flex}\n.panel{width:100%;max-width:none;height:100dvh;max-height:none;background:#090909;border:0;border-radius:0;box-shadow:none}\n.head{padding:16px 24px;background:#0b0b0b;border-color:#252525}\n.mark{background:#f5f5f5;color:#090909;border-radius:10px}\n.eyebrow{color:#a3a3a3}\nh1,.hero h2,.section-title{color:#f5f5f5}\n.sub,.hero p{color:#a3a3a3}\n.close{background:#151515;border-color:#333;color:#f5f5f5;border-radius:999px;cursor:pointer}\n.nav{background:#0b0b0b;border-color:#252525;padding:10px 24px}\n.nav button,.filter{color:#a3a3a3;border-radius:999px}\n.nav button.active,.filter.active{background:#f5f5f5;border-color:#f5f5f5;color:#090909}\n.content{background:#090909;padding:clamp(18px,2.2vw,32px)}\n.pill{background:#171717;border-color:#323232;color:#d4d4d4}\n.pill.preview,.pill.live{background:#171717;border-color:#414141;color:#e5e5e5}\n.field,input,select,textarea{background:#111;border-color:#333;color:#f5f5f5}\n.field:focus,input:focus,select:focus,textarea:focus{border-color:#a3a3a3;box-shadow:0 0 0 3px rgba(255,255,255,.08)}\n.btn{border-color:#f5f5f5;background:#f5f5f5;color:#090909}\n.btn.secondary{border-color:#383838;background:#191919;color:#eee}\n.btn.ghost{border-color:#383838;background:transparent;color:#d4d4d4}\n.card,.plan,.stat{background:#111;border-color:#292929;box-shadow:none}\n.asset,.asset.bot,.asset.skill{background:#e8e8e8;color:#111}\n.card h3,.price,.plan h3,.stat strong{color:#f5f5f5}\n.card p,.meta,.plan-desc,.plan li,.stat span,.hint{color:#a3a3a3}\n.card-foot,.list-row{border-color:#2a2a2a}\n.notice,.notice.info,.notice.success{background:#191919;border-color:#383838;color:#ddd}\n.empty{border-color:#373737;color:#a3a3a3}\n.empty strong{color:#f5f5f5}\n.plan.popular{border-color:#d4d4d4;box-shadow:0 0 0 1px rgba(255,255,255,.06) inset}\n.plan-tag{color:#e5e5e5}\n.statrow,.form,.footer{background:#0b0b0b;border-color:#252525}\n.footer{color:#777}\n@media(max-width:680px){.veil{padding:0}.panel{height:100dvh;border-radius:0}.head{padding:13px 14px}.nav{padding:8px 10px}.content{padding:16px 12px}}\n";
   style.textContent += "\n.market-section{margin:18px 0 30px}\n.market-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:4px 0 14px;flex-wrap:wrap}\n.market-heading h2{font-size:clamp(22px,2.4vw,30px);letter-spacing:-.05em;line-height:1.1;margin:7px 0}\n.market-heading p{font-size:12px;line-height:1.65;max-width:680px;margin:0;color:#a3a3a3}\n.market-proof{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}\n.market-chip{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:39px;padding:8px 11px;border:1px solid #303030;background:#111;color:#d4d4d4;border-radius:999px;font:inherit;font-size:11px;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}\n.market-chip small{font-size:10px;color:#8f8f8f}\n.market-chip.active{background:#f5f5f5;border-color:#f5f5f5;color:#090909}\n.market-chip.active small{color:#444}\n.market-chip:hover,.market-card:hover{border-color:#777;transform:translateY(-1px)}\n.market-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}\n.market-card{display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px;border:1px solid #292929;border-radius:17px;background:linear-gradient(145deg,#141414,#0e0e0e);transition:transform .15s,border-color .15s;box-shadow:none}\n.market-card.selected{border-color:#d4d4d4;box-shadow:inset 0 0 0 1px #ffffff0a}\n.market-card-top{display:flex;align-items:flex-start;gap:11px}\n.market-avatar{flex:0 0 43px;width:43px;height:43px;border-radius:13px;display:grid;place-items:center;background:#ededed;color:#111;font-size:18px;font-weight:900}\n.market-card-top .eyebrow{font-size:9px;letter-spacing:.12em}\n.market-card h3{font-size:17px;letter-spacing:-.035em;margin:4px 0}\n.market-card .market-summary{font-size:11px;line-height:1.65;color:#aaa;margin:0}\n.market-value{padding:12px 13px;border:1px solid #2b2b2b;border-radius:12px;background:#0b0b0b}\n.market-value strong{font-size:22px;display:block;letter-spacing:-.05em;color:#f5f5f5}\n.market-value span{display:block;font-size:10px;color:#a3a3a3;line-height:1.45;margin-top:4px}\n.market-wedge{font-size:11px;line-height:1.55;color:#ddd}\n.market-wedge strong{color:#fafafa}\n.market-card .market-tags{display:flex;gap:5px;flex-wrap:wrap}\n.market-card .market-tags .pill{font-size:9px}\n.market-card .card-foot{margin-top:auto}\n.source-link{color:#d4d4d4;text-decoration:underline;text-decoration-color:#555;text-underline-offset:3px;font-size:10px}\n.source-link:hover{color:#fff;text-decoration-color:#fff}\n.pet-detail{margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.78fr);gap:18px;padding:clamp(16px,2vw,24px);border:1px solid #333;border-radius:18px;background:#0d0d0d}\n.pet-detail h3{font-size:22px;letter-spacing:-.04em;margin:8px 0}\n.pet-detail p{font-size:12px;color:#aaa;line-height:1.65}\n.pet-detail .detail-side{border-left:1px solid #292929;padding-left:18px}\n.segment-list{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0}\n.segment-list span{border:1px solid #313131;background:#161616;color:#ddd;border-radius:999px;padding:6px 9px;font-size:10px}\n.workflow-list{display:grid;gap:7px;margin:12px 0}\n.workflow-option{display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;padding:12px;border-radius:12px;border:1px solid #2d2d2d;background:#111;color:#ddd;cursor:pointer;font:inherit}\n.workflow-option.active{border-color:#e5e5e5;background:#1a1a1a}\n.workflow-option .workflow-index{flex:0 0 26px;width:26px;height:26px;border:1px solid #444;border-radius:8px;display:grid;place-items:center;font-size:10px}\n.workflow-option strong{display:block;font-size:11px;color:#f5f5f5}\n.workflow-option small{display:block;font-size:10px;color:#a3a3a3;line-height:1.5;margin-top:4px}\n.workflow-preview{padding:14px;border:1px solid #303030;border-radius:14px;background:#121212;margin-top:12px}\n.workflow-preview h4{font-size:14px;margin:3px 0 8px;letter-spacing:-.02em}\n.workflow-preview ol{padding-left:20px;margin:11px 0;display:grid;gap:8px}\n.workflow-preview li{font-size:11px;color:#d4d4d4;line-height:1.55;padding-left:2px}\n.workflow-preview .proof{padding:10px;border-left:2px solid #e5e5e5;background:#191919;font-size:11px;color:#ddd;line-height:1.6}\n.workflow-preview .metric{font-size:10px;color:#a3a3a3;line-height:1.6;margin:10px 0 0}\n.market-guardrail{padding:11px 12px;background:#181818;border:1px solid #383838;border-radius:12px;font-size:10px;color:#ddd;line-height:1.6}\n.market-source-note{font-size:10px;line-height:1.6;color:#858585;margin:12px 0 0}\n.market-empty{grid-column:1/-1;padding:24px;border:1px dashed #3a3a3a;border-radius:14px;text-align:center;color:#aaa;font-size:12px}\n@media(max-width:1000px){.market-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pet-detail{grid-template-columns:1fr}.pet-detail .detail-side{border-left:0;border-top:1px solid #292929;padding:16px 0 0}}\n@media(max-width:680px){.market-grid{grid-template-columns:1fr}.market-heading{display:block}.market-chip{flex:0 0 auto}.market-proof{flex-wrap:nowrap;overflow-x:auto;padding:2px 0 8px}.pet-detail{padding:14px}.market-card{padding:14px}}\n";
+  style.textContent += "\n.pilot-calculator{margin-top:15px;padding:14px;border:1px solid #363636;border-radius:15px;background:#0b0b0b}\n.pilot-calculator h4{font-size:14px;letter-spacing:-.02em;margin:4px 0 5px}\n.pilot-calculator .pilot-intro{color:#a3a3a3;font-size:10px;line-height:1.6;margin:0 0 12px}\n.pilot-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}\n.pilot-inputs label{display:grid;gap:5px;font-size:10px;color:#bcbcbc}\n.pilot-inputs input{width:100%;min-width:0;padding:9px 10px;font-size:12px;border-radius:9px}\n.pilot-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}\n.pilot-result{padding:11px;border:1px solid #292929;border-radius:11px;background:#131313}\n.pilot-result span{display:block;font-size:9px;line-height:1.5;color:#9d9d9d}\n.pilot-result strong{display:block;font-size:18px;color:#f5f5f5;letter-spacing:-.04em;margin-top:4px}\n.pilot-disclaimer{margin-top:11px;font-size:10px;line-height:1.6;color:#888}\n@media(max-width:500px){.pilot-inputs{grid-template-columns:1fr 1fr}.pilot-results{grid-template-columns:1fr 1fr}.pilot-result strong{font-size:16px}}\n";
   root.appendChild(style);
   const veil = document.createElement('div');
   veil.className = 'veil';
@@ -506,13 +510,75 @@
       '<div class="card-foot"><span class="meta">3 workflow blueprints</span><button class="btn'+(selected?'':' secondary')+'" type="button" data-action="pet-explore" data-id="'+esc(pet.id)+'" aria-label="Explore '+esc(pet.name)+' specialty">'+(selected?'Selected':'Explore Pet')+' ↗</button></div>' +
       '</article>';
   }
+  function pilotEstimate() {
+    const baselineHours = pilotCases * pilotMinutes / 60;
+    const hoursFreed = baselineHours * pilotReduction / 100;
+    const capacityValue = hoursFreed * pilotHourly;
+    return {
+      baselineHours: baselineHours,
+      hoursFreed: hoursFreed,
+      capacityValue: capacityValue,
+      netCapacityValue: capacityValue - pilotMonthlyCost,
+      valueMultiple: pilotMonthlyCost > 0 ? capacityValue / pilotMonthlyCost : null
+    };
+  }
+  function pilotCalculatorMarkup() {
+    const estimate = pilotEstimate();
+    const field = function(id,label,value,min,max,step,suffix) {
+      return '<label>'+label+(suffix?' · '+suffix:'')+'<input type="number" inputmode="decimal" id="'+id+'" data-pilot-input="'+id+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+esc(value)+'" aria-label="'+label+'"></label>';
+    };
+    return '<section class="pilot-calculator" aria-label="Illustrative pilot capacity estimator"><div class="eyebrow">PILOT DESIGN / HYPOTHETICAL</div><h4>Estimate the workflow’s capacity value</h4><p class="pilot-intro">Change the assumptions to size a pilot. These are example inputs, not measured results or a savings guarantee.</p><div class="pilot-inputs">'+
+      field('pilot-cases','Cases each month',pilotCases,1,100000,1,'cases')+
+      field('pilot-minutes','Current minutes per case',pilotMinutes,1,600,1,'minutes')+
+      field('pilot-hourly','Loaded labor cost',pilotHourly,0,1000,1,'US$/hour')+
+      field('pilot-reduction','Expected time reduction',pilotReduction,0,90,5,'%')+
+      field('pilot-monthly-cost','Estimated service cost',pilotMonthlyCost,0,1000000,50,'US$/month')+
+      '</div><div class="pilot-results" aria-live="polite"><div class="pilot-result"><span>Hours potentially freed / month</span><strong id="pilot-hours-freed">'+quantity(estimate.hoursFreed)+'</strong></div><div class="pilot-result"><span>Labor capacity value · not cash savings</span><strong id="pilot-capacity-value">'+usd(estimate.capacityValue)+'</strong></div><div class="pilot-result"><span>Capacity value minus modeled cost</span><strong id="pilot-net-capacity">'+usd(estimate.netCapacityValue)+'</strong></div><div class="pilot-result"><span>Capacity value / service cost</span><strong id="pilot-value-multiple">'+(estimate.valueMultiple===null?'Not set':quantity(estimate.valueMultiple)+'×')+'</strong></div></div><p class="pilot-disclaimer">The estimate assumes the entered share of time is genuinely released and redeployed. Validate actual case time, quality, exceptions, review effort, tool cost and customer acceptance in a controlled pilot before treating any figure as savings.</p></section>';
+  }
+  function updatePilotEstimate() {
+    const bounds = {
+      'pilot-cases': [1,100000],
+      'pilot-minutes': [1,600],
+      'pilot-hourly': [0,1000],
+      'pilot-reduction': [0,90],
+      'pilot-monthly-cost': [0,1000000]
+    };
+    const values = {
+      'pilot-cases': pilotCases,
+      'pilot-minutes': pilotMinutes,
+      'pilot-hourly': pilotHourly,
+      'pilot-reduction': pilotReduction,
+      'pilot-monthly-cost': pilotMonthlyCost
+    };
+    Object.keys(bounds).forEach(function(id) {
+      const input = content.querySelector('#'+id);
+      if (!input || String(input.value).trim()==='') return;
+      const n = Number(input.value);
+      const range = bounds[id];
+      if (!Number.isFinite(n)) { input.value = String(values[id]); return; }
+      values[id] = Math.max(range[0],Math.min(range[1],n));
+      input.value = String(values[id]);
+    });
+    pilotCases = values['pilot-cases'];
+    pilotMinutes = values['pilot-minutes'];
+    pilotHourly = values['pilot-hourly'];
+    pilotReduction = values['pilot-reduction'];
+    pilotMonthlyCost = values['pilot-monthly-cost'];
+    const estimate = pilotEstimate();
+    const put = function(id,value) { const node=content.querySelector('#'+id); if(node)node.textContent=value; };
+    put('pilot-hours-freed',quantity(estimate.hoursFreed));
+    put('pilot-capacity-value',usd(estimate.capacityValue));
+    put('pilot-net-capacity',usd(estimate.netCapacityValue));
+    put('pilot-value-multiple',estimate.valueMultiple===null?'Not set':quantity(estimate.valueMultiple)+'×');
+  }
+
   function petDetailPanel() {
     const pet = PET_SPECIALISTS.find(function(row){return row.id===selectedPetId;});
     if (!pet) return '';
     const workflow = pet.workflows.find(function(row){return row.id===selectedWorkflowId;}) || null;
     let out = '<section class="pet-detail" aria-label="'+esc(pet.name)+' specialist details"><div><div class="eyebrow">SPECIALIST PROFILE / '+esc(pet.market.toUpperCase())+'</div><h3>'+esc(pet.name)+' · '+esc(pet.market)+'</h3><p>'+esc(pet.summary)+'</p><div class="section-title">Segments this Pet serves</div><div class="segment-list">'+pet.segments.map(function(segment){return '<span>'+esc(segment)+'</span>';}).join('')+'</div><div class="section-title">Choose a workflow to preview</div><div class="workflow-list">'+pet.workflows.map(function(item,index){return '<button class="workflow-option'+(workflow&&workflow.id===item.id?' active':'')+'" type="button" data-action="pet-workflow" data-id="'+esc(pet.id)+'" data-workflow="'+esc(item.id)+'" aria-pressed="'+(workflow&&workflow.id===item.id?'true':'false')+'"><span class="workflow-index">'+String(index+1).padStart(2,'0')+'</span><span><strong>'+esc(item.title)+'</strong><small>'+esc(item.goal)+'</small></span></button>';}).join('')+'</div>';
     if(workflow) {
-      out += '<div class="workflow-preview"><div class="eyebrow">WORKFLOW BLUEPRINT · DRAFT ONLY</div><h4>'+esc(workflow.title)+'</h4><p>'+esc(workflow.goal)+'</p><ol>'+workflow.steps.map(function(step){return '<li>'+esc(step)+'</li>';}).join('')+'</ol><div class="proof"><strong>Evidence requirement:</strong> '+esc(workflow.proof)+'</div><div class="metric"><strong>What to measure:</strong> '+esc(workflow.metric)+'</div><div class="toolbar"><button type="button" class="btn" data-action="pet-chat" data-id="'+esc(pet.id)+'" data-workflow="'+esc(workflow.id)+'">Draft this in Whilo Chat ↗</button></div><div class="hint">This creates a prompt draft in Chat. It does not run the workflow or modify external systems.</div></div>';
+      out += '<div class="workflow-preview"><div class="eyebrow">WORKFLOW BLUEPRINT · DRAFT ONLY</div><h4>'+esc(workflow.title)+'</h4><p>'+esc(workflow.goal)+'</p><ol>'+workflow.steps.map(function(step){return '<li>'+esc(step)+'</li>';}).join('')+'</ol><div class="proof"><strong>Evidence requirement:</strong> '+esc(workflow.proof)+'</div><div class="metric"><strong>What to measure:</strong> '+esc(workflow.metric)+'</div>'+pilotCalculatorMarkup()+'<div class="toolbar"><button type="button" class="btn" data-action="pet-chat" data-id="'+esc(pet.id)+'" data-workflow="'+esc(workflow.id)+'">Draft this in Whilo Chat ↗</button></div><div class="hint">This creates a prompt draft in Chat. It does not run the workflow or modify external systems.</div></div>';
     } else {
       out += '<div class="notice info">Select one of the workflows to inspect its steps, evidence requirements, and pilot metrics.</div>';
     }
@@ -720,6 +786,10 @@
     finally{saving=false;render();if(page==='creator'&&creator.session)loadCreator().then(render);}
   }
   content.addEventListener('input',function(event){
+    if(event.target && event.target.hasAttribute('data-pilot-input')){
+      updatePilotEstimate();
+      return;
+    }
     if(event.target && event.target.id==='market-search'){
       query=event.target.value;
       const grid=content.querySelector('.listing-grid');
