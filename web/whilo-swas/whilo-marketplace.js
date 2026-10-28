@@ -663,20 +663,66 @@
     out+='<div class="section-title">Usage has to stay profitable</div><div class="grid"><article class="card"><h3>Execution credits</h3><p>Set included allocations after measuring real model, tool, browser, computer and retry costs. Alert at 70%; ask or pause before overage.</p></article><article class="card"><h3>Concurrency</h3><p>Higher tiers may unlock more active Pets, parallel Bots, team seats and scheduled routines as those systems become operational.</p></article><article class="card"><h3>Creator income stays separate</h3><p>Subscriptions fund Whilo access and usage. Marketplace sales pay creators and record Whilo’s 20% fee in a separate ledger.</p></article></div>';
     return out;
   }
+  function legalWorkflowPrompt(workflow) {
+    const shared = [
+      'You are helping a Brazilian law firm or in-house legal team use Whilo as a LegalOps drafting assistant, not as a substitute for a licensed lawyer.',
+      'Source reference: https://github.com/ctresb/leis . Its README describes legislation converted to Markdown from official sources, structured metadata and source links. It explicitly warns that conversions/OCR can contain errors, coverage is incomplete, and the repository does not replace the Diário Oficial. The repository is listed as a source reference only in this MVP: do not claim Whilo has queried or indexed it live.',
+      'Use Brazilian Portuguese unless the user asks otherwise. Ask for the jurisdiction (federal/state/municipal and UF/city where relevant), the as-of date, factual context and intended recipient before making a source-sensitive conclusion.',
+      'Never invent a law, article number, quotation, legal status, court precedent, citation, deadline or source URL. Separate supplied/verifiable source text from general model knowledge. Mark missing sources and uncertain currency explicitly, and request the official publication or link where needed.',
+      'Every contract or legal memo is a draft for review by a qualified Brazilian lawyer. Show assumptions, missing facts, risks, alternative wording, negotiation points and a checklist for human review. Never sign, send, file, submit, threaten, contact a counterparty or claim the output is enforceable. Do not present this as an individualized final legal opinion to an unrepresented consumer.',
+      'First ask the minimum intake questions needed for the selected workflow. Prepare an unsent draft only. No external data writes, signatures or messages.'
+    ].join('\n');
+    const workflows = {
+      contract: [
+        'WORKFLOW: CONTRACT DRAFTING DESK.',
+        'Goal: prepare a structured first draft with editable placeholders and a clause-by-clause review checklist.',
+        'Intake: contract type and business objective; identities and roles of parties; country/state/municipality; scope and deliverables; price, currency and payment dates; term and renewal; acceptance criteria; confidentiality and IP ownership; data/LGPD needs; warranties; liability cap and exclusions; termination; dispute resolution; required annexes; and any client template/policies.',
+        'Output: (1) intake summary and assumptions; (2) contract draft in Brazilian Portuguese with [BRACKETED PLACEHOLDERS] for missing facts; (3) risk register for each material clause with rationale; (4) negotiation alternatives; (5) checklist for lawyer review; (6) source ledger only for legal propositions actually supported by supplied or verified sources.',
+        'Do not assume a clause is valid, enforceable or suitable merely because a model or repository suggests it.'
+      ].join('\n'),
+      review: [
+        'WORKFLOW: CONTRACT REVIEW / REDLINE PREPARATION.',
+        'Ask the user to attach or paste the agreement and describe which party they represent, the business objective, jurisdiction and risk tolerance.',
+        'Output a table: clause or exact excerpt; issue; severity (preliminary only); practical impact; missing context; suggested alternative wording; negotiation priority; and citation/source if a legal proposition needs one.',
+        'Flag inconsistent definitions, one-sided termination, uncapped liability, indemnity, IP ownership, confidentiality, personal-data processing, payment/acceptance, renewal, exclusivity, non-compete, warranties, governing law and dispute resolution where present. Do not infer a clause exists if it was not supplied.',
+        'Return suggested redline language separately from the original. No unilateral changes or sending to a counterparty.'
+      ].join('\n'),
+      research: [
+        'WORKFLOW: LEGAL RESEARCH MEMO WITH SOURCE LEDGER.',
+        'Ask the legal question, relevant facts, jurisdiction/UF/municipality, the as-of date, intended use and available official-source links.',
+        'Build a question tree and identify which primary sources must be verified. Use exact quotations only when source text is available. For each proposition, require instrument/title, article or section, version/status if verifiable, issuing authority, official source URL, access/as-of date and how it supports the proposition.',
+        'If you cannot retrieve or inspect a primary source in this session, say so and leave the citation unverified; never imply that the leis repository was queried live. Distinguish statutory text from interpretation, assumption and issue requiring lawyer judgment.',
+        'Output: short answer with confidence limits; facts assumed; source ledger; application to supplied facts; arguments/counterarguments; missing research; and a lawyer verification checklist.'
+      ].join('\n')
+    };
+    return shared + '\n\n' + (workflows[workflow] || workflows.contract);
+  }
+
   function pluginsPage() {
     const plugins = [
+      {id:'leis-legalops',title:'Leis Legal Desk',kind:'Legal research & contract drafting',description:'A Brazilian LegalOps assistant for law firms and in-house teams: contract first drafts, clause-by-clause review, source-led legal research and structured risk registers. Lawyer-led; drafts only.',url:'https://github.com/ctresb/leis',tag:'Brazilian law · MIT repository',featured:true},
       {title:'Anthropic Skills',kind:'Skills library',description:'Reusable task instructions and workflow patterns. Review permissions and scope before importing anything.',url:'https://github.com/anthropics/skills',tag:'Official skills repo'},
-      {title:'Vercel Agent Skills',kind:'Developer workflows',description:'Skills for agentic development and deployment workflows. Keep build/deploy permissions scoped to the task.',url:'https://github.com/vercel-labs/agent-skills',tag:'Developer tooling'},
+      {title:'Vercel Agent Skills',kind:'Developer workflows',description:'Reusable developer workflows. Review permissions before importing any instructions.',url:'https://github.com/vercel-labs/agent-skills',tag:'Developer tooling'},
       {title:'Superpowers',kind:'Engineering playbooks',description:'Structured software-engineering workflows for planning, implementation and verification.',url:'https://github.com/obra/superpowers',tag:'Open-source workflow'},
-      {title:'OpenMausBot',kind:'Agent runtime research',description:'Study its per-turn capabilities, approval gates, run-state verification, device boundaries and secure computer-control patterns. Do not copy source wholesale; port concepts with license and threat-model review.',url:'https://github.com/milind-soni/OpenMausBot',tag:'Architecture reference'},
-      {title:'Composio integrations',kind:'Connected tools',description:'Explore third-party app integrations. Whilo should request least-privilege scopes and require approval for consequential writes.',url:'https://github.com/ComposioHQ',tag:'Integration ecosystem'},
-      {title:'GitHub Skills',kind:'Repository-native automation',description:'Use reviewed repository workflows to improve issues, pull requests, code review and release hygiene.',url:'https://github.com/skills',tag:'GitHub ecosystem'}
+      {title:'OpenMausBot',kind:'Agent runtime research',description:'Study per-turn capabilities, approval gates, verified run states, device boundaries and secure computer-control patterns. Port concepts only after license and threat-model review.',url:'https://github.com/milind-soni/OpenMausBot',tag:'Architecture reference'},
+      {title:'Composio integrations',kind:'Connected tools',description:'Explore app integrations. Whilo should request least-privilege scopes and require approval for consequential writes.',url:'https://github.com/ComposioHQ',tag:'Integration ecosystem'},
+      {title:'GitHub Skills',kind:'Repository-native automation',description:'Reviewed repository workflows for issues, pull requests, code review and release hygiene.',url:'https://github.com/skills',tag:'GitHub ecosystem'}
     ];
-    let out='<div class="hero"><div><div class="eyebrow">WHILO / PLUGIN EXPLORER</div><h2>Plugins that extend your workspace.</h2><p>Discover GitHub skills, automation playbooks and integration ecosystems. Whilo shows the source and trust boundary before you connect or import anything.</p></div><button class="btn secondary" data-action="plugins-refresh">↻ Refresh</button></div>';
-    out+='<div class="notice info"><b>Safe-by-default:</b> external skills are untrusted instructions, not executable code by default. Review the repository, license, requested permissions and network access before importing. Never paste provider secrets into a skill or public repository.</div>';
-    out+='<div class="grid">'+plugins.map(function(p){return '<article class="card"><div class="card-head"><div class="asset skill">⌘</div><div style="min-width:0;flex:1"><div class="eyebrow">'+esc(p.kind)+'</div><h3>'+esc(p.title)+'</h3><div class="meta">'+esc(p.tag)+'</div></div></div><p>'+esc(p.description)+'</p><div class="card-foot"><span class="pill">External source</span><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><a class="btn secondary" href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer">Review ↗</a><button class="btn" data-action="plugins-save" data-title="'+esc(p.title)+'" data-url="'+esc(p.url)+'" data-description="'+esc(p.description)+'">Save reference</button></div></div></article>';}).join('')+'</div>';
-    out+='<div class="section-title">Connect a tool inside Whilo</div><div class="card"><h3>Connectors & API credentials</h3><p>Open Whilo Connect to configure supported providers. Each connector should be server-mediated, encrypted at rest and scoped to the minimum permissions required.</p><div class="card-foot"><span class="pill">Owner-authorized</span><button class="btn" data-action="plugins-connect">Open Connect guidance</button></div></div>';
-    out+='<div class="section-title">Import checklist</div><div class="card"><ol style="margin:0;padding-left:20px;color:#a7b7ca;font-size:11px;line-height:1.8"><li>Inspect the maintainer, recent commits, open security issues and license.</li><li>Read the full skill instructions before granting tools or credentials.</li><li>Start in read-only mode with a bounded test target.</li><li>Require human approval for external writes, purchases, deletes and account changes.</li><li>Keep a version, source URL, permissions manifest and rollback path for every installed plugin.</li></ol></div>';
+    let out='<div class="hero"><div><div class="eyebrow">WHILO / PLUGIN EXPLORER</div><h2>Plugins that extend your workspace.</h2><p>Discover source-backed workflows and integration ecosystems. Whilo shows the source and trust boundary before you connect or import anything.</p></div><button class="btn secondary" data-action="plugins-refresh">↻ Refresh</button></div>';
+    out+='<div class="notice info"><b>Safe-by-default:</b> external repositories are reference material, not executable code by default. Review provenance, coverage, license, requested permissions and network access. Never put provider secrets into a skill or public repository.</div>';
+    out+='<div class="grid">'+plugins.map(function(p){
+      const legal= p.id==='leis-legalops';
+      const cardStyle=legal?' style="border-color:#545b68;background:linear-gradient(145deg,rgba(255,255,255,.045),transparent 80%)"':'';
+      const actions=legal
+        ? '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn" data-action="plugins-legal-draft" data-workflow="contract">Draft contract</button><button class="btn secondary" data-action="plugins-legal-draft" data-workflow="review">Review agreement</button><button class="btn secondary" data-action="plugins-legal-draft" data-workflow="research">Research law</button></div>'
+        : '<button class="btn" data-action="plugins-save" data-title="'+esc(p.title)+'" data-url="'+esc(p.url)+'" data-description="'+esc(p.description)+'">Save reference</button>';
+      return '<article class="card"'+cardStyle+'><div class="card-head"><div class="asset skill">'+(legal?'§':'⌘')+'</div><div style="min-width:0;flex:1"><div class="eyebrow">'+esc(p.kind)+'</div><h3>'+esc(p.title)+'</h3><div class="meta">'+esc(p.tag)+'</div></div></div><p>'+esc(p.description)+'</p>'+
+        (legal?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px"><span class="pill">Contract drafts</span><span class="pill">Clause risk review</span><span class="pill">Source ledger</span></div><p style="font-size:11px;color:#a7b7ca;line-height:1.65"><b>Commercial hypothesis:</b> founding pilot at R$497/month per office. Price is for validation only; checkout and legal-source indexing are not enabled. This repository is a source reference in this MVP, not a live searchable law database.</p>':'')+
+        '<div class="card-foot"><span class="pill">'+(legal?'Human lawyer review required':'External source')+'</span><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><a class="btn secondary" href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer">Review ↗</a>'+actions+'</div></div></article>';
+    }).join('')+'</div>';
+    out+='<div class="section-title">Connect a tool inside Whilo</div><div class="card"><h3>Connectors & API credentials</h3><p>Open Whilo Connect to configure supported providers. Credentials stay server-mediated, encrypted at rest and scoped to the minimum permissions required.</p><div class="card-foot"><span class="pill">Owner-authorized</span><button class="btn" data-action="plugins-connect">Open Connect guidance</button></div></div>';
+    out+='<div class="section-title">LegalOps operating boundary</div><div class="card"><h3>Draft, verify, approve</h3><ol style="margin:0;padding-left:20px;color:#a7b7ca;font-size:11px;line-height:1.8"><li>Confirm the client’s role, facts, jurisdiction and applicable date.</li><li>Verify the exact text and status in the official publication before citing it as current.</li><li>Trace every legal proposition to an identified source; mark gaps and OCR uncertainty.</li><li>Produce contracts and memos as editable drafts with assumptions, risk notes and a lawyer checklist.</li><li>A qualified lawyer reviews before signature, advice, negotiation, filing or sending.</li></ol></div>';
+    out+='<div class="section-title">Plugin import checklist</div><div class="card"><ol style="margin:0;padding-left:20px;color:#a7b7ca;font-size:11px;line-height:1.8"><li>Inspect the maintainer, recent commits, open issues and license.</li><li>Read full instructions before granting tools or credentials.</li><li>Start in read-only mode with a bounded test target.</li><li>Require approval for external writes, purchases, deletes and account changes.</li><li>Keep a version, source URL, permissions manifest and rollback path.</li></ol></div>';
     return out;
   }
   function render() {
@@ -831,6 +877,14 @@
       selectedPetId=id;
       selectedWorkflowId=b.getAttribute('data-workflow')||'';
       render();
+      return;
+    }
+    if(action==='plugins-legal-draft'){
+      const workflow=b.getAttribute('data-workflow')||'contract';
+      if(!['contract','review','research'].includes(workflow)){feedback='Choose a valid Legal Desk workflow.';render();return;}
+      const prompt=legalWorkflowPrompt(workflow);
+      close();
+      window.dispatchEvent(new CustomEvent('whilo:marketplace:plan-legal',{detail:{prompt:prompt,workflow:workflow,product:'Leis Legal Desk',sourceUrl:'https://github.com/ctresb/leis'}}));
       return;
     }
     if(action==='pet-chat'){
