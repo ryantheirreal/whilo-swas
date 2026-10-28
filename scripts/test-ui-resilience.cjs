@@ -147,7 +147,7 @@ assert.ok(store.includes('Leis Legal Desk'), 'Plugins Marketplace exposes the Le
 assert.ok(store.includes('data-action="plugins-legal-draft"'), 'Legal workflows have an actionable Marketplace entrypoint');
 assert.ok(store.includes('data-workflow="contract"') && store.includes('data-workflow="review"') && store.includes('data-workflow="research"'), 'Marketplace offers contract draft, contract review and legal research workflows');
 assert.ok(store.includes('live searchable law database'), 'Marketplace discloses that live legal-source indexing is not enabled');
-assert.ok(store.includes('R$497/month per office'), 'Experimental pilot pricing is explicitly labelled as a hypothesis');
+assert.ok(store.includes('R$497/month per office') && store.includes('checkout and legal-source indexing are not enabled'), 'Experimental pilot pricing and disabled checkout/indexing are disclosed');
 assert.ok(store.includes('Human lawyer review required'), 'Marketplace requires professional review');
 assert.ok(store.includes('Never invent a law, article number'), 'Legal prompts reject fabricated citations');
 assert.ok(store.includes('No external data writes, signatures or messages'), 'Legal prompts prohibit unapproved external actions');
