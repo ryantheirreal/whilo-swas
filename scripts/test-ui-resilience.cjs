@@ -14,6 +14,7 @@ const messagesApi = fs.readFileSync(path.join(root, 'web/whilo-swas/api/messages
 const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'web/whilo-swas/vercel.json'), 'utf8'));
 const packageConfig = JSON.parse(fs.readFileSync(path.join(root, 'web/whilo-swas/package.json'), 'utf8'));
 const envExample = fs.readFileSync(path.join(root, 'web/whilo-swas/.env.example'), 'utf8');
+const legalProduct = fs.readFileSync(path.join(root, 'docs/leis-legalops-product.md'), 'utf8');
 const desktopMain = fs.readFileSync(path.join(root, 'desktop/whilo-swas-desktop/src/main.cjs'), 'utf8');
 const desktopPreload = fs.readFileSync(path.join(root, 'desktop/whilo-swas-desktop/src/preload.cjs'), 'utf8');
 const codexBridge = fs.readFileSync(path.join(root, 'desktop/whilo-swas-desktop/src/codex-bridge.cjs'), 'utf8');
@@ -139,4 +140,23 @@ assert.ok(petMigration.includes("AND p.purpose = s.old_purpose"), 'Migration avo
 assert.ok(petMigration.includes("AND p.policy = '{}'::jsonb"), 'Migration avoids overwriting customized Pet policies');
 assert.ok(petMigration.includes('REVOKE ALL ON FUNCTION public.ensure_owner_workspace(text) FROM public, anon, authenticated'), 'Bootstrap remains unavailable to public and authenticated roles');
 assert.ok(petMigration.includes('GRANT EXECUTE ON FUNCTION public.ensure_owner_workspace(text) TO service_role'), 'Only the server service role can execute workspace bootstrap');
+
+// Leis Legal Desk: a sourced, lawyer-led LegalOps workflow, not an unverified legal service.
+assert.ok(store.includes("https://github.com/ctresb/leis"), 'Plugins Marketplace cites the requested Brazilian legislation repository');
+assert.ok(store.includes('Leis Legal Desk'), 'Plugins Marketplace exposes the Legal Desk product');
+assert.ok(store.includes('data-action="plugins-legal-draft"'), 'Legal workflows have an actionable Marketplace entrypoint');
+assert.ok(store.includes('data-workflow="contract"') && store.includes('data-workflow="review"') && store.includes('data-workflow="research"'), 'Marketplace offers contract draft, contract review and legal research workflows');
+assert.ok(store.includes('live searchable law database'), 'Marketplace discloses that live legal-source indexing is not enabled');
+assert.ok(store.includes('R$497/month per office'), 'Experimental pilot pricing is explicitly labelled as a hypothesis');
+assert.ok(store.includes('Human lawyer review required'), 'Marketplace requires professional review');
+assert.ok(store.includes('Never invent a law, article number'), 'Legal prompts reject fabricated citations');
+assert.ok(store.includes('No external data writes, signatures or messages'), 'Legal prompts prohibit unapproved external actions');
+assert.ok(enterprise.includes("whilo:marketplace:plan-legal"), 'Legal workflow launcher is wired into Whilo Chat');
+assert.ok(enterprise.includes('Whilo has not queried the repository live'), 'Chat tells the user when repository retrieval has not occurred');
+assert.ok(enterprise.includes('qualified Brazilian lawyer must review'), 'Chat preserves the lawyer review gate');
+assert.ok(legalProduct.includes('Gate 2 — Source retrieval (not implemented)'), 'Product brief does not claim live corpus retrieval is shipped');
+assert.ok(legalProduct.includes('Founding pilot at R$497/month per office'), 'Product brief records the pricing experiment');
+assert.ok(legalProduct.includes('OAB rules'), 'Product brief requires review of Brazilian legal-sector marketing rules');
+assert.ok(legalProduct.includes('Retrieved timestamp') && legalProduct.includes('text hash'), 'Product roadmap requires versioned source evidence');
+
 console.log('Whilo UI resilience, provider adapters, remote Computer QA and local ChatGPT Codex tests passed.');
