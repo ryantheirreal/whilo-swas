@@ -36,6 +36,10 @@ const snapshot = {
   h1Count:0,
   mainLandmarkCount:0,
   linkCount:3,
+  interactiveElements:[
+    {index:1,role:'link',label:'Pricing',path:'/pricing'},
+    {index:2,role:'button',label:'Try now',path:null}
+  ],
   buttonCount:2,
   unnamedButtonCount:1,
   formControlCount:1,
@@ -202,6 +206,9 @@ async function main() {
   assert.equal(result.data.mode,'read_only_website_qa');
   assert.equal(result.data.status,200);
   assert.equal(result.data.title,'QA Sample');
+  assert.equal(result.data.summary.interactiveElements.length,2);
+  assert.equal(result.data.summary.interactiveElements[0].path,'/pricing');
+  assert.ok(result.data.summary.interactiveElements.every(item=>!Object.prototype.hasOwnProperty.call(item,'value')), 'interactive inventory must never include form/control values');
   assert.ok(result.data.findings.some(item=>item.code==='missing_h1'));
   assert.ok(result.data.findings.some(item=>item.code==='third_party_requests_blocked'));
   assert.equal(result.data.summary.blockedOriginCount,1);
