@@ -6,6 +6,14 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const enterprise = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-enterprise.js'), 'utf8');
 const store = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-marketplace.js'), 'utf8');
+const computerUi = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-enterprise.js'), 'utf8');
+const computerRoute = fs.readFileSync(path.join(root, 'web/whilo-swas/server/routes/computer.js'), 'utf8');
+const providerGateway = fs.readFileSync(path.join(root, 'web/whilo-swas/server/routes/model-gateway.js'), 'utf8');
+const providerConnectors = fs.readFileSync(path.join(root, 'web/whilo-swas/api/connectors/index.js'), 'utf8');
+const messagesApi = fs.readFileSync(path.join(root, 'web/whilo-swas/api/messages/index.js'), 'utf8');
+const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'web/whilo-swas/vercel.json'), 'utf8'));
+const packageConfig = JSON.parse(fs.readFileSync(path.join(root, 'web/whilo-swas/package.json'), 'utf8'));
+const envExample = fs.readFileSync(path.join(root, 'web/whilo-swas/.env.example'), 'utf8');
 
 assert.ok(enterprise.includes('function showWorkspaceRecovery(reason)'), 'Global recovery UI is available for unexpected runtime errors');
 assert.ok(enterprise.includes("window.addEventListener('unhandledrejection'"), 'Unhandled async errors cannot silently leave the workspace blank');
@@ -65,10 +73,38 @@ assert.ok(enterprise.includes("specialistForDepartment(dept.name) || 'Whilo'"), 
 assert.ok(store.includes('.veil{background:#080808;padding:0;backdrop-filter:none'), 'Marketplace uses the Whilo neutral fullscreen surface');
 assert.ok(!store.includes("store.insertAdjacentElement('afterend',button)"), 'Marketplace reuses the Store tab instead of injecting a duplicate tab');
 
+for (const provider of ['gemini-api','openai-api','anthropic-api','openrouter-api']) {
+  assert.ok(computerUi.includes("'" + provider + "'"), 'Chat and Connect expose ' + provider);
+  assert.ok(providerGateway.includes("'" + provider + "'"), 'Model gateway supports ' + provider);
+  assert.ok(providerConnectors.includes("'" + provider + "'"), 'Connector API supports ' + provider);
+}
+assert.ok(providerGateway.includes('https://api.anthropic.com/v1/messages'), 'Anthropic uses its Messages API');
+assert.ok(providerGateway.includes('https://openrouter.ai/api/v1/chat/completions'), 'OpenRouter generation uses chat completions');
+assert.ok(providerGateway.includes("kind:'anthropic_api_key'"), 'Anthropic key payload type remains explicit');
+assert.ok(providerGateway.includes("kind:'openrouter_api_key'"), 'OpenRouter key payload type remains explicit');
+assert.ok(providerGateway.includes('store:false'), 'OpenAI requests disable response storage');
+
+assert.ok(computerUi.includes('data-act="chat-run-computer-qa"'), 'Chat exposes the remote browser QA action');
+assert.ok(computerUi.includes('computerQaResult.screenshotDataUrl'), 'Chat renders the returned QA screenshot');
+assert.ok(computerUi.includes('not a full security audit'), 'QA result copy does not overstate coverage');
+assert.ok(computerRoute.includes('resolvePublicHttpsTarget'), 'Computer runtime validates public HTTPS targets and DNS');
+assert.ok(computerRoute.includes('parsed.origin === targetOrigin'), 'Remote browser blocks requests to other origins');
+assert.ok(computerRoute.includes('allowedDomains: [hostname]'), 'Browserbase domain policy is restricted to the target host');
+assert.ok(computerRoute.includes('member.role'), 'Computer runtime checks workspace role');
+assert.ok(computerRoute.includes('computer_run_rate_limited'), 'Remote browser launches are rate-limited');
+assert.ok(computerRoute.includes('computer.website_qa_completed'), 'Successful computer runs emit an audit event');
+assert.ok(computerRoute.includes('page.screenshot'), 'Remote browser captures screenshot evidence');
+assert.ok(messagesApi.includes("computer: require('../../server/routes/computer')"), 'Computer runtime is registered in the consolidated API function');
+assert.ok(vercelConfig.rewrites.some(function (rewrite) { return rewrite.source === '/api/computer' && rewrite.destination === '/api/messages?route=computer'; }), 'Computer API path is routed through the consolidated endpoint');
+assert.equal(packageConfig.dependencies['playwright-core'],'1.64.1','Remote browser dependency is pinned to an exact version');
+assert.ok(packageConfig.scripts.check.includes('test-computer-runtime.cjs'), 'Computer runtime tests are in the package check script');
+assert.ok(envExample.includes('BROWSERBASE_API_KEY='), 'Browserbase API key is documented as server-side configuration');
+assert.ok(envExample.includes('BROWSERBASE_PROJECT_ID='), 'Optional Browserbase project ID is documented');
+
 const petMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261028093234_pet_industry_specialties.sql'), 'utf8');
 assert.ok(petMigration.includes('CREATE OR REPLACE FUNCTION public.ensure_owner_workspace'), 'Specialist roles persist into future workspace bootstrap');
 assert.ok(petMigration.includes("AND p.purpose = s.old_purpose"), 'Migration avoids overwriting user-customized Pet purposes');
 assert.ok(petMigration.includes("AND p.policy = '{}'::jsonb"), 'Migration avoids overwriting customized Pet policies');
 assert.ok(petMigration.includes('REVOKE ALL ON FUNCTION public.ensure_owner_workspace(text) FROM public, anon, authenticated'), 'Bootstrap remains unavailable to public and authenticated roles');
 assert.ok(petMigration.includes('GRANT EXECUTE ON FUNCTION public.ensure_owner_workspace(text) TO service_role'), 'Only the server service role can execute workspace bootstrap');
-console.log('Whilo UI resilience, Plugins navigation and specialist Pet tests passed.');
+console.log('Whilo UI resilience, specialist Pets, provider adapters and remote Computer QA tests passed.');
