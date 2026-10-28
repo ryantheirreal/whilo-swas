@@ -212,7 +212,9 @@ async function main() {
   assert.equal(browserbaseCalls,1,'rate limiting must block before creating a new browser session');
 
   const actualTargetModule=require('../web/whilo-swas/server/security/public-target');
-  assert.equal(actualTargetModule.validateHttpsTarget('http://example.com'),null === actualTargetModule.validateHttpsTarget(''), 'sanity check for the existing public-target validator');
+  assert.equal(actualTargetModule.validateHttpsTarget(''),null,'empty optional target remains empty');
+  assert.throws(()=>actualTargetModule.validateHttpsTarget('http://example.com'),/HTTPS/,'HTTP targets are rejected');
+  assert.throws(()=>actualTargetModule.validateHttpsTarget('https://127.0.0.1'),/IP-literal/,'IP-literal targets are rejected');
   console.log('Computer runtime tests passed (credential gate, HTTPS-only target, role gate, origin block, screenshot, audit and rate limit).');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
