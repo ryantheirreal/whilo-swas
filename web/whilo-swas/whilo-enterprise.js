@@ -11,13 +11,24 @@
   } catch (_) {}
   const PETS = ['Whilo', 'Fynn', 'Nori', 'Capuccino', 'Ollie', 'Pico'];
   const PET_SPECIALTIES = {
-    Whilo: { short: 'Healthcare ops', market: 'Healthcare operations', defaultDepartment: 'Healthcare operations' },
-    Fynn: { short: 'Insurance', market: 'Insurance brokerage', defaultDepartment: 'Insurance brokerage' },
+    Whilo: { short: 'Insurance', market: 'Insurance brokerage', defaultDepartment: 'Insurance brokerage' },
+    Fynn: { short: 'Consulting', market: 'Management consulting', defaultDepartment: 'Management consulting' },
     Nori: { short: 'Procurement', market: 'Supply chain & procurement', defaultDepartment: 'Supply chain & procurement' },
-    Capuccino: { short: 'IT services', market: 'IT managed services', defaultDepartment: 'IT managed services' },
-    Ollie: { short: 'Consulting', market: 'Management consulting', defaultDepartment: 'Management consulting' },
-    Pico: { short: 'Recruiting', market: 'Recruitment & staffing', defaultDepartment: 'Recruitment & staffing' }
+    Capuccino: { short: 'Creative ops', market: 'Advertising & creative operations', defaultDepartment: 'Advertising & creative operations' },
+    Ollie: { short: 'Talent', market: 'Recruitment & staffing', defaultDepartment: 'Recruitment & staffing' },
+    Pico: { short: 'IT services', market: 'IT managed services', defaultDepartment: 'IT managed services' }
   };
+  function specialistForDepartment(department) {
+    const map = {
+      'Insurance brokerage': 'Whilo',
+      'Management consulting': 'Fynn',
+      'Supply chain & procurement': 'Nori',
+      'Advertising & creative operations': 'Capuccino',
+      'Recruitment & staffing': 'Ollie',
+      'IT managed services': 'Pico'
+    };
+    return map[String(department || '')] || '';
+  }
   const BOT_ROLES = ['Browser Researcher', 'Computer Operator', 'Data Analyst', 'CRM Operator', 'Writer', 'Coder', 'QA Verifier', 'Workflow Planner'];
   function plannedBots(department) {
     const map = {
@@ -29,12 +40,12 @@
       'People & recruiting': ['Browser Researcher', 'Data Analyst', 'QA Verifier'],
       'IT & systems': ['Computer Operator', 'Workflow Planner', 'QA Verifier'],
       'Procurement': ['Browser Researcher', 'Data Analyst', 'QA Verifier'],
-      'Healthcare operations': ['Revenue Cycle Analyst', 'Claims Administration Coordinator', 'Evidence QA Verifier'],
       'Insurance brokerage': ['Submission Analyst', 'Renewal Coordinator', 'Quote Comparison Analyst', 'QA Verifier'],
-      'Supply chain & procurement': ['Supplier Researcher', 'RFQ Comparison Analyst', 'Contract Renewal Analyst', 'QA Verifier'],
-      'IT managed services': ['Service Desk Analyst', 'Access Request Coordinator', 'Monitoring Triage Analyst', 'QA Verifier'],
       'Management consulting': ['Market Researcher', 'Benchmark Analyst', 'Evidence QA Verifier'],
-      'Recruitment & staffing': ['Talent Sourcing Analyst', 'Recruiting Operations Coordinator', 'Interview Scheduler', 'QA Verifier']
+      'Supply chain & procurement': ['Supplier Researcher', 'RFQ Comparison Analyst', 'Contract Renewal Analyst', 'QA Verifier'],
+      'Advertising & creative operations': ['Audience Researcher', 'Creative Operations Producer', 'Campaign Analyst', 'Claims QA Reviewer'],
+      'Recruitment & staffing': ['Talent Sourcing Analyst', 'Recruiting Operations Coordinator', 'Interview Scheduler', 'QA Verifier'],
+      'IT managed services': ['Service Desk Analyst', 'Access Request Coordinator', 'Monitoring Triage Analyst', 'QA Verifier']
     };
     return map[department] || ['Workflow Planner', 'QA Verifier'];
   }
@@ -48,7 +59,7 @@
     { id: 'it', name: 'IT & systems', subtitle: 'Access requests, incident triage and system runbooks', template: 'Organize an IT request, collect diagnostic context, draft a runbook and route any access-changing action for approval.' },
     { id: 'procurement', name: 'Procurement', subtitle: 'Supplier research, comparison and renewal tracking', template: 'Build a supplier comparison from approved sources, identify contract renewal dates and prepare a recommendation with evidence.' }
 ,
-    { id: 'healthcare-operations', name: 'Healthcare operations', subtitle: 'Revenue-cycle administration, evidence gaps and payer follow-up', template: 'Triage a supplied revenue-cycle queue, identify administrative evidence gaps, prepare follow-up drafts, and measure cycle time and rework. Do not make clinical decisions or submit claims without a qualified human.' },
+    { id: 'advertising-creative-operations', name: 'Advertising & creative operations', subtitle: 'Audience evidence, creative briefs, controlled variants and performance learning', template: 'Build a source-backed creative brief, prepare controlled variants from approved brand rules, and analyze supplied campaign data with honest caveats. Human owners approve claims, targeting, budgets and publication.' },
     { id: 'insurance-brokerage', name: 'Insurance brokerage', subtitle: 'Submission packets, renewals and quote comparison', template: 'Prepare complete commercial-lines submission packets, track renewal deadlines, normalize carrier quotes, cite source documents, and route coverage decisions to a licensed broker.' },
     { id: 'supply-chain-procurement', name: 'Supply chain & procurement', subtitle: 'Supplier sourcing, RFQs, renewal and spend exceptions', template: 'Compare approved supplier quotes, surface contract and renewal exceptions with evidence, and prepare recommendations for procurement approval. Do not place orders or sign contracts.' },
     { id: 'it-managed-services', name: 'IT managed services', subtitle: 'Service desk, access request packets and monitoring triage', template: 'Triage approved IT tickets, prepare least-privilege access requests and summarize monitoring evidence. Do not change production systems, grant permissions or patch devices without explicit authorization.' },
@@ -781,7 +792,7 @@
     let out = '<div class="hero"><div><h2 class="h2">Work queue</h2><p class="muted">Create a Pet-led mission with specialist Bots, explicit approval, a review step and required evidence. This browser-only queue records workflow intent; it does not call an autonomous runtime or execute Bots yet.</p></div><button class="btn secondary" data-act="sample">Add example job</button></div>';
     out += cloudAuthCard();
     out += '<div class="statrow"><div class="stat"><div class="n">' + state.tasks.length + '</div><div class="l">All jobs tracked</div></div><div class="stat"><div class="n">' + activeCount + '</div><div class="l">Open jobs</div></div><div class="stat"><div class="n">' + doneCount + '</div><div class="l">Manually completed</div></div><div class="stat"><div class="n">' + evidenceCount + '</div><div class="l">Jobs with evidence recorded</div></div></div>';
-    out += '<form id="new-task" class="form"><input class="field wide" name="title" required maxlength="180" placeholder="Outcome to deliver (e.g. Prepare 25 qualified target accounts)" aria-label="Outcome to deliver"><select class="field" name="department" aria-label="Department">' + DEPARTMENTS.map(function (d) { return '<option>' + esc(d.name) + '</option>'; }).join('') + '</select><select class="field" name="owner" aria-label="Lead Pet">' + PETS.map(function (p) { return '<option value="' + esc(p) + '">' + esc(p) + ' · ' + esc(PET_SPECIALTIES[p] ? PET_SPECIALTIES[p].short : 'Specialist') + '</option>'; }).join('') + '</select><select class="field" name="execution" aria-label="Agent execution pattern"><option value="pet-bots">Pet + specialist Bots</option><option value="pet-only">Pet only</option></select><select class="field" name="priority" aria-label="Priority"><option>Normal</option><option>High</option><option>Critical</option></select><button class="btn" type="submit">Create job</button></form>';
+    out += '<form id="new-task" class="form"><input class="field wide" name="title" required maxlength="180" placeholder="Outcome to deliver (e.g. Prepare 25 qualified target accounts)" aria-label="Outcome to deliver"><select class="field" name="department" aria-label="Department">' + DEPARTMENTS.map(function (d) { const owner = specialistForDepartment(d.name); return '<option value="' + esc(d.name) + '" data-specialist-pet="' + esc(owner) + '">' + esc(d.name) + (owner ? ' · ' + esc(owner) : '') + '</option>'; }).join('') + '</select><select class="field" name="owner" aria-label="Lead Pet">' + PETS.map(function (p) { return '<option value="' + esc(p) + '">' + esc(p) + ' · ' + esc(PET_SPECIALTIES[p] ? PET_SPECIALTIES[p].short : 'Specialist') + '</option>'; }).join('') + '</select><select class="field" name="execution" aria-label="Agent execution pattern"><option value="pet-bots">Pet + specialist Bots</option><option value="pet-only">Pet only</option></select><select class="field" name="priority" aria-label="Priority"><option>Normal</option><option>High</option><option>Critical</option></select><button class="btn" type="submit">Create job</button></form>';
     out += '<div class="row"><div class="sectionlabel">Latest jobs</div><span class="mini">' + state.tasks.length + ' tracked in this browser</span></div>';
     out += state.tasks.length ? state.tasks.slice().reverse().map(taskCard).join('') : '<div class="empty">No work tracked yet. Create one job above or start from a department playbook.</div>';
     if (cloudMissionsCache === null && !cloudMissionsLoading && !cloudMissionsFeedback) loadCloudMissions();
@@ -2676,6 +2687,11 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
   });
   shadow.addEventListener('change', function(event) {
     const target=event.target;
+    if (target && target.name === 'department' && target.form && target.form.id === 'new-task') {
+      const assignedPet = specialistForDepartment(target.value);
+      const ownerSelect = target.form.querySelector('[name="owner"]');
+      if (assignedPet && ownerSelect) ownerSelect.value = assignedPet;
+    }
     if(target&&target.id==='whilo-chat-provider'){
       whiloChatProvider=target.value==='openai-api'?'openai-api':'gemini-api';
       whiloChatModels=[];whiloChatSelectedModel='';whiloChatModelFeedback='';
