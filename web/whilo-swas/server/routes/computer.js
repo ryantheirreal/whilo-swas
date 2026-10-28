@@ -285,15 +285,16 @@ module.exports = async function computerRoute(req, res) {
     if (!target) fail(400,'computer_url_required','Enter a public HTTPS URL to inspect.');
     const parsedTarget = new URL(target);
     targetHost = parsedTarget.hostname.toLowerCase();
-    const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const recent = await db(
-      'audit_events?organization_id=eq.' + encodeURIComponent(organizationId) +
-      '&actor_id=eq.' + encodeURIComponent(actorId) +
-      '&action=eq.computer.website_qa_started' +
-      '&created_at=gte.' + encodeURIComponent(cutoff) +
-      '&select=id&limit=3'
-    );
-    if (Array.isArray(recent) && recent.length >= 3) {
+    const reservation = await db('rpc/reserve_computer_qa_launch', {
+      method:'POST',
+      body:JSON.stringify({
+        p_organization_id:organizationId,
+        p_actor_id:actorId,
+        p_target_host:targetHost
+      })
+    });
+    const launch = Array.isArray(reservation) ? reservation[0] : null;
+    if (!launch || launch.allowed !== true) {
       fail(429,'computer_run_rate_limited','Limit reached: at most 3 remote browser inspections per workspace member in 10 minutes.');
     }
     await audit(organizationId,actorId,'computer.website_qa_started','browser_runtime',targetHost,'success',{
