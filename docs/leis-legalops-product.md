@@ -60,21 +60,30 @@ Test ads and organic content around *less manual assembly, clearer missing facts
 ## Technical roadmap and release gates
 
 ### Gate 1 — Marketplace pilot entry (implemented)
-- Featured Leis Legal Desk card links the source repository.
-- Three buttons prepare unsent Chat drafts: contract draft, agreement review, and legal research.
-- Prompts require Brazilian Portuguese by default, jurisdiction/as-of-date intake, no invented citations, a source ledger, and lawyer review.
-- The UI clearly states that live repository indexing and checkout are not enabled.
+- Featured Leis Legal Desk card links the requested `ctresb/leis` repository and opens the interactive workspace.
+- Three workflow buttons prepare unsent Chat drafts: contract draft, agreement review, and legal research.
+- Prompts require jurisdiction/as-of-date intake, missing-fact handling, no invented citations, a source ledger and qualified lawyer review.
+- Checkout is not enabled and the pilot price remains a hypothesis.
 
-### Gate 2 — Source retrieval (not implemented)
-- Build an index that respects repository coverage and preserves each source path, Git revision, source URL, text hash and retrieval timestamp.
-- Resolve each legal claim to exact text and official source; separate official text from repository conversion.
+### Gate 1.5 — Public corpus explorer and browser-side outputs (implemented, bounded)
+- The Legal Desk navigates public GitHub repository folders across federal, state, municipal, regulator, jurisprudence and treaty areas; a user can open selected Markdown files and see the repository path and Git object SHA returned by the directory listing.
+- Filename filtering operates only on the currently loaded folder. The UI links the repository coverage/progress files and discloses that this is not a full-text index, complete corpus, official-source verification or current-law status check.
+- Selected legal research sources can be prepared as untrusted Chat context. Whilo must never treat a Markdown/OCR conversion as official legal authority.
+- Generated model text is transferred to an in-memory, session-only editor. Output buttons support browser print-to-PDF, Word-compatible HTML with a `.doc` extension, and Markdown source. The `.doc` export is **not** a native Office Open XML `.docx`; no secure server-side document store or durable version history is included.
+- The agent timeline records client-side request/response/artifact lifecycle events. It is not a durable server audit log. The provider gateway currently returns a completed response in one HTTP result; token-by-token streaming is not implemented.
+- The drawing pad is a non-binding UI demonstration. It does not establish signer identity/consent, create a certificate, persist, attach or export a signature, or execute a contract. Real signing remains a separate workflow with an authorized e-signature provider.
+
+### Gate 2 — Versioned legal-source retrieval and official verification (not implemented)
+- Build a full retrieval/indexing service that respects repository coverage and preserves pinned repository commit/revision, path, official source URL, content hash and retrieval timestamp.
+- Resolve each legal claim to exact text and issuing authority; separate repository conversion from official publication and verify current legal status at the relevant as-of date.
 - Detect OCR/source conflicts, missing files, superseded versions and stale index states. Unknown status must remain unknown, not be inferred.
-- Evaluate retrieval on a fixed corpus of lawyer-reviewed questions before enabling citations in generated output.
+- Evaluate retrieval on a fixed corpus of lawyer-reviewed questions before enabling source-backed legal citations in generated output.
 
-### Gate 3 — Document workflow (not implemented)
-- Add secure document ingestion, structured intake, clause library, DOCX output, side-by-side revisions, comments and a claim/source ledger.
-- Add version history, reviewer identities, approval states, export and deletion controls.
-- Require the reviewer to approve material clauses and source-dependent claims; a draft is not a signed/final instrument.
+### Gate 3 — Secure document lifecycle and real signing (not implemented)
+- Add secure document ingestion, structured intake, clause library, native DOCX output, side-by-side revisions, comments and a claim/source ledger.
+- Add server-side document version history, reviewer identities, approval states, retention/deletion controls, tenant-isolation checks and tamper-evident audit events.
+- Integrate a reputable e-signature provider with signer identity, explicit consent, authorization/capacity checks, tamper-evident hashes, timestamps, audit evidence, webhook verification and dispute/revocation handling. Never infer that a drawn mark is a valid signature.
+- Require the reviewer to approve material clauses and source-dependent claims; a draft remains unsigned until the separate signing workflow is completed.
 
 ### Gate 4 — Commercial checkout and rollout (not implemented)
 - Configure prices and entitlements only after the paid pilot design and safety gates are validated.
