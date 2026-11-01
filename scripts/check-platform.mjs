@@ -45,6 +45,7 @@ const jsFiles = [
   ...walk(path.join(root, 'desktop', 'whilo-swas-desktop', 'scripts')).filter(file => file.endsWith('.cjs')),
   path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'),
   path.join(root, 'web', 'whilo-swas', 'whilo-marketplace.js'),
+  path.join(root, 'web', 'whilo-swas', 'whilo-legal-desk.js'),
   path.join(root, 'web', 'whilo-swas', 'whilo-cloud-auth.js'),
   path.join(root, 'shared', 'whilo-agent-core', 'index.cjs'),
   path.join(root, 'shared', 'whilo-agent-core', 'index.js'),
@@ -164,6 +165,7 @@ if (!routinesRoute.includes("scopes.includes('computer:read')") || !routinesRout
 if (!routinesRoute.includes('now - lastSeen <= 5 * 60 * 1000')) failures.push('Computer routines must require a recent device heartbeat.');
 const enterpriseUi = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-enterprise.js'), 'utf8');
 const legalMarketplace = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-marketplace.js'), 'utf8');
+const legalDeskRuntime = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'whilo-legal-desk.js'), 'utf8');
 const legalProductBrief = fs.readFileSync(path.join(root, 'docs', 'leis-legalops-product.md'), 'utf8');
 if (!legalMarketplace.includes("https://github.com/ctresb/leis") ||
     !legalMarketplace.includes("plugins-legal-draft") ||
@@ -182,6 +184,37 @@ if (!legalProductBrief.includes('Gate 2 — Source retrieval (not implemented)')
     !legalProductBrief.includes('R$497/month per office') ||
     !legalProductBrief.includes('source version/hash')) {
   failures.push('Leis Legal Desk documentation must distinguish the pricing hypothesis from shipped retrieval capability.');
+}
+
+if (!legalDeskRuntime.includes("https://api.github.com/repos/ctresb/leis/contents/") ||
+    !legalDeskRuntime.includes("https://raw.githubusercontent.com/ctresb/leis/main/") ||
+    !legalDeskRuntime.includes("Coverage report") ||
+    !legalDeskRuntime.includes("não é uma busca integral")) {
+  failures.push('Legal Desk corpus browser must fetch only the public Leis repository and disclose that it is not a full-text index.');
+}
+if (!legalDeskRuntime.includes('data-action="export-pdf"') ||
+    !legalDeskRuntime.includes('data-action="export-doc"') ||
+    !legalDeskRuntime.includes('data-action="export-md"') ||
+    !legalDeskRuntime.includes('application/msword') ||
+    !legalDeskRuntime.includes('text/markdown')) {
+  failures.push('Legal Desk must expose PDF, editable Word-compatible and Markdown source outputs.');
+}
+if (!legalDeskRuntime.includes("signature-pad") ||
+    !legalDeskRuntime.includes("Not a signing service.") ||
+    !legalDeskRuntime.includes("does not store, attach or export this mark") ||
+    !legalDeskRuntime.includes("ASSINATURA PENDENTE")) {
+  failures.push('Legal Desk signature interaction must stay a non-binding preview and keep real signatures pending outside Whilo.');
+}
+if (!legalDeskRuntime.includes("whilo:legal:artifact-ready") ||
+    !legalDeskRuntime.includes("whilo:legal:agent-stage") ||
+    !legalDeskRuntime.includes("not token-by-token streaming") ||
+    !legalDeskRuntime.includes("528183/code-square.svg")) {
+  failures.push('Legal Desk must receive agent artifacts, show lifecycle receipts, disclose current non-streaming runtime and use the requested code SVG.');
+}
+if (!enterpriseUi.includes("whilo:legal:artifact-ready") ||
+    !enterpriseUi.includes("whiloChatLegalWorkflow?1900:1024") ||
+    !enterpriseUi.includes("whilo:legal:launch-research")) {
+  failures.push('Whilo Chat must route generated legal artifacts and selected-source research into the Legal Desk workspace.');
 }
 for (const [label, pattern] of [
   ['library-target routine playbooks', /const ROUTINE_TEMPLATES/],
