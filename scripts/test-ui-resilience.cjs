@@ -9,6 +9,7 @@ const store = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-marketplace.
 const legalDesk = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-legal-desk.js'), 'utf8');
 const computerUi = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-enterprise.js'), 'utf8');
 const computerRoute = fs.readFileSync(path.join(root, 'web/whilo-swas/server/routes/computer.js'), 'utf8');
+const computerTest = fs.readFileSync(path.join(root, 'scripts/test-computer-runtime.cjs'), 'utf8');
 const providerGateway = fs.readFileSync(path.join(root, 'web/whilo-swas/server/routes/model-gateway.js'), 'utf8');
 const providerConnectors = fs.readFileSync(path.join(root, 'web/whilo-swas/api/connectors/index.js'), 'utf8');
 const messagesApi = fs.readFileSync(path.join(root, 'web/whilo-swas/api/messages/index.js'), 'utf8');
