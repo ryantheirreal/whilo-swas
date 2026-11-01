@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const enterprise = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-enterprise.js'), 'utf8');
 const store = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-marketplace.js'), 'utf8');
+const legalDesk = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-legal-desk.js'), 'utf8');
 const computerUi = fs.readFileSync(path.join(root, 'web/whilo-swas/whilo-enterprise.js'), 'utf8');
 const computerRoute = fs.readFileSync(path.join(root, 'web/whilo-swas/server/routes/computer.js'), 'utf8');
 const providerGateway = fs.readFileSync(path.join(root, 'web/whilo-swas/server/routes/model-gateway.js'), 'utf8');
@@ -158,5 +159,17 @@ assert.ok(legalProduct.includes('Gate 2 — Source retrieval (not implemented)')
 assert.ok(legalProduct.includes('R$497/month per office for a founding pilot'), 'Product brief records the pricing experiment');
 assert.ok(legalProduct.includes('OAB rules'), 'Product brief requires review of Brazilian legal-sector marketing rules');
 assert.ok(legalProduct.includes('retrieved timestamp') && legalProduct.includes('text hash'), 'Product roadmap requires versioned source evidence');
+assert.ok(store.includes('data-action="plugins-legal-open"'), 'Marketplace exposes a direct Legal Desk workspace entrypoint');
+assert.ok(legalDesk.includes('https://api.github.com/repos/ctresb/leis/contents/'), 'Corpus explorer uses the public GitHub Contents API');
+assert.ok(legalDesk.includes('https://raw.githubusercontent.com/ctresb/leis/main/'), 'Selected source files are fetched from the expected raw repository host');
+assert.ok(legalDesk.includes('não é uma busca integral de texto'), 'Corpus browser discloses filename-only scope and no full-text index');
+assert.ok(legalDesk.includes('Coverage report') && legalDesk.includes('Progress report'), 'Corpus browser links the repository coverage and progress disclosures');
+assert.ok(legalDesk.includes('data-action="export-pdf"') && legalDesk.includes('data-action="export-doc"') && legalDesk.includes('data-action="export-md"'), 'Legal Desk exposes PDF, Word-compatible and Markdown outputs');
+assert.ok(legalDesk.includes('528183/code-square.svg') && legalDesk.includes('<svg viewBox="0 0 64 72"'), 'Agent artifact timeline uses the requested Code SVG and vector PDF/Docs icons');
+assert.ok(legalDesk.includes('whilo:legal:artifact-ready') && legalDesk.includes('whilo:legal:agent-stage'), 'Legal Desk consumes agent lifecycle and artifact events');
+assert.ok(legalDesk.includes('not token-by-token streaming'), 'Timeline does not misrepresent the synchronous model gateway as token streaming');
+assert.ok(legalDesk.includes('Not a signing service.') && legalDesk.includes('does not store, attach or export this mark') && legalDesk.includes('ASSINATURA PENDENTE'), 'Signature pad remains non-binding, session-only and detached from contract output');
+assert.ok(enterprise.includes('whiloChatLegalWorkflow?1900:1024') && enterprise.includes('whilo:legal:launch-research'), 'Legal workflows receive a larger bounded output and source-selected research handoff');
+
 
 console.log('Whilo UI resilience, provider adapters, remote Computer QA and local ChatGPT Codex tests passed.');
