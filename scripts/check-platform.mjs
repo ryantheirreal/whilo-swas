@@ -180,7 +180,7 @@ if (!enterpriseUi.includes("whilo:marketplace:plan-legal") ||
     !enterpriseUi.includes('qualified Brazilian lawyer must review')) {
   failures.push('Leis Legal Desk Chat handoff must disclose source retrieval limits and require lawyer review.');
 }
-if (!legalProductBrief.includes('Gate 2 — Source retrieval (not implemented)') ||
+if (!legalProductBrief.includes('Gate 2 — Versioned legal-source retrieval and official verification (not implemented)') ||
     !legalProductBrief.includes('R$497/month per office') ||
     !legalProductBrief.includes('source version/hash')) {
   failures.push('Leis Legal Desk documentation must distinguish the pricing hypothesis from shipped retrieval capability.');
