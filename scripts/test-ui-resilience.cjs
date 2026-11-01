@@ -57,7 +57,7 @@ assert.ok(store.includes("field('pilot-reduction'"), 'Pilot estimator accepts th
 assert.ok(store.includes("field('pilot-monthly-cost'"), 'Pilot estimator accepts a modeled monthly service cost');
 assert.ok(store.includes("data-pilot-input=\"'+id+'\""), 'Pilot assumptions are rendered with a shared interactive input binding');
 assert.ok(store.includes("event.target.hasAttribute('data-pilot-input')"), 'Pilot assumptions update estimates interactively without rerendering the form');
-assert.ok(store.includes('not a savings guarantee'), 'Pilot estimate is explicitly not presented as guaranteed savings');
+assert.ok(store.includes('not measured results or a savings guarantee'), 'Pilot estimate is explicitly labeled illustrative and not presented as guaranteed savings');
 assert.ok(store.includes('Labor capacity value · not cash savings'), 'Capacity value is distinguished from cash savings');
 assert.ok(store.includes('Capacity value / service cost'), 'Pilot estimator compares potential capacity value to modeled cost');
 assert.ok(store.includes("marketFilter === 'autopilot'"), 'Autopilot market filter is functional');
