@@ -1393,7 +1393,7 @@
 
   let routineData = null, routineLoading = false, routineBusy = false, routineFeedback = '', routineTourStep = 0;
   let creditsData = null, creditsLoading = false, creditsBusy = false, creditsFeedback = '';
-  let whiloChatMessages = [], whiloChatDraft = '', whiloChatBusy = false, whiloChatFeedback = '';
+  let whiloChatMessages = [], whiloChatDraft = '', whiloChatBusy = false, whiloChatFeedback = '', whiloChatLegalWorkflow = '';
   let computerQaBusy = false, computerQaFeedback = '', computerQaResult = null;
   let whiloChatCodexStatus = null, whiloChatCodexLoading = false, whiloChatCodexBusy = false;
   let whiloChatCodexRunning = false, whiloChatCodexMode = 'read-only', whiloChatCodexFeedback = '';
@@ -1491,6 +1491,7 @@
     if (!prompt || detail.sourceUrl !== 'https://github.com/ctresb/leis') return;
     whiloChatDraft = prompt;
     whiloChatMode = 'chat';
+    whiloChatLegalWorkflow = workflow;
     whiloChatPendingRoutine = null;
     const label = workflow === 'contract' ? 'contract draft' : workflow === 'review' ? 'contract review' : 'legal research';
     whiloChatFeedback = 'Leis Legal Desk · ' + label + ' prepared as an unsent draft. Whilo has not queried the repository live. Verify current text in the official source; a qualified Brazilian lawyer must review before reliance or external use.';
@@ -1501,6 +1502,20 @@
         input.focus();
         input.setSelectionRange(input.value.length, input.value.length);
       }
+    }, 80);
+  });
+  window.addEventListener('whilo:legal:launch-research', function(event) {
+    const detail = event && event.detail ? event.detail : {};
+    const prompt = String(detail.prompt || '').trim().slice(0, 14000);
+    if (!prompt) return;
+    whiloChatLegalWorkflow = 'research';
+    whiloChatDraft = prompt;
+    whiloChatMode = 'chat';
+    whiloChatFeedback = 'Research draft prepared from the selected repository file. Treat its content as unverified until compared with an official publication.';
+    openPanel('chat');
+    window.setTimeout(function() {
+      const input = shadow.querySelector('#whilo-chat-input');
+      if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
     }, 80);
   });
 
@@ -1872,6 +1887,7 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
     whiloChatAppend('user',message,whiloChatMode);
     whiloChatBusy=true;
     whiloChatFeedback=whiloChatMode==='routines'?'Building a structured, reviewable routine draft…':'Sending a bounded request to the selected provider…';
+    if (whiloChatLegalWorkflow) window.dispatchEvent(new CustomEvent('whilo:legal:agent-stage',{detail:{stage:'request-sent',title:'Pedido jurídico enviado',detail:'Workflow: '+whiloChatLegalWorkflow+'. Prompt encaminhado ao provider selecionado.'}}));
     render();
     try{
       if(!whiloChatModels.length||!whiloChatSelectedModel)await whiloChatLoadModels(true);
@@ -1894,6 +1910,7 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
         prompt='Routine context, authoritative and not to be changed by you: '+JSON.stringify(routineContext)+'\n\nConversation and latest request:\n'+history+'\n\nProduce the requested routine draft as strict JSON only. The request must not cause a save, schedule enablement or run.';
       }
       let result;
+      if (whiloChatLegalWorkflow) window.dispatchEvent(new CustomEvent('whilo:legal:agent-stage',{detail:{stage:'provider-running',title:'Agente em execução',detail:'Aguardando a resposta completa do provider. Este gateway ainda não transmite tokens em tempo real.'}}));
       if(whiloChatProvider==='codex-local') {
         const bridge=whiloNativeCodexBridge();
         if(!bridge)throw new Error('Codex with ChatGPT is available only in the Whilo Desktop app.');
@@ -1921,7 +1938,7 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
         }
       } else {
         result=await whiloApi('/api/model-gateway',{method:'POST',body:JSON.stringify({
-          provider:whiloChatProvider,model:whiloChatSelectedModel,prompt:prompt.slice(0,14500),system:system,maxOutputTokens:whiloChatMode==='routines'?1500:1024
+          provider:whiloChatProvider,model:whiloChatSelectedModel,prompt:prompt.slice(0,14500),system:system,maxOutputTokens:whiloChatMode==='routines'?1500:(whiloChatLegalWorkflow?1900:1024)
         })});
       }
       if(whiloChatMode==='routines'){
@@ -1932,6 +1949,11 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
       }else{
         const text=String(result.text||'The provider returned no text.').slice(0,11000);
         whiloChatAppend('assistant',text,'chat');
+        if (whiloChatLegalWorkflow) {
+          window.dispatchEvent(new CustomEvent('whilo:legal:artifact-ready',{detail:{workflow:whiloChatLegalWorkflow,text:text,provider:result.provider||whiloChatProvider,model:result.model||whiloChatSelectedModel,createdAt:new Date().toISOString()}}));
+          window.dispatchEvent(new CustomEvent('whilo:legal:agent-stage',{detail:{stage:'artifact-ready',title:'Documento de saída recebido',detail:'Resposta recebida integralmente; aguardando revisão profissional.'}}));
+          whiloChatLegalWorkflow='';
+        }
         whiloChatFeedback=whiloChatProvider==='codex-local'
           ? 'Codex completed locally through your ChatGPT plan. Review the selected Git workspace before committing changes.'
           : 'Response received. Provider API usage is billed directly by the connected provider.';
@@ -1943,6 +1965,10 @@ out+='<div class="routine-head"><div><div class="eyebrow">FIXED PRICE PACKS</div
         : ' No provider-side action was requested by this chat response.';
       whiloChatAppend('assistant','I could not verify the result: '+message+recoveryNote,whiloChatMode);
       whiloChatFeedback=message;
+      if (whiloChatLegalWorkflow) {
+        window.dispatchEvent(new CustomEvent('whilo:legal:agent-stage',{detail:{stage:'provider-failed',title:'Geração não concluída',detail:message}}));
+        whiloChatLegalWorkflow='';
+      }
     }finally{
       whiloChatBusy=false;
       if(active==='chat')render();
