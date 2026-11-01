@@ -88,8 +88,8 @@ for (const provider of ['gemini-api','openai-api','anthropic-api','openrouter-ap
 }
 assert.ok(providerGateway.includes('https://api.anthropic.com/v1/messages'), 'Anthropic uses its Messages API');
 assert.ok(providerGateway.includes('https://openrouter.ai/api/v1/chat/completions'), 'OpenRouter generation uses chat completions');
-assert.ok(providerGateway.includes("kind:'anthropic_api_key'"), 'Anthropic key payload type remains explicit');
-assert.ok(providerGateway.includes("kind:'openrouter_api_key'"), 'OpenRouter key payload type remains explicit');
+assert.ok(providerGateway.includes("'anthropic-api':'anthropic_api_key'"), 'Anthropic key payload type remains explicit');
+assert.ok(providerGateway.includes("'openrouter-api':'openrouter_api_key'"), 'OpenRouter key payload type remains explicit');
 assert.ok(providerGateway.includes('store:false'), 'OpenAI requests disable response storage');
 
 assert.ok(computerUi.includes('data-act="chat-run-computer-qa"'), 'Chat exposes the remote browser QA action');
