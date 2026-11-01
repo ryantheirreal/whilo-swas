@@ -236,3 +236,25 @@ Build a separate, bounded legal-source retrieval service before advertising lega
 2. After a `READY` staging deployment, create a time-limited share link and run a protected read-only UI smoke test.
 3. Run targeted UI tests for folder navigation/rate limit, Markdown fetch, output exports and the event handoff from Chat into the editor.
 4. Before real legal pilots: build versioned official-source retrieval, lawyer-reviewed citation golden tests, secure server document storage/versioning, and a real e-signature provider with identity/consent/audit checks. Keep billing disabled until separately tested.
+
+---
+
+## 2026-11-01 — Legal Desk build and Vercel release verification
+
+### Latest source
+- Latest verified main/deployed commit: `83772460e21680b6996cec4683941f5f3ba29cc5` — “Make the source text-hash requirement explicit in the roadmap”.
+- Staging deployment: `dpl_6cpeiT3dShe6WDZaLvjUtRdmDJTv`, state **READY**, URL `https://whilo-swas-ez1ruiugb-ryantheirreal-2506s-projects.vercel.app`.
+- Production deployment created by the connected Git integration: `dpl_EGiWe6XPR5BwPb8jUAUhRo5kPuDh`, target **production**, state **READY**, same commit, aliases include `https://whilo-swas.vercel.app`.
+- Both Vercel builds completed `npm run check`, `scripts/check-platform.mjs`, all configured security/product regression scripts and the bundle build. The check output included 43 JavaScript files parsed and 35 SQL migrations inspected; UI resilience, provider adapters, remote Computer QA and local ChatGPT Codex tests passed.
+- The production project now lists `SUPABASE_SERVICE_ROLE_KEY` for the production target; earlier README note describing its absence is stale and must be reconciled. Do not read or print its secret value.
+- The inspected Vercel env-name inventory did not include Stripe API/webhook keys or Marketplace price IDs. Checkout and automatic paid entitlements remain disabled/unverified.
+- Project SSO protection is enabled for non-custom deployments. The unique staging URL may ask for Vercel sign-in. Browser-side public fetch from this agent could not render the deployment, so no visual/E2E smoke test is claimed here. Open the production alias while signed into the owner account and test manually.
+- Production status **READY** means deployment artifacts were published; it is not proof that legal source claims are current, the provider keys work end-to-end, or any electronic signature is legally valid.
+
+### Launch readiness
+- Safe public framing: “AI-assisted legal workflow workspace for lawyer-led review.” Do not advertise complete/current coverage of all Brazilian laws, legal advice replacing counsel, perfect contracts, native DOCX, token streaming, or electronic signing.
+- Existing corpus explorer lists folders and opens selected Markdown files from public `ctresb/leis`; filename filtering only works in the current folder. It is not full-text search or official-source verification.
+- Export: browser print-to-PDF; Word-compatible HTML `.doc` (not native `.docx`); Markdown. Signature canvas is a demo only and never attaches/stores/exports a drawn signature.
+- Agent timeline shows client-side lifecycle receipts; the model gateway still returns a complete HTTP response, not genuine token streaming.
+- Before automatic selling: configure and test Stripe sandbox/live credentials, webhooks, product/price entitlements, refunds/cancellations, tax/invoicing and privacy/terms. Have qualified Brazilian counsel review legal-sector positioning, client-data handling and signing workflow.
+- Next local-session task: pull main without overwriting local work, install/test in the local environment, run a browser E2E pass with test data, fix issues, then build native DOCX, durable source evidence/index and provider-backed signature workflow before expanding the sales promise.
