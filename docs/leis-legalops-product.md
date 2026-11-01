@@ -74,7 +74,7 @@ Test ads and organic content around *less manual assembly, clearer missing facts
 - The drawing pad is a non-binding UI demonstration. It does not establish signer identity/consent, create a certificate, persist, attach or export a signature, or execute a contract. Real signing remains a separate workflow with an authorized e-signature provider.
 
 ### Gate 2 — Versioned legal-source retrieval and official verification (not implemented)
-- Build a full retrieval/indexing service that respects repository coverage and preserves pinned repository commit/revision, path, official source URL, content hash and retrieval timestamp.
+- Build a full retrieval/indexing service that respects repository coverage and preserves each source version/hash: pinned repository commit/revision, source path, official source URL, text/content hash and retrieved timestamp.
 - Resolve each legal claim to exact text and issuing authority; separate repository conversion from official publication and verify current legal status at the relevant as-of date.
 - Detect OCR/source conflicts, missing files, superseded versions and stale index states. Unknown status must remain unknown, not be inferred.
 - Evaluate retrieval on a fixed corpus of lawyer-reviewed questions before enabling source-backed legal citations in generated output.
