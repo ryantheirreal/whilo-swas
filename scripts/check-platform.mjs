@@ -275,7 +275,7 @@ if (!desktopPackage.scripts.check.includes('scripts/test-codex-bridge.cjs') ||
     !desktopCodexTests.includes('workspace-write') ||
     !desktopCodexTests.includes('CODEX_ACCESS_TOKEN')) failures.push('Desktop checks must run the local Codex OAuth, sandbox and secret-isolation regression tests.');
 if (browserRuntimePackage.dependencies?.['playwright-core'] !== '1.64.1') failures.push('The remote computer runtime must use an exact Playwright Core version pin.');
-if (!enterpriseUi.includes('data-act="chat-run-computer-qa"') || !enterpriseUi.includes('computerQaResult.screenshotDataUrl')) failures.push('Chat must expose the read-only remote computer QA action and screenshot receipt.');
+if (!enterpriseUi.includes('data-act="chat-run-computer-qa"') || !enterpriseUi.includes('computerQaResult && computerQaResult.ok') || !enterpriseUi.includes('qa.screenshotDataUrl')) failures.push('Chat must expose the read-only remote computer QA action and render its validated screenshot receipt.');
 if (!enterpriseUi.includes('BYOK Model Console') || !enterpriseUi.includes('connect-model-key-form') ||
     !enterpriseUi.includes('model-playground-form')) failures.push('The Connect screen must include secure provider-key setup and a live-model console.');
 const marketplaceRoute = fs.readFileSync(path.join(root, 'web', 'whilo-swas', 'server', 'routes', 'marketplace.js'), 'utf8');
