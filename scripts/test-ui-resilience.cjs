@@ -92,7 +92,7 @@ assert.ok(providerGateway.includes("kind:'openrouter_api_key'"), 'OpenRouter key
 assert.ok(providerGateway.includes('store:false'), 'OpenAI requests disable response storage');
 
 assert.ok(computerUi.includes('data-act="chat-run-computer-qa"'), 'Chat exposes the remote browser QA action');
-assert.ok(computerUi.includes('computerQaResult.screenshotDataUrl'), 'Chat renders the returned QA screenshot');
+assert.ok(computerUi.includes('computerQaResult && computerQaResult.ok') && computerUi.includes('qa.screenshotDataUrl'), 'Chat renders the validated returned QA screenshot');
 assert.ok(computerUi.includes('not a full security audit'), 'QA result copy does not overstate coverage');
 assert.ok(computerRoute.includes('resolvePublicHttpsTarget'), 'Computer runtime validates public HTTPS targets and DNS');
 assert.ok(computerRoute.includes('parsed.origin === targetOrigin'), 'Remote browser blocks requests to other origins');
