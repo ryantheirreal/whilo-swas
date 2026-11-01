@@ -28,7 +28,7 @@ Whilo is an outcome-first AI work operator: a user defines a goal and acceptance
 
 **Chat** is the command surface. **Pets** are persistent agents with a role, user-approved memory and policy. **Bots** are task-scoped specialists spawned for bounded work. **Marketplace** distributes vetted Pets, Bots, Skills, Playbooks and Templates. **Rotinas** schedules repeatable work. **Work, Company, Connect and Results** provide the operating layer.
 
-**Leis Legal Desk** is a Marketplace pilot entry for Brazilian law firms: contract-draft, agreement-review and legal-research prompts open as unsent Chat drafts. The `ctresb/leis` repository is currently a source reference, not a live-indexed legal database; all legal output remains a draft for qualified lawyer review.
+**Leis Legal Desk** is a Marketplace pilot for Brazilian law firms. It includes contract-draft, agreement-review and legal-research prompts, plus a browser-side workspace that navigates public folders and selected Markdown files in `ctresb/leis` and displays repository path/object SHA. Filename filtering is limited to the current folder: this is not a full-text index, complete legal database, currency check or official-source verification. Generated outputs open in a session-only editor and can be printed to PDF, exported as Word-compatible HTML `.doc` (not native `.docx`), or exported as Markdown. The agent timeline records lifecycle events, not a durable server audit or token-by-token stream. A drawing pad is a non-binding visual demo only; it does not verify identity, store, attach or export a signature. Every legal document is an unsigned draft requiring qualified lawyer review and a separate authorized signature workflow.
 
 ## New platform foundations
 
