@@ -198,3 +198,41 @@ The GitHub release tarball could not be downloaded from the current local execut
 ### Next exact engineering action
 
 Build a separate, bounded legal-source retrieval service before advertising legal research as source-backed: retrieve source files with their repository revision/path, original official source URL, retrieved timestamp and content hash; confirm current text/status against official sources; mark OCR uncertainty and corpus gaps; and evaluate retrieval using a lawyer-reviewed set of questions. Add legal-source golden tests that fail on invented citations or stale/unknown status. Only then build secure document upload/DOCX output with version history and explicit lawyer approval, followed by sandbox billing tests. Start customer discovery with small Brazilian law firms handling repeat B2B service/SaaS agreements; treat R$497/month as a hypothesis until paid pilots and renewals validate it.
+
+---
+
+## 2026-11-01 — Legal Desk workspace, document output and release correction
+
+### Implemented on main
+- Added `web/whilo-swas/whilo-legal-desk.js`, a separate Shadow DOM workspace loaded after Marketplace and Chat:
+  - public GitHub Contents API folder navigation for the `ctresb/leis` repository;
+  - selected Markdown preview from the repository's raw-content host;
+  - path and returned Git object SHA provenance;
+  - folder-local filename filtering and links to `COBERTURA.md` and `PROGRESSO.md`;
+  - in-memory draft editor;
+  - browser print-to-PDF, Word-compatible HTML `.doc` export, and Markdown export;
+  - client-side agent lifecycle timeline with PDF, Docs and Code artifact icons;
+  - pointer-based signature drawing demo.
+- Marketplace now exposes an **Open Legal Desk** action. Legal workflow prompts still start in Chat. Completed provider results are passed back to the Legal Desk editor as an in-memory artifact.
+- Chat sends lifecycle events for legal requests and provider completion/failure and allows up to 1,900 output tokens for legal workflows (the existing server gateway remains capped at 2,048).
+- Build injects the new client module after the Marketplace module; web syntax checks, static platform checks and UI regression tests include the new runtime. Vercel cache headers mark the new asset as no-cache.
+- README and docs now describe what actually shipped and the remaining release gates.
+
+### Scope and boundaries
+- The browser reads the public repository dynamically by folder and selected file, but this is **not** a full-text search index, complete legal database, legal-status verification service, or automatic official-source citation engine. It is not a claim that all Brazilian laws are covered or current.
+- Search is limited to names inside the currently loaded directory; the GitHub public API may rate-limit requests. A file's Git object SHA does not prove legal currency or authenticity of the publication.
+- PDF is produced through browser print/save-to-PDF. The Word-compatible export is HTML with a `.doc` extension, not native `.docx`.
+- Timeline is in-memory client UI, not durable audit evidence. Model calls still return complete HTTP responses; real token-by-token streaming is not implemented.
+- Signature pad is a visual demo only. It does not verify identity or consent and never stores, attaches or exports the drawing. The generated contract remains unsigned; a real signature requires a separate, approved e-signature workflow and qualified review.
+
+### Vercel release correction
+- The last inspected production deployment (commit `19c4594ca40f851e4a5b8b822acb48e353d559a9`) failed in `npm run check`, not in Vite compilation: the checker expected a direct `computerQaResult.screenshotDataUrl` string, while the real renderer assigns `const qa = computerQaResult` and uses `qa.screenshotDataUrl`.
+- Corrected `scripts/check-platform.mjs` and `scripts/test-ui-resilience.cjs` to assert the actual validated screenshot path rather than the stale variable expression.
+- New check/test coverage was added for the legal explorer, exports, timeline event handoff, icon references and non-binding signature pad.
+- These changes have **not yet been verified by a complete Vercel staging build** at the time this note was written. Do not claim npm check, Vercel preview, runtime UI or any external signing provider is working until a run proves it.
+
+### Current next actions
+1. Check latest `main` SHA, run the Vercel staging target build and inspect its build events; fix the first real failing check rather than bypassing it.
+2. After a `READY` staging deployment, create a time-limited share link and run a protected read-only UI smoke test.
+3. Run targeted UI tests for folder navigation/rate limit, Markdown fetch, output exports and the event handoff from Chat into the editor.
+4. Before real legal pilots: build versioned official-source retrieval, lawyer-reviewed citation golden tests, secure server document storage/versioning, and a real e-signature provider with identity/consent/audit checks. Keep billing disabled until separately tested.
