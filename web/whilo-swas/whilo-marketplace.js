@@ -969,7 +969,7 @@
       if(r.width<1||r.height<1||r.top>170)return false;
       const label=norm(el.innerText||el.textContent||'');
       const words=norm((el.innerText||el.textContent||'')+' '+(el.getAttribute('aria-label')||'')+' '+(el.getAttribute('title')||''));
-      return /(^|\s)(store|loja|marketplace)(\s|$)/.test(label) || /(^|\s)(store|loja|marketplace)(\s|$)/.test(words);
+      return /(^|\s)(apps|store|loja|marketplace)(\s|$)/.test(label) || /(^|\s)(apps|store|loja|marketplace)(\s|$)/.test(words);
     }).sort(function(a,b){return a.getBoundingClientRect().top-b.getBoundingClientRect().top;})[0]||null;
   }
   function labelMarketplace(button){
