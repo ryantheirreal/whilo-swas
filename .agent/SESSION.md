@@ -258,3 +258,17 @@ Build a separate, bounded legal-source retrieval service before advertising lega
 - Agent timeline shows client-side lifecycle receipts; the model gateway still returns a complete HTTP response, not genuine token streaming.
 - Before automatic selling: configure and test Stripe sandbox/live credentials, webhooks, product/price entitlements, refunds/cancellations, tax/invoicing and privacy/terms. Have qualified Brazilian counsel review legal-sector positioning, client-data handling and signing workflow.
 - Next local-session task: pull main without overwriting local work, install/test in the local environment, run a browser E2E pass with test data, fix issues, then build native DOCX, durable source evidence/index and provider-backed signature workflow before expanding the sales promise.
+
+## 2026-11-02 — Apps / Plugins / Skills navigation consolidation
+
+- Working branch: `fix/apps-plugins-skills-navigation`.
+- The Enterprise extension no longer adds extra top-level buttons for Messages, @Routines, Work, Company, Connect, Account or Results. These destinations remain in their owning workspaces.
+- The existing Store/Marketplace shell entry is relabeled `Apps`; discovery now recognizes `Apps` to avoid duplicating the entry after React rerenders.
+- The Apps surface now has three primary sections: Apps, Plugins and Skills.
+- My Library, Creator Studio, Review Queue and Plans remain available under a single Manage disclosure.
+- Skills are shown as source references only. No third-party instructions are executed automatically.
+- Regression test: `scripts/test-marketplace-navigation.cjs`, included in the web package `npm run check`.
+- Current branch head after the latest UI/nav commits is expected to be verified through GitHub before local continuation.
+- Vercel preview was observed queued/building for this branch on 2026-11-02. Do not promote to production until all check scripts and browser tests pass.
+- Next: run `npm run check`, `npm run build`, and browser smoke tests locally; then continue the auth, runtime, streaming and mission-verification audit.
+
