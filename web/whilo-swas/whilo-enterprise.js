@@ -576,75 +576,16 @@
     return '';
   }
   function injectTopbar() {
-    const candidates = Array.from(document.querySelectorAll('button,a,[role="tab"],[role="button"]')).filter(function (el) { return visible(el) && category(el); });
-    const found = {};
-    candidates.forEach(function (el) { const c = category(el); if (!found[c] || el.getBoundingClientRect().top < found[c].getBoundingClientRect().top) found[c] = el; });
-    if (!['chat', 'pets', 'store', 'routines'].every(function (k) { return !!found[k]; })) return false;
-    let common = found.chat;
-    while (common && !Object.keys(found).every(function (k) { return common.contains(found[k]); })) common = common.parentElement;
-    if (!common) return false;
-    let changed = true;
-    while (changed) {
-      changed = false;
-      Array.from(common.children).forEach(function (child) {
-        if (Object.keys(found).every(function (k) { return child === found[k] || child.contains(found[k]); })) { common = child; changed = true; }
-      });
-    }
-    const sample = found.routines;
-    if (!sample.hasAttribute('data-whilo-routines-bound')) {
-      sample.setAttribute('data-whilo-routines-bound', 'true');
-      sample.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopImmediatePropagation(); openPanel('routines'); }, true);
-    }
-    const parent = sample.parentElement || common;
-    if (!parent.querySelector('[data-whilo-message-tab]')) {
-      const portugueseMessages = /pt/i.test(document.documentElement.lang || '') || norm(found.chat.innerText || found.chat.textContent).includes('convers');
-      const messageButton = found.chat.cloneNode(false);
-      messageButton.removeAttribute('id'); messageButton.removeAttribute('href'); messageButton.removeAttribute('aria-current');
-      messageButton.removeAttribute('aria-pressed'); messageButton.removeAttribute('data-state');
-      messageButton.setAttribute('type', 'button');
-      messageButton.setAttribute('data-whilo-message-tab', 'messages');
-      messageButton.setAttribute('aria-label', portugueseMessages ? 'Mensagens' : 'Messages');
-      messageButton.title = portugueseMessages ? 'Mensagens' : 'Messages';
-      messageButton.innerHTML = '<span aria-hidden="true" style="margin-right:6px;opacity:.8">✉</span><span>' + (portugueseMessages ? 'Mensagens' : 'Messages') + '</span>';
-      messageButton.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); openPanel('messages'); });
-      found.chat.insertAdjacentElement('afterend', messageButton);
-    }
-    if (!parent.querySelector('[data-whilo-routines-chat-launcher]')) {
-      const routineButton = found.chat.cloneNode(false);
-      routineButton.removeAttribute('id'); routineButton.removeAttribute('href'); routineButton.removeAttribute('aria-current');
-      routineButton.removeAttribute('aria-pressed'); routineButton.removeAttribute('data-state');
-      routineButton.setAttribute('type', 'button');
-      routineButton.setAttribute('data-whilo-routines-chat-launcher', 'true');
-      routineButton.setAttribute('aria-label', 'Create a routine directly in Chat');
-      routineButton.title = '@Routines · Create automation in Chat';
-      routineButton.innerHTML = '<span aria-hidden="true" style="margin-right:6px;opacity:.8">✳</span><span>@Routines</span>';
-      routineButton.addEventListener('click', function (ev) {
-        ev.preventDefault(); ev.stopPropagation();
-        openRoutineInChat('Design a safe Whilo routine. Ask for the desired outcome, trigger, target, bounded steps, evidence, cost ceiling, approval policy and schedule. Prefer read-only actions first; never claim execution until a connected authorized worker provides evidence.');
-      });
-      const messageTab = parent.querySelector('[data-whilo-message-tab]');
-      if (messageTab) messageTab.insertAdjacentElement('afterend', routineButton);
-      else found.chat.insertAdjacentElement('afterend', routineButton);
-    }
-    const portuguese = /pt/i.test(document.documentElement.lang || '') || !!found.routines && norm(found.routines.innerText || found.routines.textContent).includes('rotina');
-    const items = [
-      { key: 'work', en: 'Work', pt: 'Trabalho', mark: '▤' },
-      { key: 'company', en: 'Company', pt: 'Empresa', mark: '▦' },
-      { key: 'connect', en: 'Connect', pt: 'Conexões', mark: '↗' },
-      { key: 'account', en: 'Account', pt: 'Conta', mark: '◉' },
-      { key: 'results', en: 'Results', pt: 'Resultados', mark: '◷' }
+    // Keep the shell navigation native. Older releases injected extra top-level actions
+    // (Messages, @Routines, Work, Company, Connect, Account and Results) here. Those
+    // destinations belong inside their owning workspaces, not beside primary navigation.
+    const legacySelectors = [
+      '[data-whilo-message-tab]',
+      '[data-whilo-routines-chat-launcher]',
+      '[data-whilo-enterprise-tab]'
     ];
-    items.forEach(function (item) {
-      if (document.querySelector('[data-whilo-enterprise-tab="' + item.key + '"]')) return;
-      const b = sample.cloneNode(false);
-      b.removeAttribute('id'); b.removeAttribute('href'); b.removeAttribute('aria-current');
-      b.setAttribute('type', 'button');
-      b.setAttribute('data-whilo-enterprise-tab', item.key);
-      b.setAttribute('aria-label', portuguese ? item.pt : item.en);
-      b.title = portuguese ? item.pt : item.en;
-      b.innerHTML = '<span aria-hidden="true" style="margin-right:6px;opacity:.8">' + item.mark + '</span><span>' + (portuguese ? item.pt : item.en) + '</span>';
-      b.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); openPanel(item.key); });
-      parent.appendChild(b);
+    legacySelectors.forEach(function (selector) {
+      document.querySelectorAll(selector).forEach(function (node) { node.remove(); });
     });
     return true;
   }
