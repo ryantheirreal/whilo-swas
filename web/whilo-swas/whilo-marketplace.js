@@ -459,7 +459,7 @@
   veil.setAttribute('role','dialog');
   veil.setAttribute('aria-modal','true');
   veil.setAttribute('aria-label','Whilo Marketplace');
-  veil.innerHTML = '<section class="panel"><header class="head"><div class="mark">W</div><div class="brand"><div class="eyebrow">WHILO / CREATOR ECONOMY</div><h1>Marketplace</h1><div class="sub">Discover agents. Package expertise. Earn from every verified sale.</div></div><button class="close" data-action="close" aria-label="Close">×</button></header><nav class="nav" aria-label="Marketplace"><button class="active" data-page="discover">Discover</button><button data-page="plugins">Plugins</button><button data-page="library">My Library</button><button data-page="creator">Creator Studio</button><button data-page="review">Review Queue</button><button data-page="plans">Plans</button></nav><main class="content" id="content"></main><footer class="footer"><span>20% platform commission on completed paid sales</span><span>Preview assets are not real listings.</span></footer></section>';
+  veil.innerHTML = '<section class="panel"><header class="head"><div class="mark">W</div><div class="brand"><div class="eyebrow">WHILO / WORKSPACE</div><h1>Apps</h1><div class="sub">Discover agents. Package expertise. Earn from every verified sale.</div></div><button class="close" data-action="close" aria-label="Close">×</button></header><nav class="nav" aria-label="Apps"><button class="active" data-page="discover">Apps</button><button data-page="plugins">Plugins</button><button data-page="skills">Skills</button><details class="market-manage" style="position:relative;margin-left:auto"><summary style="list-style:none;cursor:pointer;border:1px solid #344157;background:#1a2535;color:#dce5f3;border-radius:10px;padding:10px 13px;font-size:12px;font-weight:700;white-space:nowrap">Manage ▾</summary><div style="position:absolute;z-index:20;right:0;top:calc(100% + 8px);min-width:180px;padding:6px;background:#101724;border:1px solid #344157;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.32);display:grid;gap:4px"><button data-page="library" style="width:100%;text-align:left;border:0;background:transparent;color:#dce5f3;border-radius:8px;padding:9px 10px;cursor:pointer">My Library</button><button data-page="creator" style="width:100%;text-align:left;border:0;background:transparent;color:#dce5f3;border-radius:8px;padding:9px 10px;cursor:pointer">Creator Studio</button><button data-page="review" style="width:100%;text-align:left;border:0;background:transparent;color:#dce5f3;border-radius:8px;padding:9px 10px;cursor:pointer">Review Queue</button><button data-page="plans" style="width:100%;text-align:left;border:0;background:transparent;color:#dce5f3;border-radius:8px;padding:9px 10px;cursor:pointer">Plans</button></div></details></nav><main class="content" id="content"></main><footer class="footer"><span>20% platform commission on completed paid sales</span><span>Preview assets are not real listings.</span></footer></section>';
   root.appendChild(veil);
   document.documentElement.appendChild(host);
   const content = veil.querySelector('#content');
@@ -629,7 +629,22 @@
     out+=owned.length?owned.map(function(item){return '<div class="list-row"><div class="asset">'+esc(ICONS[item.listing_type]||'◇')+'</div><div class="list-main"><strong>'+esc(item.title)+'</strong><span>'+esc(TYPES[item.listing_type]||item.listing_type)+' · '+esc(item.status)+' · '+(item.price_minor?money(item.price_minor):'Free')+(item.review_note?' · '+esc(item.review_note):'')+'</span></div>'+(['draft','rejected'].includes(item.status)?'<button class="btn secondary" data-action="submit-listing" data-id="'+esc(item.id)+'">Submit for review</button>':'')+'</div>';}).join(''):'<div class="empty"><strong>No listings yet.</strong><p>Save a draft above. It will appear in public search only after review and publication.</p></div>';
     return out;
   }
-  function libraryPage() {
+  function skillsPage() {
+    const skills = [
+      {title:'Anthropic Skills',kind:'Reusable agent instructions',description:'A library of task-scoped skills and workflow instructions. Review each skill, tool requirement and permission boundary before adoption.',url:'https://github.com/anthropics/skills',tag:'Official skills repository'},
+      {title:'Vercel Agent Skills',kind:'Engineering workflows',description:'Reusable guidance for building, deploying and verifying web applications and agent workflows.',url:'https://github.com/vercel-labs/agent-skills',tag:'Vercel ecosystem'},
+      {title:'Superpowers',kind:'Software delivery playbooks',description:'Structured practices for discovery, planning, implementation, debugging and verification. Treat instructions as untrusted until reviewed.',url:'https://github.com/obra/superpowers',tag:'Open-source skill library'}
+    ];
+    let out='<div class="hero"><div><div class="eyebrow">WHILO / SKILLS</div><h2>Reusable capabilities, not another app.</h2><p>Skills package instructions and repeatable methods. They do not grant tools, credentials or permissions by themselves. Every imported skill is reviewed and versioned before it can influence a run.</p></div></div>';
+    out+='<div class="notice info"><b>Execution boundary:</b> these entries are source references only. Whilo does not execute third-party instructions from this catalog. Review the source, version, license, requested tools and security implications before enabling a skill.</div>';
+    out+='<div class="grid">'+skills.map(function(skill){
+      return '<article class="card"><div class="card-head"><div class="asset skill">✳</div><div style="min-width:0;flex:1"><div class="eyebrow">'+esc(skill.kind)+'</div><h3>'+esc(skill.title)+'</h3><div class="meta">'+esc(skill.tag)+'</div></div></div><p>'+esc(skill.description)+'</p><div class="card-foot"><span class="pill">Review before use</span><div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn secondary" href="'+esc(skill.url)+'" target="_blank" rel="noopener noreferrer">Review source ↗</a><button class="btn" data-action="plugins-save" data-title="'+esc(skill.title)+'" data-url="'+esc(skill.url)+'" data-description="'+esc(skill.description)+'">Save reference</button></div></div></article>';
+    }).join('')+'</div>';
+    out+='<div class="section-title">Skill lifecycle</div><div class="grid"><article class="card"><h3>1. Inspect</h3><p>Pin an immutable source revision and review the full instruction set, license and maintainer history.</p></article><article class="card"><h3>2. Scope</h3><p>Declare required tools, allowed data, network access, output contract and approval requirements.</p></article><article class="card"><h3>3. Verify</h3><p>Run in a restricted test context, evaluate outputs and preserve rollback to the previous version.</p></article></div>';
+    return out;
+  }
+
+    function libraryPage() {
     let out='<div class="hero"><div><div class="eyebrow">YOUR INSTALLED ASSETS</div><h2>My Library</h2><p>Purchased and free assets are tied to your workspace. Pets are created as Pet records; Bots, Skills and Playbooks are saved as declarative installs. Connecting those manifests to the mission runtime is a separate release, so they do not execute yet.</p></div><button class="btn secondary" data-action="reload-library">Refresh</button></div>'+notice();
     if(!library.session) return out+authCard();
     if(library.error) return out+'<div class="notice info">'+esc(library.error)+'</div>';
@@ -701,9 +716,6 @@
   function pluginsPage() {
     const plugins = [
       {id:'leis-legalops',title:'Leis Legal Desk',kind:'Legal research & contract drafting',description:'A Brazilian LegalOps assistant for law firms and in-house teams: contract first drafts, clause-by-clause review, source-led legal research and structured risk registers. Lawyer-led; drafts only.',url:'https://github.com/ctresb/leis',tag:'Brazilian law · MIT repository',featured:true},
-      {title:'Anthropic Skills',kind:'Skills library',description:'Reusable task instructions and workflow patterns. Review permissions and scope before importing anything.',url:'https://github.com/anthropics/skills',tag:'Official skills repo'},
-      {title:'Vercel Agent Skills',kind:'Developer workflows',description:'Reusable developer workflows. Review permissions before importing any instructions.',url:'https://github.com/vercel-labs/agent-skills',tag:'Developer tooling'},
-      {title:'Superpowers',kind:'Engineering playbooks',description:'Structured software-engineering workflows for planning, implementation and verification.',url:'https://github.com/obra/superpowers',tag:'Open-source workflow'},
       {title:'OpenMausBot',kind:'Agent runtime research',description:'Study per-turn capabilities, approval gates, verified run states, device boundaries and secure computer-control patterns. Port concepts only after license and threat-model review.',url:'https://github.com/milind-soni/OpenMausBot',tag:'Architecture reference'},
       {title:'Composio integrations',kind:'Connected tools',description:'Explore app integrations. Whilo should request least-privilege scopes and require approval for consequential writes.',url:'https://github.com/ComposioHQ',tag:'Integration ecosystem'},
       {title:'GitHub Skills',kind:'Repository-native automation',description:'Reviewed repository workflows for issues, pull requests, code review and release hygiene.',url:'https://github.com/skills',tag:'GitHub ecosystem'}
@@ -727,7 +739,7 @@
   }
   function render() {
     veil.querySelectorAll('[data-page]').forEach(function(button){button.classList.toggle('active',button.getAttribute('data-page')===page);});
-    content.innerHTML=page==='plugins'?pluginsPage():(page==='creator'?creatorPage():(page==='plans'?plansPage():(page==='library'?libraryPage():(page==='review'?reviewPage():discoverPage()))));
+    content.innerHTML=page==='plugins'?pluginsPage():(page==='skills'?skillsPage():(page==='creator'?creatorPage():(page==='plans'?plansPage():(page==='library'?libraryPage():(page==='review'?reviewPage():discoverPage())))));
   }
   async function getToken() {
     if(!window.WhiloCloudAuth) throw new Error('Whilo cloud authentication is not loaded. Refresh the app and verify setup.');
@@ -853,7 +865,7 @@
   veil.addEventListener('click',function(event){
     if(event.target===veil){close();return;}
     const pageBtn=event.target.closest('[data-page]');
-    if(pageBtn){page=pageBtn.getAttribute('data-page');feedback='';render();if(page==='discover')loadCatalog();if(page==='creator')loadCreator().then(render);if(page==='library')loadLibrary().then(render);if(page==='review')loadReviewQueue().then(render);return;}
+    if(pageBtn){page=pageBtn.getAttribute('data-page');feedback='';const manage=veil.querySelector('.market-manage');if(manage)manage.open=false;render();if(page==='discover')loadCatalog();if(page==='creator')loadCreator().then(render);if(page==='library')loadLibrary().then(render);if(page==='review')loadReviewQueue().then(render);return;}
     const f=event.target.closest('[data-filter]');
     if(f){filter=f.getAttribute('data-filter');render();return;}
     const iv=event.target.closest('[data-interval]');
@@ -962,14 +974,14 @@
   }
   function labelMarketplace(button){
     const labels=Array.from(button.querySelectorAll('span,div,p')).filter(function(el){
-      return /^(store|loja)$/i.test(norm(el.textContent||'')) && !Array.from(el.children).some(function(child){return norm(child.textContent||'')===norm(el.textContent||'');});
+      return /^(apps|store|loja|marketplace)$/i.test(norm(el.textContent||'')) && !Array.from(el.children).some(function(child){return norm(child.textContent||'')===norm(el.textContent||'');});
     });
-    if(labels.length){labels[labels.length-1].textContent='Marketplace';return;}
+    if(labels.length){labels[labels.length-1].textContent='Apps';return;}
     try{
       const walker=document.createTreeWalker(button,NodeFilter.SHOW_TEXT);
       let node;
       while((node=walker.nextNode())){
-        if(/^(store|loja)$/i.test(norm(node.nodeValue||''))){node.nodeValue='Marketplace';return;}
+        if(/^(apps|store|loja|marketplace)$/i.test(norm(node.nodeValue||''))){node.nodeValue='Apps';return;}
       }
     }catch(_){}
   }
@@ -978,8 +990,8 @@
     if(!button)return false;
     if(button.hasAttribute('data-whilo-marketplace-tab'))return true;
     button.setAttribute('data-whilo-marketplace-tab','true');
-    button.setAttribute('aria-label','Marketplace');
-    button.setAttribute('title','Marketplace');
+    button.setAttribute('aria-label','Apps');
+    button.setAttribute('title','Apps');
     labelMarketplace(button);
     button.addEventListener('click',function(ev){
       ev.preventDefault();
